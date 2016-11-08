@@ -1,0 +1,4 @@
+# Dockerfile used to turn a slug into a full-fat docker image.
+
+FROM flynn/slugrunner
+ADD slug.tgz /app
