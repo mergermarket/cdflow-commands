@@ -60,6 +60,7 @@ class Deployment:
             service_json_loader.load(),
             self.component_name
         )
+        self.platform_config = util.load_platform_config(self.metadata['REGION'])
         self.aws = None
 
     def run(self):
@@ -82,7 +83,7 @@ class Deployment:
         account_id = self.get_account_id()
 
         # generate container image name
-        image = util.container_image_name(util.registry(self), self.component_name, self.version)
+        image = util.container_image_name(util.ecr_registry(self.platform_config, self.metadata['REGION']), self.component_name, self.version)
 
         print("Preparing S3 bucket for terragrunt...")
         s3_bucket_name = self.terragrunt_s3_bucket_name(account_id.encode('utf-8'))

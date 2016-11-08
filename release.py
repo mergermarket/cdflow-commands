@@ -44,6 +44,7 @@ class Release:
             service_json_loader.load(),
             self.component_name
         )
+        self.platform_config = util.load_platform_config(self.metadata['REGION'])
         self.aws = None
 
     def _get_aws(self):
@@ -86,6 +87,9 @@ class Release:
         self.shell_runner.run('cp /infra/Dockerfile_slug target/Dockerfile')
         self.metadata['DOCKER_BUILD_DIR'] = 'target'
 
+    def ecr_registry(self):
+        return util.ecr_registry(self.platform_config, self.metadata['REGION'])
+
     def create(self):
         """
         Create the release.
@@ -101,7 +105,7 @@ class Release:
             check_call(command, shell=True)
 
         # generate container image name
-        image = util.container_image_name(util.registry(self), self.component_name, self.version)
+        image = util.container_image_name(self.ecr_registry(), self.component_name, self.version)
 
         print(PREFIX + 'building docker image %s' % (image))
         check_call("docker build -t %s %s" % (image, self.metadata['DOCKER_BUILD_DIR']), shell=True)
@@ -150,7 +154,7 @@ class Release:
         print(PREFIX + 'pushing image %s' % (image))
         check_call('docker push %s' % (image), shell=True)
 
-        latest_tag = '%s/%s:latest' % (util.registry(self), self.component_name)
+        latest_tag = '%s/%s:latest' % (self.ecr_registry(), self.component_name)
         print(PREFIX + 'pushing tag %s' % (latest_tag))
         check_call('docker tag %s %s' % (image, latest_tag), shell=True)
         check_call('docker push %s' % (latest_tag), shell=True)
