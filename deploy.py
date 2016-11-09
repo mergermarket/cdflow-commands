@@ -11,7 +11,7 @@ Options:
     -l <leg>, --leg <leg>
 """
 
-
+from __future__ import print_function
 from docopt import docopt
 from subprocess import check_call
 
@@ -83,7 +83,8 @@ class Deployment:
         account_id = self.get_account_id()
 
         # generate container image name
-        image = util.container_image_name(util.ecr_registry(self.platform_config, self.metadata['REGION']), self.component_name, self.version)
+        image = util.container_image_name(util.ecr_registry(self.platform_config, self.metadata['REGION']),
+                                          self.component_name, self.version)
 
         print("Preparing S3 bucket for terragrunt...")
         s3_bucket_name = self.terragrunt_s3_bucket_name(account_id.encode('utf-8'))
@@ -97,9 +98,9 @@ class Deployment:
         check_call("terraform get infra", env=env, shell=True)
 
         self.terragrunt('plan', self.environment, image, self.component_name, self.metadata['REGION'],
-                             self.metadata['TEAM'], self.version, env)
+                        self.metadata['TEAM'], self.version, env)
         self.terragrunt('apply', self.environment, image, self.component_name, self.metadata['REGION'],
-                              self.metadata['TEAM'], self.version, env)
+                        self.metadata['TEAM'], self.version, env)
 
         # clean up all irrelevant files
         self.cleanup()
@@ -174,7 +175,7 @@ class Deployment:
                                  CreateBucketConfiguration={'LocationConstraint': 'eu-west-1'})
             except Exception as e:
                 logger.exception("Error while trying to create bucket %s (%s)",
-                    s3_bucket_name, str(e))
+                                 s3_bucket_name, str(e))
 
     def generate_terragrunt_config(self, region, s3_bucket_name, environment, component_name):
         """Generates terragrunt config as per terragrunt documentation"""
@@ -227,25 +228,20 @@ remote_state = {{
              " {environmentconfig}"
              " infra")
 
-        try:
-            check_call(
-                t.format(
-                    action=action,
-                    component=component,
-                    environmentconfig=environmentconfig,
-                    environment=environment,
-                    image=image,
-                    region=region,
-                    team=team,
-                    version=version,
-                ),
-                env=exec_env,
-                shell=True
-            )
-        except Exception:
-            logger.exception('Exception caught while executing terragrunt %s!', action)
-
-        return True
+        check_call(
+            t.format(
+                action=action,
+                component=component,
+                environmentconfig=environmentconfig,
+                environment=environment,
+                image=image,
+                region=region,
+                team=team,
+                version=version,
+            ),
+            env=exec_env,
+            shell=True
+        )
 
     def cleanup(self):
         # clean up after terraform run
