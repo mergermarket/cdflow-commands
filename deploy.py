@@ -60,6 +60,7 @@ class Deployment:
             service_json_loader.load(),
             self.component_name
         )
+        self.platform_config = util.load_platform_config(self.metadata['REGION'])
         self.aws = None
 
     def run(self):
@@ -82,7 +83,8 @@ class Deployment:
         account_id = self.get_account_id()
 
         # generate container image name
-        image = util.container_image_name(util.registry(self), self.component_name, self.version)
+        image = util.container_image_name(util.ecr_registry(self.platform_config, self.metadata['REGION']),
+                                          self.component_name, self.version)
 
         print("Preparing S3 bucket for terragrunt...")
         s3_bucket_name = self.terragrunt_s3_bucket_name(account_id.encode('utf-8'))
@@ -96,9 +98,9 @@ class Deployment:
         check_call("terraform get infra", env=env, shell=True)
 
         self.terragrunt('plan', self.environment, image, self.component_name, self.metadata['REGION'],
-                             self.metadata['TEAM'], self.version, env)
+                        self.metadata['TEAM'], self.version, env)
         self.terragrunt('apply', self.environment, image, self.component_name, self.metadata['REGION'],
-                              self.metadata['TEAM'], self.version, env)
+                        self.metadata['TEAM'], self.version, env)
 
         # clean up all irrelevant files
         self.cleanup()
@@ -114,7 +116,7 @@ class Deployment:
         Gets an AWS session.
         """
         if self.aws is None:
-            self.aws = util.assume_role(self.metadata['REGION'], self.metadata['ACCOUNT_PREFIX'], self.prod())
+            self.aws = util.assume_role(self.metadata['REGION'], self.platform_config, self.prod())
         return self.aws
 
     def _get_aws_credentials(self, session):
@@ -173,7 +175,7 @@ class Deployment:
                                  CreateBucketConfiguration={'LocationConstraint': 'eu-west-1'})
             except Exception as e:
                 logger.exception("Error while trying to create bucket %s (%s)",
-                    s3_bucket_name, str(e))
+                                 s3_bucket_name, str(e))
 
     def generate_terragrunt_config(self, region, s3_bucket_name, environment, component_name):
         """Generates terragrunt config as per terragrunt documentation"""
