@@ -116,7 +116,7 @@ def load_platform_config(region, platform_config_loader=None):
     return platform_config_loader.load(region)
 
 def ecr_registry(platform_config, region):
-    return '%s.dkr.ecr.%s.amazonaws.com' % (platform_config["aws_config"]["dev.account_id"], region)
+    return '%s.dkr.ecr.%s.amazonaws.com' % (platform_config["platform_config"]["dev.account_id"], region)
 
 def apply_metadata_defaults(metadata, component_name):
     """
@@ -166,7 +166,7 @@ def role_session_name():
         raise Exception('JOB_NAME or EMAIL environment variable must be set for session name of assumed role')
 
 def assume_role_credentials(region, platform_config, prod=False):
-    account_id = platform_config["aws_config"]["%s.account_id" % ("prod" if prod else "dev")]
+    account_id = platform_config["platform_config"]["%s.account_id" % ("prod" if prod else "dev")]
     print("Assuming role in account %s" % account_id)
     try:
         session = boto3.session.Session(region_name=region)
