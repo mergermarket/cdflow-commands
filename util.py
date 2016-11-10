@@ -1,7 +1,7 @@
 
 from subprocess import Popen, PIPE, call
 from re import match, search, sub
-from os import path, getcwd, environ
+from os import path, environ
 import json
 import boto3
 import botocore
@@ -49,6 +49,24 @@ class ServiceJsonLoader():
         return metadata
 
 
+class PlatformConfigLoader():
+
+    """
+    Mockable loader for config/platform-config/{region}.json.
+    """
+    
+    def load(self, region):
+        filename = 'config/platform-config/%s.json' % region
+        if not path.exists(filename):
+            raise UserError('%s not found (maybe you need to pull in a platform-config repo?)' % filename)
+        with open(filename) as f:
+            try:
+                config = json.loads(f.read())
+            except json.decoder.JSONDecodeError as e:
+                raise UserError('malformed %s: %s' % (filename, str(e)))
+        return config
+
+
 def get_component_name(arguments, environ, shell_runner):
     """
     Get the component name from the command line option, environment variable or
@@ -74,11 +92,11 @@ def get_component_name_from_git(shell_runner):
         else:
             raise Exception(
                 'git returned non-zero exit status - ' + stderr)
-    match = search(r'/([^/.\n]+)(?:\.git)?$', stdout)
-    if match is None:
+    result = search(r'/([^/.\n]+)(?:\.git)?$', stdout)
+    if result is None:
         raise Exception(
             'could not get component name from remote "%s"' % (stdout))
-    return match.group(1)
+    return result.group(1)
     
 def get_default_domain(component_name):
     """
@@ -89,22 +107,16 @@ def get_default_domain(component_name):
             return domain
     return 'mergermarket.it'
     
-global_config = None
-def get_global_config():
+def load_platform_config(region, platform_config_loader=None):
     """
-    Returns global config for MMG infrastructure.
+    Returns platform config for AWS infrastructure service is deployed in.
     """
-    global global_config
-    if global_config is None:
-        with open(path.join(path.dirname(path.realpath(__file__)), 'global.json')) as f:
-            global_config = json.loads(f.read())
-    return global_config
+    if platform_config_loader is None:
+        platform_config_loader = PlatformConfigLoader()
+    return platform_config_loader.load(region)
 
-def ecr_registry(account_prefix, region):
-    return '%s.dkr.ecr.%s.amazonaws.com' % (
-        get_global_config()['accountids']['%sdev' % account_prefix],
-        region,
-    )
+def ecr_registry(platform_config, region):
+    return '%s.dkr.ecr.%s.amazonaws.com' % (platform_config["aws_config"]["dev.account_id"], region)
 
 def apply_metadata_defaults(metadata, component_name):
     """
@@ -153,33 +165,27 @@ def role_session_name():
     else:
         raise Exception('JOB_NAME or EMAIL environment variable must be set for session name of assumed role')
 
-def assume_role_credentials(region, account_prefix, prod=False):
-    account = account_prefix + ('prod' if prod else 'dev')
-    print("Assuming role {}".format(account))
+def assume_role_credentials(region, platform_config, prod=False):
+    account_id = platform_config["aws_config"]["%s.account_id" % ("prod" if prod else "dev")]
+    print("Assuming role in account %s" % account_id)
     try:
         session = boto3.session.Session(region_name=region)
         credentials = session.client('sts').assume_role(
-            RoleArn=('arn:aws:iam::%s:role/admin' % get_global_config()['accountids'][account]),
+            RoleArn=('arn:aws:iam::%s:role/admin' % account_id),
             RoleSessionName=role_session_name(),
         )['Credentials']
     except botocore.exceptions.NoCredentialsError as e:
         raise UserError('could not connect to AWS mergermarket account: ' + str(e))
     return credentials['AccessKeyId'], credentials['SecretAccessKey'], credentials['SessionToken']
 
-def assume_role(region, account_prefix, prod=False):
-    access_key_id, secret_access_key, session_token = assume_role_credentials(region, account_prefix, prod)
+def assume_role(region, platform_config, prod=False):
+    access_key_id, secret_access_key, session_token = assume_role_credentials(region, platform_config, prod)
     return boto3.session.Session(
         aws_access_key_id=access_key_id,
         aws_secret_access_key=secret_access_key,
         aws_session_token=session_token,
         region_name=region,
     )
-
-def registry(self):
-        """
-        Get the ECR repository.
-        """
-        return ecr_registry(self.metadata['ACCOUNT_PREFIX'], self.metadata['REGION'])
 
 def container_image_name(registry, component_name, version):
     if version is None:
