@@ -229,23 +229,20 @@ remote_state = {{
              " {environmentconfig}"
              " infra")
 
-        try:
-            check_call(
-                t.format(
-                    action=action,
-                    component=component,
-                    environmentconfig=environmentconfig,
-                    environment=environment,
-                    image=image,
-                    region=region,
-                    team=team,
-                    version=version,
-                ),
-                env=exec_env,
-                shell=True
-            )
-        except Exception:
-            logger.exception('Exception caught while executing terragrunt %s!', action)
+        check_call(
+            t.format(
+                action=action,
+                component=component,
+                environmentconfig=environmentconfig,
+                environment=environment,
+                image=image,
+                region=region,
+                team=team,
+                version=version,
+            ),
+            env=exec_env,
+            shell=True
+        )
 
         return True
 
