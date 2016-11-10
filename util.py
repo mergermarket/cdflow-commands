@@ -1,5 +1,5 @@
 
-from subprocess import Popen, PIPE, call
+from subprocess import Popen, PIPE, call, check_output, CalledProcessError
 from re import match, search, sub
 from os import path, environ
 import json
@@ -163,7 +163,10 @@ def role_session_name():
             raise Exception(r'EMAIL must match [\w+=,.@-]{2,64}')
         return environ['EMAIL']
     else:
-        raise Exception('JOB_NAME or EMAIL environment variable must be set for session name of assumed role')
+        try:
+            return check_output(["git", "config", "user.email"])
+        except CalledProcessError as e:
+            raise Exception('JOB_NAME or EMAIL environment variable, or git email config must be set for session name of assumed role')
 
 def assume_role_credentials(region, platform_config, prod=False):
     account_id = platform_config["platform_config"]["%s.account_id" % ("prod" if prod else "dev")]
