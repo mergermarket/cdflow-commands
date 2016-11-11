@@ -2,13 +2,15 @@
 Deploy to MMG ECS infrastructure
 
 Usage:
-    infra/deploy <environment> <version> [-c <component-name>] [-l <leg>]
+    infra/deploy <environment> <version> [-c <component-name>] [-l <leg>] [-p]
 
 Options:
     # Override component name (default from repo name)
     -c <component-name>, --component-name <component-name>
     # Set a leg postfix for the service name
     -l <leg>, --leg <leg>
+    # Only run terraform plan, not apply
+    -p, --plan
 """
 
 from __future__ import print_function
@@ -21,6 +23,7 @@ import util
 import os
 import sys
 import shutil
+import pdb
 
 
 logger = logging.getLogger(__name__)
@@ -53,6 +56,8 @@ class Deployment:
         self.version = arguments.get('<version>')
         self.component_name = util.get_component_name(arguments, environ, self.shell_runner)
         self.leg = arguments.get('--leg')
+        self.plan = arguments.get('--plan')
+
         if not service_json_loader:
             service_json_loader = util.ServiceJsonLoader()
         self.config = None
@@ -99,8 +104,9 @@ class Deployment:
 
         self.terragrunt('plan', self.environment, image, self.component_name, self.metadata['REGION'],
                         self.metadata['TEAM'], self.version, env)
-        self.terragrunt('apply', self.environment, image, self.component_name, self.metadata['REGION'],
-                        self.metadata['TEAM'], self.version, env)
+        if self.plan is False:
+            self.terragrunt('apply', self.environment, image, self.component_name, self.metadata['REGION'],
+                            self.metadata['TEAM'], self.version, env)
 
         # clean up all irrelevant files
         self.cleanup()
