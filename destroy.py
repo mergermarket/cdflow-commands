@@ -90,7 +90,7 @@ class Deployment:
         # get all the relevant modules
         check_call("terraform get infra", env=env, shell=True)
 
-        self.terragrunt('destroy', self.environment, image, self.component_name, self.metadata['REGION'],
+        self.terragrunt('destroy --force', self.environment, image, self.component_name, self.metadata['REGION'],
                         self.metadata['TEAM'], self.version, env)
 
         # clean up all irrelevant files
