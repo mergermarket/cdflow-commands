@@ -1,12 +1,12 @@
 # Used to create docker image for running the commands invoked by the stubs in ../scripts/.
 
-FROM python:3-alpine
+FROM centos:7
 
 ENV TERRAFORM_VERSION=0.7.7
 ENV TERRAGRUNT_VERSION=v0.1.2
 
-RUN apk update && \
-    apk add bash ca-certificates curl docker gawk git git openssl py-pip unzip wget
+RUN rpm -iUvh http://dl.fedoraproject.org/pub/epel/7/x86_64/e/epel-release-7-8.noarch.rpm
+RUN yum install -y bash ca-certificates curl docker gawk git git openssl python-pip unzip wget
 
 RUN cd /tmp && \
     curl -sSLO https://github.com/gruntwork-io/terragrunt/releases/download/${TERRAGRUNT_VERSION}/terragrunt_linux_amd64 && \
