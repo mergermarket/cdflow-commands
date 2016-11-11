@@ -55,8 +55,11 @@ class PlatformConfigLoader():
     Mockable loader for config/platform-config/{region}.json.
     """
     
-    def load(self, region):
-        filename = 'config/platform-config/%s.json' % region
+    def load(self, region, account_prefix):
+        filename = 'config/platform-config/%s/%s.json' % (account_prefix, region)
+        # TODO remove this once the mmg config has moved
+        if not path.exists(filename):
+            filename = 'config/platform-config/%s.json' % region
         if not path.exists(filename):
             raise UserError('%s not found (maybe you need to pull in a platform-config repo?)' % filename)
         with open(filename) as f:
@@ -107,13 +110,13 @@ def get_default_domain(component_name):
             return domain
     return 'mergermarket.it'
     
-def load_platform_config(region, platform_config_loader=None):
+def load_platform_config(region, account_prefix, platform_config_loader=None):
     """
     Returns platform config for AWS infrastructure service is deployed in.
     """
     if platform_config_loader is None:
         platform_config_loader = PlatformConfigLoader()
-    return platform_config_loader.load(region)
+    return platform_config_loader.load(region, account_prefix)
 
 def ecr_registry(platform_config, region):
     return '%s.dkr.ecr.%s.amazonaws.com' % (platform_config["platform_config"]["dev.account_id"], region)

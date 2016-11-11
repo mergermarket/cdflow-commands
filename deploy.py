@@ -65,7 +65,10 @@ class Deployment:
             service_json_loader.load(),
             self.component_name
         )
-        self.platform_config = util.load_platform_config(self.metadata['REGION'])
+        self.platform_config = util.load_platform_config(
+            self.metadata['REGION'],
+            self.metadata['ACCOUNT_PREFIX']
+        )
         self.aws = None
 
     def run(self):
