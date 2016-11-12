@@ -44,10 +44,21 @@ class ServiceJsonLoader():
         with open('service.json') as f:
             try:
                 metadata = json.loads(f.read())
-            except json.decoder.JSONDecodeError as e:
+            except Exception as e:
                 raise UserError('malformed service.json - ' + str(e))
         return metadata
 
+
+def platform_config_filename(region, account_prefix):
+    """
+    Returns the location of the platform config.
+    """
+    filename = 'config/platform-config/%s/%s.json' % (account_prefix, region)
+    # TODO remove this once the mmg config has moved
+    if not path.exists(filename):
+        filename = 'config/platform-config/%s.json' % region
+    return filename
+    
 
 class PlatformConfigLoader():
 
@@ -56,16 +67,13 @@ class PlatformConfigLoader():
     """
     
     def load(self, region, account_prefix):
-        filename = 'config/platform-config/%s/%s.json' % (account_prefix, region)
-        # TODO remove this once the mmg config has moved
-        if not path.exists(filename):
-            filename = 'config/platform-config/%s.json' % region
+        filename = platform_config_filename(region, account_prefix)
         if not path.exists(filename):
             raise UserError('%s not found (maybe you need to pull in a platform-config repo?)' % filename)
         with open(filename) as f:
             try:
                 config = json.loads(f.read())
-            except json.decoder.JSONDecodeError as e:
+            except Exception as e:
                 raise UserError('malformed %s: %s' % (filename, str(e)))
         return config
 
@@ -116,10 +124,13 @@ def load_platform_config(region, account_prefix, platform_config_loader=None):
     """
     if platform_config_loader is None:
         platform_config_loader = PlatformConfigLoader()
-    return platform_config_loader.load(region, account_prefix)
+    platform_config = platform_config_loader.load(region, account_prefix).get('platform_config', None)
+    if platform_config is None:
+        raise UserError('could not find platform_config key in platform config')
+    return platform_config
 
 def ecr_registry(platform_config, region):
-    return '%s.dkr.ecr.%s.amazonaws.com' % (platform_config["platform_config"]["dev.account_id"], region)
+    return '%s.dkr.ecr.%s.amazonaws.com' % (platform_config["dev.account_id"], region)
 
 def apply_metadata_defaults(metadata, component_name):
     """
@@ -169,7 +180,10 @@ def role_session_name():
         raise Exception('JOB_NAME or EMAIL environment variable must be set for session name of assumed role')
 
 def assume_role_credentials(region, platform_config, prod=False):
-    account_id = platform_config["platform_config"]["%s.account_id" % ("prod" if prod else "dev")]
+    key = "%s.account_id" % ("prod" if prod else "dev")
+    account_id = platform_config.get(key, None)
+    if account_id is None:
+        raise UserError("%s not found in platform config" % key)
     print("Assuming role in account %s" % account_id)
     try:
         session = boto3.session.Session(region_name=region)

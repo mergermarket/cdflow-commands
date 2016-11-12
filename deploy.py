@@ -234,7 +234,7 @@ remote_state = {{
              " -var image={image}"
              " -var team={team}"
              " -var 'version=\"{version}\"'"
-             " -var-file config/platform-config/{region}.json"
+             " -var-file {platform_config_filename}"
              " {environmentconfig}"
              " infra")
 
@@ -245,6 +245,10 @@ remote_state = {{
                 environmentconfig=environmentconfig,
                 environment=environment,
                 image=image,
+                platform_config_filename=util.platform_config_filename(
+                    region,
+                    self.metadata['ACCOUNT_PREFIX']
+                ),
                 region=region,
                 team=team,
                 version=version,
@@ -267,7 +271,7 @@ remote_state = {{
         """
         Returns True if the prod account should be used.
         """
-        return self.environment == 'live' or self.environment == 'debug'
+        return self.environment == 'live' or self.environment == 'debug' or self.environment == 'prod'
 
     def account(self):
         """
