@@ -319,6 +319,7 @@ def main():
         deployment.run()
     except util.UserError as err:
         print('error: %s' % str(err), file=sys.stderr)
+        sys.stderr.flush()
         exit(1)
 
 
