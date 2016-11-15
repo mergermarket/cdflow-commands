@@ -2,7 +2,7 @@
 Deploy to MMG ECS infrastructure
 
 Usage:
-    infra/deploy <environment> <version> [-c <component-name>] [-l <leg>] [-p]
+    infra/deploy <environment> <version> [-c <component-name>] [-l <leg>] [-p] [-- <tfargs>...]
 
 Options:
     # Override component name (default from repo name)
@@ -57,6 +57,7 @@ class Deployment:
         self.component_name = util.get_component_name(arguments, environ, self.shell_runner)
         self.leg = arguments.get('--leg')
         self.plan = arguments.get('--plan')
+        self.tfargs = arguments.get('<tfargs>')
 
         if not service_json_loader:
             service_json_loader = util.ServiceJsonLoader()
@@ -233,6 +234,7 @@ remote_state = {{
              " -var env={environment}"
              " -var image={image}"
              " -var team={team}"
+             " {tfargs}"
              " -var 'version=\"{version}\"'"
              " -var-file {platform_config_filename}"
              " {environmentconfig}"
@@ -251,6 +253,7 @@ remote_state = {{
                 ),
                 region=region,
                 team=team,
+                tfargs=' '.join(self.tfargs),
                 version=version,
             ),
             env=exec_env,
