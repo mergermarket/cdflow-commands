@@ -53,8 +53,10 @@ def platform_config_filename(region, account_prefix):
     """
     Returns the location of the platform config.
     """
-    filename = 'config/platform-config/%s/%s.json' % (account_prefix, region)
-    # TODO remove this once the mmg config has moved
+    filename = 'infra/platform-config/%s/%s.json' % (account_prefix, region)
+    # TODO remove both of these once the config has moved everywhere
+    if not path.exists(filename):
+        filename = 'config/platform-config/%s/%s.json' % (account_prefix, region)
     if not path.exists(filename):
         filename = 'config/platform-config/%s.json' % region
     return filename
