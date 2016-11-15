@@ -225,40 +225,22 @@ remote_state = {{
         """
         configfile = "config/%s.json" % environment
         if os.path.exists(configfile):
-            environmentconfig = " -var-file=%s" % configfile
+            environmentconfig = [ "-var-file", configfile ]
         else:
-            environmentconfig = ""
+            environmentconfig = []
 
-        t = ("terragrunt {action} -var aws.region={region}"
-             " -var component={component}"
-             " -var env={environment}"
-             " -var image={image}"
-             " -var team={team}"
-             " {tfargs}"
-             " -var 'version=\"{version}\"'"
-             " -var-file {platform_config_filename}"
-             " {environmentconfig}"
-             " infra")
-
-        check_call(
-            t.format(
-                action=action,
-                component=component,
-                environmentconfig=environmentconfig,
-                environment=environment,
-                image=image,
-                platform_config_filename=util.platform_config_filename(
-                    region,
-                    self.metadata['ACCOUNT_PREFIX']
-                ),
-                region=region,
-                team=team,
-                tfargs=' '.join(self.tfargs),
-                version=version,
-            ),
-            env=exec_env,
-            shell=True
-        )
+        check_call([
+            "terragrunt", action, "-var", "aws.region=%s" % region,
+            "-var", "component=%s" % component,
+            "-var", "env=%s" % environment,
+            "-var", "image=%s" % image,
+            "-var", "team=%s" % team,
+            ] + self.tfargs + [
+            "-var", 'version="%s"' % version,
+            "-var-file", util.platform_config_filename(region, self.metadata['ACCOUNT_PREFIX']),
+            ] + environmentconfig + [
+            "infra"
+        ], env=exec_env)
 
         return True
 
