@@ -66,6 +66,8 @@ class Deployment:
             service_json_loader.load(),
             self.component_name
         )
+        if not platform_config_loader:
+            platform_config_loader = util.PlatformConfigLoader()
         self.account_id = platform_config_loader.load(self.metadata['REGION'], self.metadata['ACCOUNT_PREFIX'], self.prod())['account_id']
         if self.prod():
             dev_account_id = platform_config_loader.load(self.metadata['REGION'], self.metadata['ACCOUNT_PREFIX'])['account_id']
