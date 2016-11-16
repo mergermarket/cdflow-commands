@@ -109,10 +109,10 @@ class Deployment:
         # get all the relevant modules
         check_call("terraform get infra", env=env, shell=True)
 
-        self.terragrunt('plan', self.environment, image, self.component_name, self.metadata['REGION'],
+        self.terragrunt('plan', self.environment, self.ecr_image_name, self.component_name, self.metadata['REGION'],
                         self.metadata['TEAM'], self.version, env)
         if self.plan is False:
-            self.terragrunt('apply', self.environment, image, self.component_name, self.metadata['REGION'],
+            self.terragrunt('apply', self.environment, self.ecr_image_name, self.component_name, self.metadata['REGION'],
                             self.metadata['TEAM'], self.version, env)
 
         # clean up all irrelevant files
