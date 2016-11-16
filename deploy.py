@@ -258,43 +258,6 @@ remote_state = {{
         """
         return self.environment == 'live' or self.environment == 'debug' or self.environment == 'prod'
 
-    def account(self):
-        """
-        Returns the account identifier for the deployment.
-        """
-        if self.prod():
-            return self.metadata['ACCOUNT_PREFIX'] + 'prod'
-        else:
-            return self.metadata['ACCOUNT_PREFIX'] + 'dev'
-
-    def cluster(self):
-        """
-        Returns the cluster name.
-        """
-        if self.environment == 'live':
-            return self.metadata.get('PRODUCTION_CLUSTER', 'production')
-        else:
-            return self.metadata.get('NON_PRODUCTION_CLUSTER', 'non-production')
-
-    def dns_zone(self):
-        """
-        Returns the DNS zone for the deployment.
-        """
-        domain = self.metadata['DOMAIN']
-        if domain is None:
-            raise util.UserError('cannot infer dns zone when DOMAIN set to null')
-        return ('' if self.environment == 'live' else 'dev.') + domain + '.'
-
-    def hostname(self):
-        """
-        Returns the hostname for the service.
-        """
-        if self.environment == "live":
-            return "%s.%s" % (self.metadata['DNS_NAME'], self.dns_zone())
-        else:
-            return "%s-%s.%s" % (self.environment, self.metadata['DNS_NAME'], self.dns_zone())
-
-
 def main():
     """
     Entry-point for script.
