@@ -33,7 +33,7 @@ class Release:
     Manages the creation of a release.
     """
 
-    def __init__(self, argv, environ, shell_runner=None, service_json_loader=None):
+    def __init__(self, argv, environ, shell_runner=None, service_json_loader=None, platform_config_loader=None):
         arguments = docopt(__doc__, argv=argv)
         self.shell_runner = shell_runner if shell_runner is not None else util.ShellRunner()
         self.version = arguments.get('<version>')
@@ -44,9 +44,14 @@ class Release:
             service_json_loader.load(),
             self.component_name
         )
-        self.platform_config = util.load_platform_config(
+        if not platform_config_loader:
+            platform_config_loader = util.PlatformConfigLoader()
+        self.account_id = platform_config_loader.load(self.metadata['REGION'], self.metadata['ACCOUNT_PREFIX'])['account_id']
+        self.ecr_image_name = util.ecr_image_name(
+            self.account_id,
             self.metadata['REGION'],
-            self.metadata['ACCOUNT_PREFIX']
+            self.component_name,
+            self.version
         )
         self.aws = None
 
@@ -55,7 +60,7 @@ class Release:
         Gets an AWS session.
         """
         if self.aws is None:
-            self.aws = util.assume_role(self.metadata['REGION'], self.platform_config)
+            self.aws = util.assume_role(self.metadata['REGION'], self.account_id)
         return self.aws
 
     def _set_aws(self, aws):
@@ -90,9 +95,6 @@ class Release:
         self.shell_runner.run('cp /infra/Dockerfile_slug target/Dockerfile')
         self.metadata['DOCKER_BUILD_DIR'] = 'target'
 
-    def ecr_registry(self):
-        return util.ecr_registry(self.platform_config, self.metadata['REGION'])
-
     def create(self):
         """
         Create the release.
@@ -107,22 +109,19 @@ class Release:
             print(PREFIX + "running " + command)
             check_call(command, shell=True)
 
-        # generate container image name
-        image = util.container_image_name(self.ecr_registry(), self.component_name, self.version)
-
-        print(PREFIX + 'building docker image %s' % (image))
-        check_call("docker build -t %s %s" % (image, self.metadata['DOCKER_BUILD_DIR']), shell=True)
-        print(PREFIX + 'image ' + image + ' successfully built')
+        print(PREFIX + 'building docker image %s' % self.ecr_image_name)
+        check_call("docker build -t %s %s" % (self.ecr_image_name, self.metadata['DOCKER_BUILD_DIR']), shell=True)
+        print(PREFIX + 'image ' + self.ecr_image_name + ' successfully built')
 
         if executable('on-docker-build'):
-            command = './on-docker-build %s' % (image)
+            command = './on-docker-build %s' % self.ecr_image_name
             print(PREFIX + 'running %s' % (command))
             check_call(command, shell=True)
 
         if self.version is None:
             print(PREFIX + 'no version supplied, push skipped')
         else:
-            self._push_to_ecr(image)
+            self._push_to_ecr(self.ecr_image_name)
 
         print(PREFIX + 'done.')
 

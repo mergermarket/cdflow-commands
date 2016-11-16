@@ -49,7 +49,7 @@ class Deployment:
     Manages the process of deployment.
     """
 
-    def __init__(self, argv, environ, shell_runner=None, service_json_loader=None):
+    def __init__(self, argv, environ, shell_runner=None, service_json_loader=None, platform_config_loader=None):
         arguments = docopt(__doc__, argv=argv)
         self.shell_runner = shell_runner if shell_runner is not None else util.ShellRunner()
         self.environment = arguments.get('<environment>')
@@ -66,9 +66,16 @@ class Deployment:
             service_json_loader.load(),
             self.component_name
         )
-        self.platform_config = util.load_platform_config(
+        self.account_id = platform_config_loader.load(self.metadata['REGION'], self.metadata['ACCOUNT_PREFIX'], self.prod())['account_id']
+        if self.prod():
+            dev_account_id = platform_config_loader.load(self.metadata['REGION'], self.metadata['ACCOUNT_PREFIX'])['account_id']
+        else:
+            dev_account_id = self.account_id
+        self.ecr_image_name = util.ecr_image_name(
+            dev_account_id,
             self.metadata['REGION'],
-            self.metadata['ACCOUNT_PREFIX']
+            self.component_name,
+            self.version
         )
         self.aws = None
 
@@ -89,14 +96,8 @@ class Deployment:
         env['AWS_SECRET_ACCESS_KEY'] = aws_secret_key
         env['AWS_SESSION_TOKEN'] = aws_session_token
 
-        account_id = self.get_account_id()
-
-        # generate container image name
-        image = util.container_image_name(util.ecr_registry(self.platform_config, self.metadata['REGION']),
-                                          self.component_name, self.version)
-
         print("Preparing S3 bucket for terragrunt...")
-        s3_bucket_name = self.terragrunt_s3_bucket_name(account_id.encode('utf-8'))
+        s3_bucket_name = self.terragrunt_s3_bucket_name()
         self.s3_bucket_prep(s3_bucket_name)
 
         print("Generating terragrunt config...")
@@ -115,18 +116,12 @@ class Deployment:
         # clean up all irrelevant files
         self.cleanup()
 
-    def get_account_id(self):
-        """
-        Get the account id of the current AWS account.
-        """
-        return self.get_aws().client('sts').get_caller_identity()['Account']
-
     def get_aws(self):
         """
         Gets an AWS session.
         """
         if self.aws is None:
-            self.aws = util.assume_role(self.metadata['REGION'], self.platform_config, self.prod())
+            self.aws = util.assume_role(self.metadata['REGION'], self.account_id)
         return self.aws
 
     def _get_aws_credentials(self, session):
@@ -154,7 +149,7 @@ class Deployment:
         """
         self.aws = aws
 
-    def terragrunt_s3_bucket_name(self, account_id):
+    def terragrunt_s3_bucket_name(self):
         """Generates S3 bucket name Terragrunt will use based on account
         ID.
 
@@ -164,7 +159,7 @@ class Deployment:
             string: The return value.  Non-empty for success
 
         """
-        return "terraform-tfstate-{}".format(hashlib.md5(account_id).hexdigest()[:6])
+        return "terraform-tfstate-%s" % hashlib.md5(self.account_id.encode('utf-8')).hexdigest()[:6]
 
     def s3_bucket_prep(self, s3_bucket_name):
         """Checks whether given S3 Bucket exists and if not, it creates
@@ -182,7 +177,7 @@ class Deployment:
             logger.info("Bucket %s doesn't exist... Trying to create...", s3_bucket_name)
             try:
                 s3.create_bucket(Bucket=s3_bucket_name,
-                                 CreateBucketConfiguration={'LocationConstraint': 'eu-west-1'})
+                                 CreateBucketConfiguration={'LocationConstraint': self.region})
             except Exception as e:
                 logger.exception("Error while trying to create bucket %s (%s)",
                                  s3_bucket_name, str(e))
@@ -237,7 +232,7 @@ remote_state = {{
             "-var", "team=%s" % team,
             ] + self.tfargs + [
             "-var", 'version="%s"' % version,
-            "-var-file", util.platform_config_filename(region, self.metadata['ACCOUNT_PREFIX']),
+            "-var-file", util.platform_config_filename(region, self.metadata['ACCOUNT_PREFIX'], self.prod()),
             ] + environmentconfig + [
             "infra"
         ], env=exec_env)
