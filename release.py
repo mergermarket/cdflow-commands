@@ -156,10 +156,10 @@ class Release:
         print(PREFIX + 'pushing image %s' % (image))
         check_call('docker push %s' % (image), shell=True)
 
-        latest_tag = '%s/%s:latest' % (self.ecr_registry(), self.component_name)
-        print(PREFIX + 'pushing tag %s' % (latest_tag))
-        check_call('docker tag %s %s' % (image, latest_tag), shell=True)
-        check_call('docker push %s' % (latest_tag), shell=True)
+        #latest_tag = '%s/%s:latest' % (self.ecr_registry(), self.component_name)
+        #print(PREFIX + 'pushing tag %s' % (latest_tag))
+        #check_call('docker tag %s %s' % (image, latest_tag), shell=True)
+        #check_call('docker push %s' % (latest_tag), shell=True)
 
 
 def main():
