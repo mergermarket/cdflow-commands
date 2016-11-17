@@ -213,7 +213,7 @@ remote_state = {{
         else:
             environmentconfig = ""
 
-        t = ("terragrunt {action} -var aws.region={region}"
+        t = ("terragrunt {action} -var provider.aws.region={region}"
              " -var component={component}"
              " -var env={environment}"
              " -var image={image}"

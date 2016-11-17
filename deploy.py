@@ -227,7 +227,7 @@ remote_state = {{
             environmentconfig = []
 
         check_call([
-            "terragrunt", action, "-var", "aws.region=%s" % region,
+            "terragrunt", action, "-var", "provider.aws.region=%s" % region,
             "-var", "component=%s" % component,
             "-var", "env=%s" % environment,
             "-var", "image=%s" % image,
