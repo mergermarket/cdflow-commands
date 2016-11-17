@@ -97,6 +97,7 @@ class Deployment:
         env['AWS_ACCESS_KEY_ID'] = aws_access_key
         env['AWS_SECRET_ACCESS_KEY'] = aws_secret_key
         env['AWS_SESSION_TOKEN'] = aws_session_token
+        env['AWS_DEFAULT_REGION'] = self.metadata['REGION']
 
         print("Preparing S3 bucket for terragrunt...")
         s3_bucket_name = self.terragrunt_s3_bucket_name()
@@ -227,8 +228,7 @@ remote_state = {{
             environmentconfig = []
 
         check_call([
-            "terragrunt", action, "-var", "provider.aws.region=%s" % region,
-            "-var", "component=%s" % component,
+            "terragrunt", action, "-var", "component=%s" % component,
             "-var", "env=%s" % environment,
             "-var", "image=%s" % image,
             "-var", "team=%s" % team,
