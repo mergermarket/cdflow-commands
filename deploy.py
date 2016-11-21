@@ -88,6 +88,9 @@ class Deployment:
         print('deploying %s version %s to %s' %
               (self.component_name, self.version, self.environment))
 
+        # perform a cleanup, in case any residue from past runs is still around
+        self.cleanup()
+
         # initialise Boto Session
         self.get_aws()
 
