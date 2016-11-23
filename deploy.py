@@ -15,7 +15,7 @@ Options:
 
 from __future__ import print_function
 from docopt import docopt
-from subprocess import check_call
+from subprocess import check_call, check_output
 
 import hashlib
 import logging
@@ -24,6 +24,8 @@ import os
 import sys
 import shutil
 import pdb
+import json
+from tempfile import NamedTemporaryFile
 
 
 logger = logging.getLogger(__name__)
@@ -113,14 +115,94 @@ class Deployment:
         # get all the relevant modules
         check_call("terraform get infra", env=env, shell=True)
 
+        # process secrets
+        secrets_file = 'config/secrets.json'
+        if self._secrets(secrets_file):
+            secrets = self._read_secrets(secrets_file)
+            decrypted_secrets_file = self._generate_decrypted_credentials(secrets, self.metadata["TEAM"], self.component_name, self.environment, env)
+        else:
+            decrypted_secrets_file = None
+
         self.terragrunt('plan', self.environment, self.ecr_image_name, self.component_name, self.metadata['REGION'],
-                        self.metadata['TEAM'], self.version, env)
+                        self.metadata['TEAM'], self.version, decrypted_secrets_file, env)
         if self.plan is False:
             self.terragrunt('apply', self.environment, self.ecr_image_name, self.component_name, self.metadata['REGION'],
-                            self.metadata['TEAM'], self.version, env)
+                            self.metadata['TEAM'], self.version, decrypted_secrets_file, env)
 
         # clean up all irrelevant files
         self.cleanup()
+
+    def _secrets(self, file):
+        """
+        Helper method to check whether we need to process secrets or not
+
+        Params:
+            file: file location to check whether it exist
+        Returns:
+            bool: True is it exist, False if not
+        """
+
+        if os.path.exists(file):
+            return True
+        else:
+            return False
+
+    def _read_secrets(self, file):
+        """
+        Reads given file and decodes it to python dict
+
+        Params:
+            file: location to file holding json payload
+        Returns:
+            dict: Python dict of data loaded from the input json file
+        """
+        with open(file) as data_file:
+            data = json.load(data_file)
+
+            return data
+
+    def _credstash_get(self, key, team, component, environment, exec_env):
+        """
+        Calls out to credstash and gets given key
+
+        Params:
+            key: key to fetch using credstash
+            team: team; used to differentiate which KMS master key to use
+            component: used for context
+            environment: used for context
+            exec_env: used by subprocess call
+
+        Returns:
+            string: result credstash got back the "vault"
+        """
+        s = check_output(["credstash", "-t", "credstash-%s" % team,
+                                       "get",
+                                       "-n",
+                                       key,
+                                       "component=%s" % component,
+                                       "env=%s" % environment], env=exec_env)
+        return s
+
+    def _generate_decrypted_credentials(self, secrets, team, component, env, exec_env):
+        """
+        Params:
+            secrets: a dictionary of secrets to get value for
+            team: needed by _credstash_get
+            component: needed by _credstash_get
+            env: needed by _credstash_get
+            exec_env: needed by _credstash_get
+        Returns:
+            file: file-location with the resulting json
+        """
+        decrypted_secrets = {}
+
+        for key in secrets["secrets"]:
+            decrypted_val = self._credstash_get(key, team, component, env, exec_env)
+            decrypted_secrets[key] = decrypted_val
+
+        f = NamedTemporaryFile(delete=False)
+        f.write(json.dumps({"secrets": decrypted_secrets}))
+        return f.name
 
     def get_aws(self):
         """
@@ -220,7 +302,7 @@ remote_state = {{
                 component=component_name
             ))
 
-    def terragrunt(self, action, environment, image, component, region, team, version, exec_env):
+    def terragrunt(self, action, environment, image, component, region, team, version, secrets, exec_env):
         """
         Runs terragrunt.
         """
@@ -230,6 +312,10 @@ remote_state = {{
         else:
             environmentconfig = []
 
+        # include secrets if they're present
+        if secrets is not None:
+            secretsconfig = ["-var-file", secrets]
+
         check_call([
             "terragrunt", action, "-var", "component=%s" % component,
             "-var", "env=%s" % environment,
@@ -238,7 +324,7 @@ remote_state = {{
             ] + self.tfargs + [
             "-var", 'version="%s"' % version,
             "-var-file", util.platform_config_filename(region, self.metadata['ACCOUNT_PREFIX'], self.prod()),
-            ] + environmentconfig + [
+            ] + environmentconfig + secretsconfig + [
             "infra"
         ], env=exec_env)
 
