@@ -320,6 +320,8 @@ remote_state = {{
         # include secrets if they're present
         if secrets is not None:
             secretsconfig = ["-var-file", secrets]
+        else:
+            secretsconfig = []
 
         check_call([
             "terragrunt", action, "-var", "component=%s" % component,
