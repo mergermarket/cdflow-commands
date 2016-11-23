@@ -175,12 +175,17 @@ class Deployment:
         Returns:
             string: result credstash got back the "vault"
         """
-        s = check_output(["credstash", "-t", "credstash-%s" % team,
-                                       "get",
-                                       "-n",
-                                       key,
-                                       "component=%s" % component,
-                                       "env=%s" % environment], env=exec_env)
+        try:
+            s = check_output(["credstash", "-t", "credstash-%s" % team,
+                                           "get",
+                                           "-n",
+                                           key,
+                                           "component=%s" % component,
+                                           "env=%s" % environment], env=exec_env)
+        except:
+            print("Error while trying to fetch/decrypt value for {} secret...".format(key))
+            s = "NOTFOUND"
+
         return s
 
     def _generate_decrypted_credentials(self, secrets, team, component, env, exec_env):
