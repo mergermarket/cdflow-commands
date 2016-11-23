@@ -116,12 +116,10 @@ class Deployment:
         check_call("terraform get infra", env=env, shell=True)
 
         # process secrets
-        secrets_file = 'config/secrets.json'
-        if self._secrets(secrets_file):
-            secrets = self._read_secrets(secrets_file)
-            decrypted_secrets_file = self._generate_decrypted_credentials(secrets, self.metadata["TEAM"], self.component_name, self.environment, env)
-        else:
-            decrypted_secrets_file = None
+        decrypted_secrets_file = None
+        if "CREDSTASH" in self.metadata:
+            if self._secrets(self.metadata["CREDSTASH"]):
+                decrypted_secrets_file = self._generate_decrypted_credentials(self.metadata["TEAM"], self.component_name, self.environment, env)
 
         self.terragrunt('plan', self.environment, self.ecr_image_name, self.component_name, self.metadata['REGION'],
                         self.metadata['TEAM'], self.version, decrypted_secrets_file, env)
@@ -132,81 +130,57 @@ class Deployment:
         # clean up all irrelevant files
         self.cleanup()
 
-    def _secrets(self, file):
+    def _secrets(self, CREDSTASH):
         """
         Helper method to check whether we need to process secrets or not
 
         Params:
-            file: file location to check whether it exist
+            CREDSTASH: string either true/false from service.json indicating
+                       whether to fetch secrets using credstash
         Returns:
             bool: True is it exist, False if not
         """
 
-        if os.path.exists(file):
+        if CREDSTASH == "true":
             return True
         else:
             return False
 
-    def _read_secrets(self, file):
+    def _credstash_getall(self, team, exec_env):
         """
-        Reads given file and decodes it to python dict
+        Get all secrets for a specific team (we filter them later)
 
         Params:
-            file: location to file holding json payload
-        Returns:
-            dict: Python dict of data loaded from the input json file
-        """
-        with open(file) as data_file:
-            data = json.load(data_file)
-
-            return data
-
-    def _credstash_get(self, key, team, component, environment, exec_env):
-        """
-        Calls out to credstash and gets given key
-
-        Params:
-            key: key to fetch using credstash
             team: team; used to differentiate which KMS master key to use
-            component: used for context
-            environment: used for context
             exec_env: used by subprocess call
 
         Returns:
             string: result credstash got back the "vault"
         """
-        try:
-            s = check_output(["credstash", "-t", "credstash-%s" % team,
-                                           "get",
-                                           "-n",
-                                           key,
-                                           "component=%s" % component,
-                                           "env=%s" % environment], env=exec_env)
-        except:
-            print("Error while trying to fetch/decrypt value for {} secret...".format(key))
-            s = "NOTFOUND"
+        s = check_output(["credstash", "-t", "credstash-%s" % team,
+                                       "getall"], env=exec_env)
+        return str(s)
 
-        return s
-
-    def _generate_decrypted_credentials(self, secrets, team, component, env, exec_env):
+    def _generate_decrypted_credentials(self, team, component, env, exec_env):
         """
         Params:
-            secrets: a dictionary of secrets to get value for
             team: needed by _credstash_get
-            component: needed by _credstash_get
-            env: needed by _credstash_get
+            component: needed to filter the result
+            env: needed to filter the result
             exec_env: needed by _credstash_get
         Returns:
             file: file-location with the resulting json
         """
-        decrypted_secrets = {}
+        feed = json.loads(self._credstash_getall(team, exec_env))
+        secrets = {}
 
-        for key in secrets["secrets"]:
-            decrypted_val = self._credstash_get(key, team, component, env, exec_env)
-            decrypted_secrets[key] = decrypted_val
+        prefix = "deploy.{environment}.{component}.".format(environment=env,component=component)
+        for key in feed.keys():
+            if key.startswith(prefix):
+                secrets[str(key)[len(prefix):]] = feed[key]
 
         f = NamedTemporaryFile(delete=False)
-        f.write(json.dumps({"secrets": decrypted_secrets}))
+        f.write(json.dumps({"secrets": secrets}))
         return f.name
 
     def get_aws(self):
