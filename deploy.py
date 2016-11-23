@@ -344,6 +344,7 @@ remote_state = {{
         """
         return self.environment == 'live' or self.environment == 'debug' or self.environment == 'prod'
 
+
 def main():
     """
     Entry-point for script.
