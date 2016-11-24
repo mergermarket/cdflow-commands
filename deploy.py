@@ -15,7 +15,7 @@ Options:
 
 from __future__ import print_function
 from docopt import docopt
-from subprocess import check_call, check_output
+from subprocess import check_call
 
 import hashlib
 import logging
@@ -24,7 +24,6 @@ import os
 import sys
 import shutil
 import pdb
-import json
 
 
 logger = logging.getLogger(__name__)
