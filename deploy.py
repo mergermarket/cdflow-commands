@@ -102,6 +102,13 @@ class Deployment:
         env['AWS_SESSION_TOKEN'] = aws_session_token
         env['AWS_DEFAULT_REGION'] = self.metadata['REGION']
 
+        # process secrets
+        if "CREDSTASH" in self.metadata:
+            secrets = util.Credstash().process(self.metadata["CREDSTASH"], self.metadata['TEAM'],
+                                               self.component_name, self.environment, env)
+        else:
+            secrets = None
+
         print("Preparing S3 bucket for terragrunt...")
         s3_bucket_name = self.terragrunt_s3_bucket_name()
         self.s3_bucket_prep(s3_bucket_name)
@@ -114,10 +121,10 @@ class Deployment:
         check_call("terraform get infra", env=env, shell=True)
 
         self.terragrunt('plan', self.environment, self.ecr_image_name, self.component_name, self.metadata['REGION'],
-                        self.metadata['TEAM'], self.version, env)
+                        self.metadata['TEAM'], self.version, secrets, env)
         if self.plan is False:
             self.terragrunt('apply', self.environment, self.ecr_image_name, self.component_name, self.metadata['REGION'],
-                            self.metadata['TEAM'], self.version, env)
+                            self.metadata['TEAM'], self.version, secrets, env)
 
         # clean up all irrelevant files
         self.cleanup()
@@ -220,7 +227,7 @@ remote_state = {{
                 component=component_name
             ))
 
-    def terragrunt(self, action, environment, image, component, region, team, version, exec_env):
+    def terragrunt(self, action, environment, image, component, region, team, version, secrets, exec_env):
         """
         Runs terragrunt.
         """
@@ -230,6 +237,12 @@ remote_state = {{
         else:
             environmentconfig = []
 
+        # include secrets if they're present
+        if secrets is not None:
+            secretsconfig = ["-var-file", secrets]
+        else:
+            secretsconfig = []
+
         check_call([
             "terragrunt", action, "-var", "component=%s" % component,
             "-var", "env=%s" % environment,
@@ -238,7 +251,7 @@ remote_state = {{
             ] + self.tfargs + [
             "-var", 'version="%s"' % version,
             "-var-file", util.platform_config_filename(region, self.metadata['ACCOUNT_PREFIX'], self.prod()),
-            ] + environmentconfig + [
+            ] + environmentconfig + secretsconfig + [
             "infra"
         ], env=exec_env)
 
@@ -257,6 +270,7 @@ remote_state = {{
         Returns True if the prod account should be used.
         """
         return self.environment == 'live' or self.environment == 'debug' or self.environment == 'prod'
+
 
 def main():
     """

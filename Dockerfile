@@ -7,6 +7,7 @@ ENV TERRAGRUNT_VERSION=v0.1.4
 ENV DOCKER_VERSION=1.12.3-1.el7.centos
 
 ADD yum.repos.d/docker.repo /etc/yum.repos.d/
+ADD ./requirements.txt /infra/requirements.txt
 
 RUN rpm -iUvh http://dl.fedoraproject.org/pub/epel/7/x86_64/e/epel-release-7-8.noarch.rpm && \
     yum install -y bash ca-certificates curl docker-engine-${DOCKER_VERSION} gawk git git openssl python-pip unzip wget && \
@@ -17,9 +18,9 @@ RUN rpm -iUvh http://dl.fedoraproject.org/pub/epel/7/x86_64/e/epel-release-7-8.n
     unzip terraform_*_linux_amd64.zip -d /usr/bin && \
     rm -rf /tmp/* && \
     rm -rf /var/tmp/* && \
-    chmod 755 /usr/local/bin/terragrunt
-
-ADD ./requirements.txt /infra/requirements.txt
-RUN pip install -r /infra/requirements.txt
+    chmod 755 /usr/local/bin/terragrunt && \
+    yum group install -y "Development Tools" && yum install -y python-devel && \
+    pip install -r /infra/requirements.txt && \
+    yum group remove "Development Tools" -y && yum clean all
 
 ADD . /infra

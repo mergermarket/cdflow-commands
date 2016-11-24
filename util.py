@@ -1,7 +1,9 @@
 
-from subprocess import Popen, PIPE, call
+from subprocess import Popen, PIPE, call, check_output
 from re import match, search, sub
 from os import path, environ
+from tempfile import NamedTemporaryFile
+
 import json
 import boto3
 import botocore
@@ -11,8 +13,70 @@ class UserError(Exception):
     """
     User errors that should exit the program and display an error.
     """
-    
+
     pass
+
+
+class Credstash:
+    def process(self, flag, team, component, environment, exec_env):
+        if self._secrets(flag):
+            dsf = self._generate_decrypted_credentials(team, component, environment, exec_env)
+            return dsf
+        else:
+            return None
+
+    def _secrets(self, credstash):
+        """
+        Helper method to check whether we need to process secrets or not
+
+        Params:
+            credstash: string either true/false from service.json indicating
+                       whether to fetch secrets using credstash
+        Returns:
+            bool: True is it exist, False if not
+        """
+
+        if credstash == "true":
+            return True
+        else:
+            return False
+
+    def _credstash_getall(self, team, exec_env):
+        """
+        Get all secrets for a specific team (we filter them later)
+
+        Params:
+            team: team; used to differentiate which KMS master key to use
+            exec_env: used by subprocess call
+
+        Returns:
+            string: result credstash got back the "vault"
+        """
+        s = check_output(["credstash", "-t", "credstash-%s" % team,
+                                       "getall"], env=exec_env)
+        return str(s)
+
+    def _generate_decrypted_credentials(self, team, component, env, exec_env):
+        """
+        Params:
+            team: needed by _credstash_get
+            component: needed to filter the result
+            env: needed to filter the result
+            exec_env: needed by _credstash_get
+        Returns:
+            file: file-location with the resulting json
+        """
+        feed = json.loads(self._credstash_getall(team, exec_env))
+        secrets = {}
+
+        prefix = "deploy.{environment}.{component}.".format(environment=env,component=component)
+        for key in feed.keys():
+            if key.startswith(prefix):
+                secrets[str(key)[len(prefix):]] = feed[key]
+
+        f = NamedTemporaryFile(delete=False)
+        f.write(json.dumps({"secrets": secrets}))
+        return f.name
 
 
 class ShellRunner:
