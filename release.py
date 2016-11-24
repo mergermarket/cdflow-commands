@@ -17,6 +17,7 @@ from subprocess import check_call
 from docopt import docopt
 import botocore.exceptions
 from base64 import b64decode
+import json
 
 import util
 
@@ -47,6 +48,7 @@ class Release:
         if not platform_config_loader:
             platform_config_loader = util.PlatformConfigLoader()
         self.account_id = platform_config_loader.load(self.metadata['REGION'], self.metadata['ACCOUNT_PREFIX'])['account_id']
+        self.prod_account_id = platform_config_loader.load(self.metadata['REGION'], self.metadata['ACCOUNT_PREFIX'], True)['account_id']
         self.ecr_image_name = util.ecr_image_name(
             self.account_id,
             self.metadata['REGION'],
@@ -139,6 +141,18 @@ class Release:
                 raise
             self._ecr().create_repository(
                 repositoryName=self.component_name,
+            )
+            self._ecr().set_repository_policy(
+                repositoryName=self.component_name,
+                policyText=json.dumps({
+                    "Version": "2008-10-17",
+                    "Statement": [ {
+                        "Sid": "allow production",
+                        "Effect": "Allow",
+                        "Principal": { "AWS": "arn:aws:iam::%s:root" % self.prod_account_id },
+                        "Action": [ "ecr:GetDownloadUrlForLayer", "ecr:BatchGetImage", "ecr:BatchCheckLayerAvailability" ]
+                    } ]
+                }),
             )
 
     def _push_to_ecr(self, image):
