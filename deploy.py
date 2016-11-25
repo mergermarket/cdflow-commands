@@ -23,7 +23,6 @@ import util
 import os
 import sys
 import shutil
-import pdb
 
 
 logger = logging.getLogger(__name__)
@@ -68,9 +67,11 @@ class Deployment:
         )
         if not platform_config_loader:
             platform_config_loader = util.PlatformConfigLoader()
-        self.account_id = platform_config_loader.load(self.metadata['REGION'], self.metadata['ACCOUNT_PREFIX'], self.prod())['account_id']
+        self.account_id = platform_config_loader.load(self.metadata['REGION'], self.metadata['ACCOUNT_PREFIX'],
+                                                      self.prod())['account_id']
         if self.prod():
-            dev_account_id = platform_config_loader.load(self.metadata['REGION'], self.metadata['ACCOUNT_PREFIX'])['account_id']
+            dev_account_id = platform_config_loader.load(self.metadata['REGION'],
+                                                         self.metadata['ACCOUNT_PREFIX'])['account_id']
         else:
             dev_account_id = self.account_id
         self.ecr_image_name = util.ecr_image_name(
@@ -123,8 +124,8 @@ class Deployment:
         self.terragrunt('plan', self.environment, self.ecr_image_name, self.component_name, self.metadata['REGION'],
                         self.metadata['TEAM'], self.version, secrets, env)
         if self.plan is False:
-            self.terragrunt('apply', self.environment, self.ecr_image_name, self.component_name, self.metadata['REGION'],
-                            self.metadata['TEAM'], self.version, secrets, env)
+            self.terragrunt('apply', self.environment, self.ecr_image_name, self.component_name,
+                            self.metadata['REGION'], self.metadata['TEAM'], self.version, secrets, env)
 
         # clean up all irrelevant files
         self.cleanup()
@@ -233,7 +234,7 @@ remote_state = {{
         """
         configfile = "config/%s.json" % environment
         if os.path.exists(configfile):
-            environmentconfig = [ "-var-file", configfile ]
+            environmentconfig = ["-var-file", configfile]
         else:
             environmentconfig = []
 

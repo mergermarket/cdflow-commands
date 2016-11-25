@@ -47,8 +47,10 @@ class Release:
         )
         if not platform_config_loader:
             platform_config_loader = util.PlatformConfigLoader()
-        self.account_id = platform_config_loader.load(self.metadata['REGION'], self.metadata['ACCOUNT_PREFIX'])['account_id']
-        self.prod_account_id = platform_config_loader.load(self.metadata['REGION'], self.metadata['ACCOUNT_PREFIX'], True)['account_id']
+        self.account_id = platform_config_loader.load(self.metadata['REGION'],
+                                                      self.metadata['ACCOUNT_PREFIX'])['account_id']
+        self.prod_account_id = platform_config_loader.load(self.metadata['REGION'],
+                                                           self.metadata['ACCOUNT_PREFIX'], True)['account_id']
         self.ecr_image_name = util.ecr_image_name(
             self.account_id,
             self.metadata['REGION'],
@@ -146,12 +148,12 @@ class Release:
                 repositoryName=self.component_name,
                 policyText=json.dumps({
                     "Version": "2008-10-17",
-                    "Statement": [ {
+                    "Statement": [{
                         "Sid": "allow production",
                         "Effect": "Allow",
-                        "Principal": { "AWS": "arn:aws:iam::%s:root" % self.prod_account_id },
-                        "Action": [ "ecr:GetDownloadUrlForLayer", "ecr:BatchGetImage", "ecr:BatchCheckLayerAvailability" ]
-                    } ]
+                        "Principal": {"AWS": "arn:aws:iam::%s:root" % self.prod_account_id},
+                        "Action": ["ecr:GetDownloadUrlForLayer", "ecr:BatchGetImage", "ecr:BatchCheckLayerAvailability"]
+                    }]
                 }),
             )
 
@@ -169,11 +171,6 @@ class Release:
 
         print(PREFIX + 'pushing image %s' % (image))
         check_call('docker push %s' % (image), shell=True)
-
-        #latest_tag = '%s/%s:latest' % (self.ecr_registry(), self.component_name)
-        #print(PREFIX + 'pushing tag %s' % (latest_tag))
-        #check_call('docker tag %s %s' % (image, latest_tag), shell=True)
-        #check_call('docker push %s' % (latest_tag), shell=True)
 
 
 def main():
