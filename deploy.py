@@ -24,7 +24,7 @@ import os
 import sys
 import shutil
 
-
+logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -152,8 +152,9 @@ class Deployment:
             aws_access_key = session.get_credentials().access_key
             aws_secret_key = session.get_credentials().secret_key
             aws_session_token = session.get_credentials().token
-        except:
-            logger.error("Exception caught while trying to get temporary AWS credentials!")
+        except Exception as e:
+            logger.error("Exception caught while trying to get temporary AWS credentials: " + str(e))
+            raise
 
         return (aws_access_key, aws_secret_key, aws_session_token)
 
@@ -190,11 +191,11 @@ class Deployment:
         if not s3.Bucket(s3_bucket_name) in s3.buckets.all():
             logger.info("Bucket %s doesn't exist... Trying to create...", s3_bucket_name)
             try:
-                s3.create_bucket(Bucket=s3_bucket_name,
-                                 CreateBucketConfiguration={'LocationConstraint': self.region})
+                s3.create_bucket(Bucket=s3_bucket_name)
             except Exception as e:
                 logger.exception("Error while trying to create bucket %s (%s)",
                                  s3_bucket_name, str(e))
+                raise
 
     def generate_terragrunt_config(self, region, s3_bucket_name, environment, component_name):
         """Generates terragrunt config as per terragrunt documentation"""
@@ -246,6 +247,7 @@ remote_state = {{
 
         check_call([
             "terragrunt", action, "-var", "component=%s" % component,
+            "-var", "aws_region=%s" % region,
             "-var", "env=%s" % environment,
             "-var", "image=%s" % image,
             "-var", "team=%s" % team,

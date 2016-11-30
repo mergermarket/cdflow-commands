@@ -16,7 +16,7 @@ import os
 import sys
 import shutil
 
-
+logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -165,8 +165,7 @@ class Deployment:
         if not s3.Bucket(s3_bucket_name) in s3.buckets.all():
             logger.info("Bucket %s doesn't exist... Trying to create...", s3_bucket_name)
             try:
-                s3.create_bucket(Bucket=s3_bucket_name,
-                                 CreateBucketConfiguration={'LocationConstraint': 'eu-west-1'})
+                s3.create_bucket(Bucket=s3_bucket_name)
             except Exception as e:
                 logger.exception("Error while trying to create bucket %s (%s)",
                                  s3_bucket_name, str(e))
@@ -213,7 +212,7 @@ remote_state = {{
         else:
             environmentconfig = ""
 
-        t = ("terragrunt {action} -var provider.aws.region={region}"
+        t = ("terragrunt {action} -var aws_region={region}"
              " -var component={component}"
              " -var env={environment}"
              " -var image={image}"
