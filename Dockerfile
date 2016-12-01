@@ -4,6 +4,7 @@ FROM centos:7
 
 ENV TERRAFORM_VERSION=0.7.11
 ENV TERRAGRUNT_VERSION=v0.1.4
+ENV DOCKER_COMPOSE_VERSION=1.9.0
 
 ADD yum.repos.d/docker.repo /etc/yum.repos.d/
 ADD ./requirements.txt /infra/requirements.txt
@@ -20,6 +21,8 @@ RUN rpm -iUvh http://dl.fedoraproject.org/pub/epel/7/x86_64/e/epel-release-7-8.n
     chmod 755 /usr/local/bin/terragrunt && \
     yum group install -y "Development Tools" && yum install -y python-devel && \
     pip install -r /infra/requirements.txt && \
+    curl -L "https://github.com/docker/compose/releases/download/$DOCKER_COMPOSE_VERSION/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && \
+    chmod +x /usr/local/bin/docker-compose && \
     yum group remove "Development Tools" -y && yum clean all
 
 ADD . /infra
