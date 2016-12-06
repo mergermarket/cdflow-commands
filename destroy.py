@@ -2,7 +2,10 @@
 Deploy to MMG ECS infrastructure
 
 Usage:
-    infra/destrou <environment> <version>
+    infra/destroy <environment> <version>
+
+Options:
+    -p, --plan
 """
 
 from __future__ import print_function
@@ -34,18 +37,22 @@ def get_nested_key(data, keys, default=None):
         return get_nested_key(data[keys[0]], keys[1:], default)
 
 
-class Deployment:
+class Destroy:
+
     """
-    Manages the process of deployment.
+    Manages the process of destroying existing infrastructure using Terraform.
     """
 
-    def __init__(self, argv, environ, shell_runner=None, service_json_loader=None):
+    def __init__(self, argv, environ, shell_runner=None, service_json_loader=None, platform_config_loader=None):
         arguments = docopt(__doc__, argv=argv)
         self.shell_runner = shell_runner if shell_runner is not None else util.ShellRunner()
         self.environment = arguments.get('<environment>')
         self.version = arguments.get('<version>')
         self.component_name = util.get_component_name(arguments, environ, self.shell_runner)
         self.leg = arguments.get('--leg')
+        self.plan = arguments.get('--plan')
+        self.tfargs = arguments.get('<tfargs>')
+
         if not service_json_loader:
             service_json_loader = util.ServiceJsonLoader()
         self.config = None
@@ -53,18 +60,31 @@ class Deployment:
             service_json_loader.load(),
             self.component_name
         )
-        self.platform_config = util.load_platform_config(
+        if not platform_config_loader:
+            platform_config_loader = util.PlatformConfigLoader()
+        self.account_id = platform_config_loader.load(self.metadata['REGION'], self.metadata['ACCOUNT_PREFIX'],
+                                                      self.prod())['account_id']
+        if self.prod():
+            dev_account_id = platform_config_loader.load(self.metadata['REGION'],
+                                                         self.metadata['ACCOUNT_PREFIX'])['account_id']
+        else:
+            dev_account_id = self.account_id
+        self.ecr_image_name = util.ecr_image_name(
+            dev_account_id,
             self.metadata['REGION'],
-            self.metadata['ACCOUNT_PREFIX']
+            self.component_name,
+            self.version
         )
         self.aws = None
 
-    def destroy(self):
+    def run(self):
         """
-        Use terraform to destroy all managed resources
+        Run the deployment.
         """
-        print('deploying %s version %s to %s' %
-              (self.component_name, self.version, self.environment))
+        print('destroying {} on {}'.format(self.component_name, self.environment))
+
+        # perform a cleanup, in case any residue from past runs is still around
+        self.cleanup()
 
         # initialise Boto Session
         self.get_aws()
@@ -75,15 +95,10 @@ class Deployment:
         env['AWS_ACCESS_KEY_ID'] = aws_access_key
         env['AWS_SECRET_ACCESS_KEY'] = aws_secret_key
         env['AWS_SESSION_TOKEN'] = aws_session_token
-
-        account_id = self.get_account_id()
-
-        # generate container image name
-        image = util.container_image_name(util.ecr_registry(self.platform_config, self.metadata['REGION']),
-                                          self.component_name, self.version)
+        env['AWS_DEFAULT_REGION'] = self.metadata['REGION']
 
         print("Preparing S3 bucket for terragrunt...")
-        s3_bucket_name = self.terragrunt_s3_bucket_name(account_id.encode('utf-8'))
+        s3_bucket_name = self.terragrunt_s3_bucket_name()
         self.s3_bucket_prep(s3_bucket_name)
 
         print("Generating terragrunt config...")
@@ -93,24 +108,18 @@ class Deployment:
         # get all the relevant modules
         check_call("terraform get infra", env=env, shell=True)
 
-        self.terragrunt('destroy --force', self.environment, image, self.component_name, self.metadata['REGION'],
-                        self.metadata['TEAM'], self.version, env)
+        self.terragrunt(self.environment, self.ecr_image_name, self.component_name,
+                        self.metadata['REGION'], self.metadata['TEAM'], self.version, env)
 
         # clean up all irrelevant files
         self.cleanup()
-
-    def get_account_id(self):
-        """
-        Get the account id of the current AWS account.
-        """
-        return self.get_aws().client('sts').get_caller_identity()['Account']
 
     def get_aws(self):
         """
         Gets an AWS session.
         """
         if self.aws is None:
-            self.aws = util.assume_role(self.metadata['REGION'], self.platform_config, self.prod())
+            self.aws = util.assume_role(self.metadata['REGION'], self.account_id)
         return self.aws
 
     def _get_aws_credentials(self, session):
@@ -127,8 +136,9 @@ class Deployment:
             aws_access_key = session.get_credentials().access_key
             aws_secret_key = session.get_credentials().secret_key
             aws_session_token = session.get_credentials().token
-        except:
-            logger.error("Exception caught while trying to get temporary AWS credentials!")
+        except Exception as e:
+            logger.error("Exception caught while trying to get temporary AWS credentials: " + str(e))
+            raise
 
         return (aws_access_key, aws_secret_key, aws_session_token)
 
@@ -138,7 +148,7 @@ class Deployment:
         """
         self.aws = aws
 
-    def terragrunt_s3_bucket_name(self, account_id):
+    def terragrunt_s3_bucket_name(self):
         """Generates S3 bucket name Terragrunt will use based on account
         ID.
 
@@ -148,7 +158,7 @@ class Deployment:
             string: The return value.  Non-empty for success
 
         """
-        return "terraform-tfstate-{}".format(hashlib.md5(account_id).hexdigest()[:6])
+        return "terraform-tfstate-%s" % hashlib.md5(self.account_id.encode('utf-8')).hexdigest()[:6]
 
     def s3_bucket_prep(self, s3_bucket_name):
         """Checks whether given S3 Bucket exists and if not, it creates
@@ -169,6 +179,7 @@ class Deployment:
             except Exception as e:
                 logger.exception("Error while trying to create bucket %s (%s)",
                                  s3_bucket_name, str(e))
+                raise
 
     def generate_terragrunt_config(self, region, s3_bucket_name, environment, component_name):
         """Generates terragrunt config as per terragrunt documentation"""
@@ -202,40 +213,34 @@ remote_state = {{
                 component=component_name
             ))
 
-    def terragrunt(self, action, environment, image, component, region, team, version, exec_env):
+    def terragrunt(self, environment, image, component, region, team, version, exec_env):
         """
         Runs terragrunt.
         """
         configfile = "config/%s.json" % environment
         if os.path.exists(configfile):
-            environmentconfig = " -var-file=%s" % configfile
+            environmentconfig = ["-var-file", configfile]
         else:
-            environmentconfig = ""
+            environmentconfig = []
 
-        t = ("terragrunt {action} -var aws_region={region}"
-             " -var component={component}"
-             " -var env={environment}"
-             " -var image={image}"
-             " -var team={team}"
-             " -var 'version=\"{version}\"'"
-             " -var-file config/platform-config/{region}.json"
-             " {environmentconfig}"
-             " infra")
+            # include secrets if they're present
+        if self.tfargs is None:
+            tfargs = []
+        else:
+            tfargs = self.tfargs
 
-        check_call(
-            t.format(
-                action=action,
-                component=component,
-                environmentconfig=environmentconfig,
-                environment=environment,
-                image=image,
-                region=region,
-                team=team,
-                version=version,
-            ),
-            env=exec_env,
-            shell=True
-        )
+        check_call([
+            "terragrunt", "destroy", "--force", "-var", "component=%s" % component,
+            "-var", "aws_region=%s" % region,
+            "-var", "env=%s" % environment,
+            "-var", "image=%s" % image,
+            "-var", "team=%s" % team,
+            ] + tfargs + [
+            "-var", 'version="%s"' % version,
+            "-var-file", util.platform_config_filename(region, self.metadata['ACCOUNT_PREFIX'], self.prod()),
+            ] + environmentconfig + [
+            "infra"
+        ], env=exec_env)
 
         return True
 
@@ -251,43 +256,7 @@ remote_state = {{
         """
         Returns True if the prod account should be used.
         """
-        return self.environment == 'live' or self.environment == 'debug'
-
-    def account(self):
-        """
-        Returns the account identifier for the deployment.
-        """
-        if self.prod():
-            return self.metadata['ACCOUNT_PREFIX'] + 'prod'
-        else:
-            return self.metadata['ACCOUNT_PREFIX'] + 'dev'
-
-    def cluster(self):
-        """
-        Returns the cluster name.
-        """
-        if self.environment == 'live':
-            return self.metadata.get('PRODUCTION_CLUSTER', 'production')
-        else:
-            return self.metadata.get('NON_PRODUCTION_CLUSTER', 'non-production')
-
-    def dns_zone(self):
-        """
-        Returns the DNS zone for the deployment.
-        """
-        domain = self.metadata['DOMAIN']
-        if domain is None:
-            raise util.UserError('cannot infer dns zone when DOMAIN set to null')
-        return ('' if self.environment == 'live' else 'dev.') + domain + '.'
-
-    def hostname(self):
-        """
-        Returns the hostname for the service.
-        """
-        if self.environment == "live":
-            return "%s.%s" % (self.metadata['DNS_NAME'], self.dns_zone())
-        else:
-            return "%s-%s.%s" % (self.environment, self.metadata['DNS_NAME'], self.dns_zone())
+        return self.environment == 'live' or self.environment == 'debug' or self.environment == 'prod'
 
 
 def main():
@@ -295,10 +264,11 @@ def main():
     Entry-point for script.
     """
     try:
-        deployment = Deployment(sys.argv[1:], os.environ)
-        deployment.destroy()
+        deployment = Destroy(sys.argv[1:], os.environ)
+        deployment.run()
     except util.UserError as err:
         print('error: %s' % str(err), file=sys.stderr)
+        sys.stderr.flush()
         exit(1)
 
 
