@@ -2,10 +2,11 @@
 Deploy to MMG ECS infrastructure
 
 Usage:
-    infra/destroy <environment> <version>
+    infra/destroy <environment> <version> [-c <component-name>] [-p]
 
 Options:
     -p, --plan
+    -c <component-name>, --component-name <component-name>
 """
 
 from __future__ import print_function
@@ -108,8 +109,11 @@ class Destroy:
         # get all the relevant modules
         check_call("terraform get infra", env=env, shell=True)
 
-        self.terragrunt(self.environment, self.ecr_image_name, self.component_name,
+        self.terragrunt('plan', self.environment, self.ecr_image_name, self.component_name,
                         self.metadata['REGION'], self.metadata['TEAM'], self.version, env)
+        if self.plan is False:
+            self.terragrunt('apply', self.environment, self.ecr_image_name, self.component_name,
+                            self.metadata['REGION'], self.metadata['TEAM'], self.version, env)
 
         # clean up all irrelevant files
         self.cleanup()
@@ -213,7 +217,7 @@ remote_state = {{
                 component=component_name
             ))
 
-    def terragrunt(self, environment, image, component, region, team, version, exec_env):
+    def terragrunt(self, action, environment, image, component, region, team, version, exec_env):
         """
         Runs terragrunt.
         """
@@ -229,20 +233,34 @@ remote_state = {{
         else:
             tfargs = self.tfargs
 
-        check_call([
-            "terragrunt", "destroy", "--force", "-var", "component=%s" % component,
-            "-var", "aws_region=%s" % region,
-            "-var", "env=%s" % environment,
-            "-var", "image=%s" % image,
-            "-var", "team=%s" % team,
-            ] + tfargs + [
-            "-var", 'version="%s"' % version,
-            "-var-file", util.platform_config_filename(region, self.metadata['ACCOUNT_PREFIX'], self.prod()),
-            ] + environmentconfig + [
-            "infra"
-        ], env=exec_env)
+        if action == 'plan':
+            check_call([
+                "terragrunt", "plan", "--destroy", "-var", "component=%s" % component,
+                "-var", "aws_region=%s" % region,
+                "-var", "env=%s" % environment,
+                "-var", "image=%s" % image,
+                "-var", "team=%s" % team,
+                ] + tfargs + [
+                "-var", 'version="%s"' % version,
+                "-var-file", util.platform_config_filename(region, self.metadata['ACCOUNT_PREFIX'], self.prod()),
+                ] + environmentconfig + [
+                "infra"
+            ], env=exec_env)
+        else:
+            check_call([
+                "terragrunt", "destroy", "--force", "-var", "component=%s" % component,
+                "-var", "aws_region=%s" % region,
+                "-var", "env=%s" % environment,
+                "-var", "image=%s" % image,
+                "-var", "team=%s" % team,
+                ] + tfargs + [
+                "-var", 'version="%s"' % version,
+                "-var-file", util.platform_config_filename(region, self.metadata['ACCOUNT_PREFIX'], self.prod()),
+                ] + environmentconfig + [
+                "infra"
+            ], env=exec_env)
 
-        return True
+            return True
 
     def cleanup(self):
         # clean up after terraform run
