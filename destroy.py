@@ -6,6 +6,7 @@ Usage:
 
 Options:
     -p, --plan
+    -c <component-name>, --component-name <component-name>
 """
 
 from __future__ import print_function
