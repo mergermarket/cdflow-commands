@@ -1,5 +1,5 @@
 """
-Deploy to MMG ECS infrastructure
+Deploy to MMG ECS infrastructure.
 
 Usage:
     infra/deploy <environment> <version> [-c <component-name>] [-l <leg>] [-p] [-- <tfargs>...]
@@ -23,16 +23,21 @@ import util
 import os
 import sys
 import shutil
+import json
+import time
+import re
 
-logging.basicConfig()
+logging.basicConfig(format='[%(asctime)s] %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S')
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
 def get_nested_key(data, keys, default=None):
     """
-    Takes a nested dict and array of keys and returns the corresponding value, or the passed
-    in default (default None) if it does not exist.
+    Take a nested dict and array of keys and returns the corresponding value.
+
+    (or the passedin default (default None) if it does not exist.
     """
     if keys[0] not in data:
         return default
@@ -43,12 +48,10 @@ def get_nested_key(data, keys, default=None):
 
 
 class Deployment:
-
-    """
-    Manages the process of deployment.
-    """
+    """Manage the process of deployment."""
 
     def __init__(self, argv, environ, shell_runner=None, service_json_loader=None, platform_config_loader=None):
+        """Deployment constructor."""
         arguments = docopt(__doc__, argv=argv)
         self.shell_runner = shell_runner if shell_runner is not None else util.ShellRunner()
         self.environment = arguments.get('<environment>')
@@ -83,9 +86,7 @@ class Deployment:
         self.aws = None
 
     def run(self):
-        """
-        Run the deployment.
-        """
+        """Run the deployment."""
         print('deploying %s version %s to %s' %
               (self.component_name, self.version, self.environment))
 
@@ -140,7 +141,7 @@ class Deployment:
 
     def _get_aws_credentials(self, session):
         """
-        Gets temporary AWS credentials based on the passed boto3.session.Session
+        Get temporary AWS credentials based on the passed boto3.session.Session.
 
         Params:
             boto3.session.Session: Boto3 session to get the credentials against
@@ -159,14 +160,11 @@ class Deployment:
         return (aws_access_key, aws_secret_key, aws_session_token)
 
     def set_aws(self, aws):
-        """
-        Sets an AWS session - used to inject dependency in tests.
-        """
+        """Set an AWS session - used to inject dependency in tests."""
         self.aws = aws
 
     def terragrunt_s3_bucket_name(self):
-        """Generates S3 bucket name Terragrunt will use based on account
-        ID.
+        """Generate S3 bucket name Terragrunt will use based on account ID.
 
         Takes the ID and hashes it to make it smaller (6 characters)
 
