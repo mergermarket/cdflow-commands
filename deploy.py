@@ -87,6 +87,7 @@ class Deployment:
 
     def run(self):
         """Run the deployment."""
+        deploy_start_time = time.time()
         print('deploying %s version %s to %s' %
               (self.component_name, self.version, self.environment))
 
@@ -179,10 +180,12 @@ class Deployment:
             if ecs_service_update_finished and ecs_deploy_finished and elbv2_deploy_finished:
                 deploy_finished = True
 
-            time.sleep(3)
+            time.sleep(5)
 
-        logger.info("Deploy has been finished")
-        # clean up all irrelevant files
+        deploy_time = time.strftime("%Mm%Ss", time.gmtime(time.time() - deploy_start_time))
+        logger.info("Deploy finished in {}".format(deploy_time))
+
+        # clean up
         self.cleanup()
 
     def monitor_deploy(self, par1, par2, par3):
