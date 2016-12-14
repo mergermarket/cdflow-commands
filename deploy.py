@@ -202,7 +202,7 @@ class Deployment:
         ecs_service_arn = util.terraform_output_filter('ecs_service_arn', output)
         ecs_service_task_definition_arn = util.terraform_output_filter('ecs_service_task_definition_arn', output)
 
-        return (ecs_cluster_name, ecs_service_arn, ecs_service_task_definition_arn)
+        return (str(ecs_cluster_name), str(ecs_service_arn), str(ecs_service_task_definition_arn))
 
     def get_elbv2_deploy_progress(self, task_def_arn, services, tasks_list, tasks, ecs_cluster_name, ecs, elbv2):
         """Track ELBv2 deploy status."""
