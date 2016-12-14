@@ -163,7 +163,7 @@ class Deployment:
             # finally if ECS service is updated and all containers are running
             # off latest taskDef, monitor ELB and wait until instances are
             # healthy
-            if (ecs_service_update_finished and not elbv2_deploy_finished):
+            if (ecs_service_update_finished and ecs_deploy_finished and not elbv2_deploy_finished):
                 elb_st = self.get_elbv2_deploy_progress(ecs_service_task_definition_arn, services,
                                                         tasks_list, tasks, ecs_cluster_name, ecs, elbv2)
 
