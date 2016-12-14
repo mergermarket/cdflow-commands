@@ -180,6 +180,11 @@ class Deployment:
             if ecs_service_update_finished and ecs_deploy_finished and elbv2_deploy_finished:
                 deploy_finished = True
 
+            # check whether deploy hasn't timed out
+            if self.deploy_timed_out(deploy_start_time):
+                raise Exception("Deploy has timed out... Time limit of {} has been reached. ".format(600),
+                                "Please investigate the cause of this!")
+
             time.sleep(5)
 
         deploy_time = time.strftime("%Mm%Ss", time.gmtime(time.time() - deploy_start_time))
@@ -187,6 +192,13 @@ class Deployment:
 
         # clean up
         self.cleanup()
+
+    def deploy_timed_out(self, start_time, limit=600):
+        """Return True/False depending whether time limit has been hit."""
+        if time.time() - start_time > limit:
+            return True
+        else:
+            return False
 
     def monitor_deploy(self, par1, par2, par3):
         """Decide whether deploy should be monitored.
