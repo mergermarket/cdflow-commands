@@ -13,6 +13,8 @@ import shutil
 import boto3
 import hashlib
 import pdb
+import util
+
 
 s3_bucket_prefix = "terraform-tfstate-"
 required_vars = ['env', 'component', 'aws_region', 'account_id']
@@ -80,6 +82,10 @@ def terragrunt(all_args, parsed_args, role_creds):
     env['AWS_SECRET_ACCESS_KEY'] = priv_creds['SecretAccessKey']
     env['AWS_SESSION_TOKEN'] = priv_creds['SessionToken']
     env['AWS_DEFAULT_REGION'] = parsed_args['aws_region']
+
+    tmp_secrets = util.Credstash()._generate_decrypted_credentials('platform',parsed_args['component'],parsed_args['env'],env)
+    # Required, as we want this in a predictable place for external use
+    os.symlink(tmp_secrets, '/tmp/secrets.json')
 
     check_call(["terragrunt", "get", "infra"], env=env)
     check_call(["terragrunt"] + all_args + ["infra"], env=env)
