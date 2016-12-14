@@ -236,7 +236,13 @@ class Deployment:
                         d=elbv2_health[task]['draining'],
                         u=elbv2_health[task]['unhealthy']))
 
-        return elbv2_health[task_def_arn]['healthy']
+        if task_def_arn in elbv2_health:
+            if 'healthy' in elbv2_health[task_def_arn]:
+                return elbv2_health[task_def_arn]['healthy']
+            else:
+                return 0
+        else:
+            return 0
 
     def get_ecs_task_from_arn(self, arn):
         """Return ECS task fragment from given arn."""
