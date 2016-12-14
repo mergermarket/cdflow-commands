@@ -122,12 +122,10 @@ class Deployment:
         if self.plan is False:
             terragrunt.run('apply', secrets, self.tfargs)
 
-        # parse terraform output
-        terraform_output = json.loads(terragrunt.output())
-        ecs_cluster_name = util.terraform_output_filter('ecs_cluster_name', terraform_output)
-        ecs_service_arn = util.terraform_output_filter('ecs_service_arn', terraform_output)
-        ecs_service_task_definition_arn = util.terraform_output_filter('ecs_service_task_definition_arn',
-                                                                       terraform_output)
+        # parse / process terraform output
+        (ecs_cluster_name, ecs_service_arn, ecs_service_task_definition_arn) = self.parse_terraform_output(json.loads(terragrunt.output()))
+        monitor_deploy = self.monitor_deploy(ecs_cluster_name, ecs_service_arn, ecs_service_task_definition_arn)
+
         # we need some more boto for the rest of deployment
         ecs = self.aws.client('ecs')
         elbv2 = self.aws.client('elbv2')
@@ -139,14 +137,13 @@ class Deployment:
         elbv2_deploy_finished = False
         deploy_success_count = 0
 
-        while deploy_finished is not True:
+        while deploy_finished is not True and monitor_deploy:
             services = ecs.describe_services(cluster=ecs_cluster_name, services=[ecs_service_arn])
             tasks_list = ecs.list_tasks(cluster=ecs_cluster_name, serviceName=ecs_service_arn)
             tasks = ecs.describe_tasks(cluster=ecs_cluster_name, tasks=tasks_list['taskArns'])
 
             # check whether service update has already finished
-            if (self.get_service_update_progress(ecs_service_task_definition_arn, services) and not
-                    ecs_service_update_finished):
+            if (self.get_service_update_progress(ecs_service_task_definition_arn, services) and not ecs_service_update_finished):
                 logger.info("ECS service update has been finished...")
                 ecs_service_update_finished = True
             elif not ecs_service_update_finished:
@@ -167,8 +164,8 @@ class Deployment:
             # off latest taskDef, monitor ELB and wait until instances are
             # healthy
             if (ecs_service_update_finished and not elbv2_deploy_finished):
-                elb_st = self.get_elbv2_deploy_progress(ecs_service_task_definition_arn, services, tasks_list, tasks,
-                                                        ecs_cluster_name, ecs, elbv2)
+                elb_st = self.get_elbv2_deploy_progress(ecs_service_task_definition_arn, services,
+                                                        tasks_list, tasks, ecs_cluster_name, ecs, elbv2)
 
                 # if number of healthy instances running off the new taskDef
                 # is equal to desiredCount of running containers, wait 5 cycles
@@ -187,6 +184,25 @@ class Deployment:
         logger.info("Deploy has been finished")
         # clean up all irrelevant files
         self.cleanup()
+
+    def monitor_deploy(self, par1, par2, par3):
+        """Decide whether deploy should be monitored.
+
+        Base decision on the three parameters passed; if any of the is
+        None, return False; otherwise return True
+        """
+        if par1 is None or par2 is None or par3 is None:
+            return False
+        else:
+            return True
+
+    def parse_terraform_output(self, output):
+        """Prase and return Terraform output."""
+        ecs_cluster_name = util.terraform_output_filter('ecs_cluster_name', output)
+        ecs_service_arn = util.terraform_output_filter('ecs_service_arn', output)
+        ecs_service_task_definition_arn = util.terraform_output_filter('ecs_service_task_definition_arn', output)
+
+        return (ecs_cluster_name, ecs_service_arn, ecs_service_task_definition_arn)
 
     def get_elbv2_deploy_progress(self, task_def_arn, services, tasks_list, tasks, ecs_cluster_name, ecs, elbv2):
         """Track ELBv2 deploy status."""
