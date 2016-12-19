@@ -186,7 +186,7 @@ def get_default_domain(component_name):
 
 def ecr_image_name(dev_account_id, region, component_name, version):
     """Return URI to Docker image."""
-    return '%s.dkr.ecr.%s.amazonaws.com/%s:%s' % (dev_account_id, region, component_name, version)
+    return '%s.dkr.ecr.%s.amazonaws.com/%s:%s' % (dev_account_id, region, component_name, 'dev' if version is None else version)
 
 
 def apply_metadata_defaults(metadata, component_name):
