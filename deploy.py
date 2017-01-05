@@ -137,7 +137,10 @@ class Deployment:
         ecs_deploy_finished = False
         elbv2_deploy_finished = False
         deploy_success_count = 0
+        deploy_failed_healthcheck = 0
 
+        # deploy monitoring
+        # TODO: consolidate this piece of functionality into a separate method?
         while deploy_finished is not True and monitor_deploy:
             services = ecs.describe_services(cluster=ecs_cluster_name, services=[ecs_service_arn])
 
@@ -180,10 +183,17 @@ class Deployment:
 
                 # if number of healthy instances running off the new taskDef is equal to desiredCount
                 # of running containers, wait 5 cycles and finish deploy
-                if elb_st == services['services'][0]['desiredCount']:
+                if elb_st[0] == services['services'][0]['desiredCount']:
                     deploy_success_count += 1
                 if deploy_success_count > 5:
                     elbv2_deploy_finished = True
+
+                # see if we've any unhealthy instances, if so increment marker for them; if it reaches
+                # 2 - fail the deploy due to tasks failing healthcheck
+                if elb_st[3] > 0:
+                    deploy_failed_healthcheck += 1
+                if deploy_failed_healthcheck == 2:
+                    raise Exception("Deploy failed!  New containers are failing the load-balancer healthcheck!")
 
             # if all deploy steps have finished, finish deploy
             if ecs_service_update_finished and ecs_deploy_finished and elbv2_deploy_finished:
@@ -228,7 +238,11 @@ class Deployment:
         return str(ecs_cluster_name), str(ecs_service_arn), str(ecs_service_task_definition_arn)
 
     def get_elbv2_deploy_progress(self, task_def_arn, services, tasks, ecs_cluster_name, ecs, elbv2):
-        """Track ELBv2 deploy status."""
+        """Track ELBv2 deploy status.
+
+        Returns:
+            list: list of int of healthy, initial, draining, unhealthy instances of specific task_arn
+        """
         ecs_container_instances = [task['containerInstanceArn'] for task in tasks]
         ecs_container_instances = list(set(ecs_container_instances))  # get only unique instance-ids
         describe_target_health = elbv2.describe_target_health(TargetGroupArn=services['services'][0]['loadBalancers'][0]['targetGroupArn'])
@@ -261,11 +275,12 @@ class Deployment:
 
         if task_def_arn in elbv2_health:
             if 'healthy' in elbv2_health[task_def_arn]:
-                return elbv2_health[task_def_arn]['healthy']
+                return [elbv2_health[task_def_arn]['healthy'], elbv2_health[task_def_arn]['initial'],
+                       elbv2_health[task_def_arn]['draining'], elbv2_health[task_def_arn]['unhealthy']]
             else:
-                return 0
+                return [0, 0, 0, 0]
         else:
-            return 0
+            return [0, 0, 0, 0]
 
     def get_ecs_task_from_arn(self, arn):
         """Return ECS task fragment from given arn."""
