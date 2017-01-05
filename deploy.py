@@ -196,7 +196,7 @@ class Deployment:
             if self.deploy_timed_out(deploy_start_time):
                 raise Exception("Deploy has timed out... Time limit of {} has been reached. Please investigate the cause of this!".format(600))
 
-            time.sleep(5)
+            time.sleep(15)
 
         deploy_time = time.strftime("%Mm%Ss", time.gmtime(time.time() - deploy_start_time))
         logger.info("Deploy finished in {}".format(deploy_time))
