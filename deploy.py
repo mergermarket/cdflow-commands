@@ -228,17 +228,16 @@ class Deployment:
         ecs_service_arn = util.terraform_output_filter('ecs_service_arn', output)
         ecs_service_task_definition_arn = util.terraform_output_filter('ecs_service_task_definition_arn', output)
 
-        return (str(ecs_cluster_name), str(ecs_service_arn), str(ecs_service_task_definition_arn))
+        return str(ecs_cluster_name), str(ecs_service_arn), str(ecs_service_task_definition_arn)
 
-    def get_elbv2_deploy_progress(self, task_def_arn, services, tasks_list, tasks, ecs_cluster_name, ecs, elbv2):
+    def get_elbv2_deploy_progress(self, task_def_arn, services, tasks, ecs_cluster_name, ecs, elbv2):
         """Track ELBv2 deploy status."""
-        ecs_container_instances = [task['containerInstanceArn'] for task in tasks['tasks']]
-        describe_target_health = elbv2.describe_target_health(
-            TargetGroupArn=services['services'][0]['loadBalancers'][0]['targetGroupArn'])
+        ecs_container_instances = [task['containerInstanceArn'] for task in tasks]
+        ecs_container_instances = list(set(ecs_container_instances))  # get only unique instance-ids
+        describe_target_health = elbv2.describe_target_health(TargetGroupArn=services['services'][0]['loadBalancers'][0]['targetGroupArn'])
 
         elbv2_health = {}
-        container_instances = ecs.describe_container_instances(cluster=ecs_cluster_name,
-                                                               containerInstances=ecs_container_instances)
+        container_instances = ecs.describe_container_instances(cluster=ecs_cluster_name, containerInstances=ecs_container_instances)
         for target in describe_target_health['TargetHealthDescriptions']:
             (ecs_instance, port, state) = self.get_ecs_instance_metadata(target, container_instances)
             task_arn = self.get_task_arn(ecs_instance, port, tasks)
@@ -278,9 +277,25 @@ class Deployment:
         """Return True/False depending on ECS deploy status."""
         ecs_deployments = describe_services['services'][0]['deployments']
 
+        running = self.get_deployment(ecs_deployments, 'PRIMARY', 'runningCount')
+        desired = describe_services['services'][0]['desiredCount']
+
+        # if running == desired, wait for 10 seconds to see if it'll remain like this
+        if running == desired:
+            c = 0
+            while c < 5:
+                running = self.get_deployment(ecs_deployments, 'PRIMARY', 'runningCount')
+                if running == desired:
+                    service_stable = True
+                else:
+                    service_stable = False
+                c = c + 1
+            time.sleep(2)
+        else:
+            service_stable = False
+
         # if number of ECS deployments is 1, deploy has been finished
-        if (len(ecs_deployments) == 1 or self.get_deployment(ecs_deployments, 'PRIMARY', 'runningCount') ==
-                describe_services['services'][0]['desiredCount']):
+        if len(ecs_deployments) == 1 or service_stable:
             return True
         else:
             return False
@@ -305,7 +320,7 @@ class Deployment:
     def get_task_arn(self, container_instance, port, service_tasks):
         """Get task ARN based from a combination of container instance and port."""
         task_definition_arn = None
-        for i in service_tasks['tasks']:
+        for i in service_tasks:
             if 'networkBindings' in i['containers'][0]:
                 host_port = i['containers'][0]['networkBindings'][0]['hostPort']
             else:
