@@ -160,8 +160,7 @@ class Deployment:
             # finally if ECS service is updated and all containers are running
             # off latest taskDef, monitor ELB and wait until instances are
             # healthy
-            if (ecs_service_update_finished and ecs_deploy_finished and not elbv2_deploy_finished):
-
+            if ecs_service_update_finished and ecs_deploy_finished and not elbv2_deploy_finished:
                 tasks_list_running = ecs.list_tasks(cluster=ecs_cluster_name, serviceName=ecs_service_arn)
                 if len(tasks_list_running['taskArns']) > 0:
                     ecs_tasks_running = ecs.describe_tasks(cluster=ecs_cluster_name, tasks=tasks_list_running['taskArns'])
@@ -280,6 +279,7 @@ class Deployment:
         running = self.get_deployment(ecs_deployments, 'PRIMARY', 'runningCount')
         desired = describe_services['services'][0]['desiredCount']
 
+        service_stable = False
         # if running == desired, wait for 10 seconds to see if it'll remain like this
         if running == desired:
             c = 0
@@ -347,13 +347,14 @@ class Deployment:
         Returns:
             array - ECS container instance ARN, port, state (healthy, draining etc.)
         """
+        container_instance = None
         for i in describe_container_instances['containerInstances']:
             if i['ec2InstanceId'] == target['Target']['Id']:
                 container_instance = i['containerInstanceArn']
 
         state = target['TargetHealth']['State']
         port = target['Target']['Port']
-        return (container_instance, port, state)
+        return container_instance, port, state
 
     def get_deployment(self, deployments, status, key):
         """Return relevant key from deployments dictionary, based on status."""
@@ -388,7 +389,7 @@ class Deployment:
             logger.error("Exception caught while trying to get temporary AWS credentials: " + str(e))
             raise
 
-        return (aws_access_key, aws_secret_key, aws_session_token)
+        return aws_access_key, aws_secret_key, aws_session_token
 
     def set_aws(self, aws):
         """Set an AWS session - used to inject dependency in tests."""
