@@ -140,11 +140,9 @@ class Deployment:
 
         while deploy_finished is not True and monitor_deploy:
             services = ecs.describe_services(cluster=ecs_cluster_name, services=[ecs_service_arn])
-            tasks_list = ecs.list_tasks(cluster=ecs_cluster_name, serviceName=ecs_service_arn)
-            tasks = ecs.describe_tasks(cluster=ecs_cluster_name, tasks=tasks_list['taskArns'])
 
             # check whether service update has already finished
-            if (self.get_service_update_progress(ecs_service_task_definition_arn, services) and not ecs_service_update_finished):
+            if self.get_service_update_progress(ecs_service_task_definition_arn, services) and not ecs_service_update_finished:
                 logger.info("ECS service update has been finished...")
                 ecs_service_update_finished = True
             elif not ecs_service_update_finished:
@@ -182,8 +180,7 @@ class Deployment:
 
             # check whether deploy hasn't timed out
             if self.deploy_timed_out(deploy_start_time):
-                raise Exception("Deploy has timed out... Time limit of {} has been reached. ".format(600),
-                                "Please investigate the cause of this!")
+                raise Exception("Deploy has timed out... Time limit of {} has been reached. Please investigate the cause of this!".format(600))
 
             time.sleep(5)
 
@@ -321,8 +318,10 @@ class Deployment:
         Returns:
             array - ECS container instance ARN, port, state (healthy, draining etc.)
         """
-        container_instance = [i['containerInstanceArn'] for i in describe_container_instances['containerInstances']
-                              if i['ec2InstanceId'] == target['Target']['Id']][0]
+        for i in describe_container_instances['containerInstances']:
+            if i['ec2InstanceId'] == target['Target']['Id']:
+                container_instance = i['containerInstanceArn']
+
         state = target['TargetHealth']['State']
         port = target['Target']['Port']
         return (container_instance, port, state)
