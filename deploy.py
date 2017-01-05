@@ -154,10 +154,8 @@ class Deployment:
                                                "ECS deploy has finished -")
                 ecs_deploy_finished = True
             elif not ecs_deploy_finished:
-                self.print_ecs_deploy_progress(services['services'][0]['deployments'], 'PRIMARY',
-                                               "ECS status")
-                self.print_ecs_deploy_progress(services['services'][0]['deployments'], 'ACTIVE',
-                                               "ECS status")
+                self.print_ecs_deploy_progress(services['services'][0]['deployments'], 'PRIMARY', "ECS status")
+                self.print_ecs_deploy_progress(services['services'][0]['deployments'], 'ACTIVE', "ECS status")
 
             # finally if ECS service is updated and all containers are running
             # off latest taskDef, monitor ELB and wait until instances are
@@ -166,11 +164,10 @@ class Deployment:
                 elb_st = self.get_elbv2_deploy_progress(ecs_service_task_definition_arn, services,
                                                         tasks_list, tasks, ecs_cluster_name, ecs, elbv2)
 
-                # if number of healthy instances running off the new taskDef
-                # is equal to desiredCount of running containers, wait 5 cycles
-                # and finish deploy
+                # if number of healthy instances running off the new taskDef is equal to desiredCount
+                # of running containers, wait 5 cycles and finish deploy
                 if elb_st == services['services'][0]['desiredCount']:
-                    deploy_success_count = deploy_success_count + 1
+                    deploy_success_count += 1
                 if deploy_success_count > 5:
                     elbv2_deploy_finished = True
 
