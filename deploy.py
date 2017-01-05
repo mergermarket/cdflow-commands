@@ -241,16 +241,17 @@ class Deployment:
             (ecs_instance, port, state) = self.get_ecs_instance_metadata(target, container_instances)
             task_arn = self.get_task_arn(ecs_instance, port, tasks)
 
-            if task_arn not in elbv2_health:
-                elbv2_health[task_arn] = {
-                    'healthy': 0,
-                    'initial': 0,
-                    'draining': 0,
-                    'unhealthy': 0
-                }
+            if task_arn is not None:
+                if task_arn not in elbv2_health:
+                    elbv2_health[task_arn] = {
+                        'healthy': 0,
+                        'initial': 0,
+                        'draining': 0,
+                        'unhealthy': 0
+                    }
 
-            p = elbv2_health[task_arn][target['TargetHealth']['State']]
-            elbv2_health[task_arn][target['TargetHealth']['State']] = p + 1
+                p = elbv2_health[task_arn][target['TargetHealth']['State']]
+                elbv2_health[task_arn][target['TargetHealth']['State']] = p + 1
 
         for task in elbv2_health:
             logger.info("ELB status for {task}  healthy:{h}  initial:{i}  draining:{d}  unhealthy:{u}".format(
@@ -329,10 +330,10 @@ class Deployment:
             if (i['containerInstanceArn'] == container_instance and host_port == port):
                 task_definition_arn = i['taskDefinitionArn']
 
-        if len(task_definition_arn) > 0:
-            return task_definition_arn
-        else:
+        if task_definition_arn == None:
             return None
+        else:
+            return task_definition_arn
 
     def get_ecs_instance_metadata(self, target, describe_container_instances):
         """Return ECS instance metadata including ECS instance ARN.
