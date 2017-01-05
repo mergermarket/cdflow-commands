@@ -161,8 +161,25 @@ class Deployment:
             # off latest taskDef, monitor ELB and wait until instances are
             # healthy
             if (ecs_service_update_finished and ecs_deploy_finished and not elbv2_deploy_finished):
+
+                tasks_list_running = ecs.list_tasks(cluster=ecs_cluster_name, serviceName=ecs_service_arn)
+                if len(tasks_list_running['taskArns']) > 0:
+                    ecs_tasks_running = ecs.describe_tasks(cluster=ecs_cluster_name, tasks=tasks_list_running['taskArns'])
+                else:
+                    ecs_tasks_running = {}
+                    ecs_tasks_running['tasks'] = []
+
+                tasks_list_stopped = ecs.list_tasks(cluster=ecs_cluster_name, serviceName=ecs_service_arn, desiredStatus='STOPPED')
+                if len(tasks_list_stopped['taskArns']) > 0:
+                    ecs_tasks_stopped = ecs.describe_tasks(cluster=ecs_cluster_name, tasks=tasks_list_stopped['taskArns'])
+                else:
+                    ecs_tasks_stopped = {}
+                    ecs_tasks_stopped['tasks'] = []
+
+                tasks = ecs_tasks_running['tasks'] + ecs_tasks_stopped['tasks']
+
                 elb_st = self.get_elbv2_deploy_progress(ecs_service_task_definition_arn, services,
-                                                        tasks_list, tasks, ecs_cluster_name, ecs, elbv2)
+                                                        tasks, ecs_cluster_name, ecs, elbv2)
 
                 # if number of healthy instances running off the new taskDef is equal to desiredCount
                 # of running containers, wait 5 cycles and finish deploy
