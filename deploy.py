@@ -165,15 +165,13 @@ class Deployment:
                 if len(tasks_list_running['taskArns']) > 0:
                     ecs_tasks_running = ecs.describe_tasks(cluster=ecs_cluster_name, tasks=tasks_list_running['taskArns'])
                 else:
-                    ecs_tasks_running = {}
-                    ecs_tasks_running['tasks'] = []
+                    ecs_tasks_running = {'tasks': []}
 
                 tasks_list_stopped = ecs.list_tasks(cluster=ecs_cluster_name, serviceName=ecs_service_arn, desiredStatus='STOPPED')
                 if len(tasks_list_stopped['taskArns']) > 0:
                     ecs_tasks_stopped = ecs.describe_tasks(cluster=ecs_cluster_name, tasks=tasks_list_stopped['taskArns'])
                 else:
-                    ecs_tasks_stopped = {}
-                    ecs_tasks_stopped['tasks'] = []
+                    ecs_tasks_stopped = {'tasks': []}
 
                 tasks = ecs_tasks_running['tasks'] + ecs_tasks_stopped['tasks']
 
