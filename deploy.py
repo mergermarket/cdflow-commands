@@ -123,75 +123,83 @@ class Deployment:
         if self.plan is False:
             terragrunt.run('apply', secrets, self.tfargs)
 
-        # parse / process terraform output
+        # parse / process terraform output; this is needed to monitor deploy progress
         (ecs_cluster_name, ecs_service_arn, ecs_service_task_definition_arn) = self.parse_terraform_output(json.loads(terragrunt.output()))
         monitor_deploy = self.monitor_deploy(ecs_cluster_name, ecs_service_arn, ecs_service_task_definition_arn)
+        if monitor_deploy:
+            self.monitor_deploy(self.aws.client('ecs'), self.aws.client('elbv2'), ecs_cluster_name, ecs_service_arn,
+                                ecs_service_task_definition_arn, deploy_start_time)
 
-        # we need some more boto for the rest of deployment
-        ecs = self.aws.client('ecs')
-        elbv2 = self.aws.client('elbv2')
-
-        # set deploy flags to start state
-        deploy_finished = False
-        ecs_service_update_finished = False
-        ecs_deploy_finished = False
-        elbv2_deploy_finished = False
-        deploy_success_count = 0
-
-        while deploy_finished is not True and monitor_deploy:
-            services = ecs.describe_services(cluster=ecs_cluster_name, services=[ecs_service_arn])
-            tasks_list = ecs.list_tasks(cluster=ecs_cluster_name, serviceName=ecs_service_arn)
-            tasks = ecs.describe_tasks(cluster=ecs_cluster_name, tasks=tasks_list['taskArns'])
-
-            # check whether service update has already finished
-            if (self.get_service_update_progress(ecs_service_task_definition_arn, services) and not ecs_service_update_finished):
-                logger.info("ECS service update has been finished...")
-                ecs_service_update_finished = True
-            elif not ecs_service_update_finished:
-                logger.info("ECS service update still in progress...")
-
-            # wait until ECS switches over all tasks to use new taskDefinition
-            if self.get_ecs_deploy_status(services, ecs_service_task_definition_arn) and not ecs_deploy_finished:
-                self.print_ecs_deploy_progress(services['services'][0]['deployments'], 'PRIMARY',
-                                               "ECS deploy has finished -")
-                ecs_deploy_finished = True
-            elif not ecs_deploy_finished:
-                self.print_ecs_deploy_progress(services['services'][0]['deployments'], 'PRIMARY',
-                                               "ECS status")
-                self.print_ecs_deploy_progress(services['services'][0]['deployments'], 'ACTIVE',
-                                               "ECS status")
-
-            # finally if ECS service is updated and all containers are running
-            # off latest taskDef, monitor ELB and wait until instances are
-            # healthy
-            if (ecs_service_update_finished and ecs_deploy_finished and not elbv2_deploy_finished):
-                elb_st = self.get_elbv2_deploy_progress(ecs_service_task_definition_arn, services,
-                                                        tasks_list, tasks, ecs_cluster_name, ecs, elbv2)
-
-                # if number of healthy instances running off the new taskDef
-                # is equal to desiredCount of running containers, wait 5 cycles
-                # and finish deploy
-                if elb_st == services['services'][0]['desiredCount']:
-                    deploy_success_count = deploy_success_count + 1
-                if deploy_success_count > 5:
-                    elbv2_deploy_finished = True
-
-            # if all deploy steps have finished, finish deploy
-            if ecs_service_update_finished and ecs_deploy_finished and elbv2_deploy_finished:
-                deploy_finished = True
-
-            # check whether deploy hasn't timed out
-            if self.deploy_timed_out(deploy_start_time):
-                raise Exception("Deploy has timed out... Time limit of {} has been reached. ".format(600),
-                                "Please investigate the cause of this!")
-
-            time.sleep(5)
-
+        # once finished, establish time taken to complete
         deploy_time = time.strftime("%Mm%Ss", time.gmtime(time.time() - deploy_start_time))
         logger.info("Deploy finished in {}".format(deploy_time))
 
         # clean up
         self.cleanup()
+
+    def monitor_deploy(self, ecs, elbv2, ecs_cluster_name, ecs_service_arn, ecs_service_task_definition_arn, deploy_start_time):
+        """Monitor deploy progress and fail if required"""
+        # set deploy flags to start state
+        deploy_finished = False
+        ecs_service_update_finished = False
+        elbv2_deploy_finished = False
+        deploy_success_count = 0
+        deploy_failed_healthcheck = 0
+
+        # deploy monitoring
+        # TODO: consolidate this piece of functionality into a separate method?
+        while deploy_finished is not True:
+            services = ecs.describe_services(cluster=ecs_cluster_name, services=[ecs_service_arn])
+
+            # check whether service update has already finished
+            if self.get_service_update_progress(ecs_service_task_definition_arn, services) and not ecs_service_update_finished:
+                logger.info("ECS service update has been finished...")
+                ecs_service_update_finished = True
+            elif not ecs_service_update_finished:
+                logger.info("ECS service update still in progress...")
+
+            # if ECS service has been updated, start checking target group targets healthiness
+            if ecs_service_update_finished and not elbv2_deploy_finished:
+                tasks_list_running = ecs.list_tasks(cluster=ecs_cluster_name, serviceName=ecs_service_arn)
+                if len(tasks_list_running['taskArns']) > 0:
+                    ecs_tasks_running = ecs.describe_tasks(cluster=ecs_cluster_name, tasks=tasks_list_running['taskArns'])
+                else:
+                    ecs_tasks_running = {'tasks': []}
+
+                tasks_list_stopped = ecs.list_tasks(cluster=ecs_cluster_name, serviceName=ecs_service_arn, desiredStatus='STOPPED')
+                if len(tasks_list_stopped['taskArns']) > 0:
+                    ecs_tasks_stopped = ecs.describe_tasks(cluster=ecs_cluster_name, tasks=tasks_list_stopped['taskArns'])
+                else:
+                    ecs_tasks_stopped = {'tasks': []}
+
+                tasks = ecs_tasks_running['tasks'] + ecs_tasks_stopped['tasks']
+
+                elb_st = self.get_elbv2_deploy_progress(ecs_service_task_definition_arn, services,
+                                                        tasks, ecs_cluster_name, ecs, elbv2)
+
+                # if number of healthy instances running off the new taskDef is equal to desiredCount
+                # of running containers, wait 5 cycles and finish deploy
+                if elb_st[0] == services['services'][0]['desiredCount']:
+                    deploy_success_count += 1
+                if deploy_success_count > 5:
+                    elbv2_deploy_finished = True
+
+                # see if we've any unhealthy instances, if so increment marker for them; if it reaches
+                # 2 - fail the deploy due to tasks failing healthcheck
+                if elb_st[3] > 0:
+                    deploy_failed_healthcheck += 1
+                if deploy_failed_healthcheck == 2:
+                    raise Exception("Deploy failed!  New containers are failing the load-balancer healthcheck!")
+
+            # if all deploy steps have finished, finish deploy
+            if ecs_service_update_finished and elbv2_deploy_finished:
+                deploy_finished = True
+
+            # check whether deploy hasn't timed out
+            if self.deploy_timed_out(deploy_start_time):
+                raise Exception("Deploy has timed out... Time limit of {} has been reached. Please investigate the cause of this!".format(600))
+
+            time.sleep(15)
 
     def deploy_timed_out(self, start_time, limit=600):
         """Return True/False depending whether time limit has been hit."""
@@ -217,31 +225,35 @@ class Deployment:
         ecs_service_arn = util.terraform_output_filter('ecs_service_arn', output)
         ecs_service_task_definition_arn = util.terraform_output_filter('ecs_service_task_definition_arn', output)
 
-        return (str(ecs_cluster_name), str(ecs_service_arn), str(ecs_service_task_definition_arn))
+        return str(ecs_cluster_name), str(ecs_service_arn), str(ecs_service_task_definition_arn)
 
-    def get_elbv2_deploy_progress(self, task_def_arn, services, tasks_list, tasks, ecs_cluster_name, ecs, elbv2):
-        """Track ELBv2 deploy status."""
-        ecs_container_instances = [task['containerInstanceArn'] for task in tasks['tasks']]
-        describe_target_health = elbv2.describe_target_health(
-            TargetGroupArn=services['services'][0]['loadBalancers'][0]['targetGroupArn'])
+    def get_elbv2_deploy_progress(self, task_def_arn, services, tasks, ecs_cluster_name, ecs, elbv2):
+        """Track ELBv2 deploy status.
+
+        Returns:
+            list: list of int of healthy, initial, draining, unhealthy instances of specific task_arn
+        """
+        ecs_container_instances = [task['containerInstanceArn'] for task in tasks]
+        ecs_container_instances = list(set(ecs_container_instances))  # get only unique instance-ids
+        describe_target_health = elbv2.describe_target_health(TargetGroupArn=services['services'][0]['loadBalancers'][0]['targetGroupArn'])
 
         elbv2_health = {}
-        container_instances = ecs.describe_container_instances(cluster=ecs_cluster_name,
-                                                               containerInstances=ecs_container_instances)
+        container_instances = ecs.describe_container_instances(cluster=ecs_cluster_name, containerInstances=ecs_container_instances)
         for target in describe_target_health['TargetHealthDescriptions']:
             (ecs_instance, port, state) = self.get_ecs_instance_metadata(target, container_instances)
             task_arn = self.get_task_arn(ecs_instance, port, tasks)
 
-            if task_arn not in elbv2_health:
-                elbv2_health[task_arn] = {
-                    'healthy': 0,
-                    'initial': 0,
-                    'draining': 0,
-                    'unhealthy': 0
-                }
+            if task_arn is not None:
+                if task_arn not in elbv2_health:
+                    elbv2_health[task_arn] = {
+                        'healthy': 0,
+                        'initial': 0,
+                        'draining': 0,
+                        'unhealthy': 0
+                    }
 
-            p = elbv2_health[task_arn][target['TargetHealth']['State']]
-            elbv2_health[task_arn][target['TargetHealth']['State']] = p + 1
+                p = elbv2_health[task_arn][target['TargetHealth']['State']]
+                elbv2_health[task_arn][target['TargetHealth']['State']] = p + 1
 
         for task in elbv2_health:
             logger.info("ELB status for {task}  healthy:{h}  initial:{i}  draining:{d}  unhealthy:{u}".format(
@@ -253,35 +265,16 @@ class Deployment:
 
         if task_def_arn in elbv2_health:
             if 'healthy' in elbv2_health[task_def_arn]:
-                return elbv2_health[task_def_arn]['healthy']
+                return [elbv2_health[task_def_arn]['healthy'], elbv2_health[task_def_arn]['initial'],
+                       elbv2_health[task_def_arn]['draining'], elbv2_health[task_def_arn]['unhealthy']]
             else:
-                return 0
+                return [0, 0, 0, 0]
         else:
-            return 0
+            return [0, 0, 0, 0]
 
     def get_ecs_task_from_arn(self, arn):
         """Return ECS task fragment from given arn."""
         return re.search(r'^arn:aws:ecs:.*:[0-9]{12}:task-definition\/(.*)', arn).group(1)
-
-    def get_ecs_deploy_status(self, describe_services, ecs_service_task_definition_arn):
-        """Return True/False depending on ECS deploy status."""
-        ecs_deployments = describe_services['services'][0]['deployments']
-
-        # if number of ECS deployments is 1, deploy has been finished
-        if (len(ecs_deployments) == 1 or self.get_deployment(ecs_deployments, 'PRIMARY', 'runningCount') ==
-                describe_services['services'][0]['desiredCount']):
-            return True
-        else:
-            return False
-
-    def print_ecs_deploy_progress(self, ecs_deployments, stack, headline):
-        """Print progress about ECS container deploy."""
-        logger.info("{headline} task {task}  running:{run}  desired:{des}  pending:{pen}".format(
-                    headline=headline,
-                    task=self.get_ecs_task_from_arn(self.get_deployment(ecs_deployments, stack, 'taskDefinition')),
-                    run=self.get_deployment(ecs_deployments, stack, 'runningCount'),
-                    des=self.get_deployment(ecs_deployments, stack, 'desiredCount'),
-                    pen=self.get_deployment(ecs_deployments, stack, 'pendingCount')))
 
     def get_service_update_progress(self, ecs_service_task_definition_arn, describe_services):
         """Check progress of service update.  Return True if succeeded."""
@@ -294,7 +287,7 @@ class Deployment:
     def get_task_arn(self, container_instance, port, service_tasks):
         """Get task ARN based from a combination of container instance and port."""
         task_definition_arn = None
-        for i in service_tasks['tasks']:
+        for i in service_tasks:
             if 'networkBindings' in i['containers'][0]:
                 host_port = i['containers'][0]['networkBindings'][0]['hostPort']
             else:
@@ -303,10 +296,10 @@ class Deployment:
             if (i['containerInstanceArn'] == container_instance and host_port == port):
                 task_definition_arn = i['taskDefinitionArn']
 
-        if len(task_definition_arn) > 0:
-            return task_definition_arn
-        else:
+        if task_definition_arn == None:
             return None
+        else:
+            return task_definition_arn
 
     def get_ecs_instance_metadata(self, target, describe_container_instances):
         """Return ECS instance metadata including ECS instance ARN.
@@ -321,11 +314,14 @@ class Deployment:
         Returns:
             array - ECS container instance ARN, port, state (healthy, draining etc.)
         """
-        container_instance = [i['containerInstanceArn'] for i in describe_container_instances['containerInstances']
-                              if i['ec2InstanceId'] == target['Target']['Id']][0]
+        container_instance = None
+        for i in describe_container_instances['containerInstances']:
+            if i['ec2InstanceId'] == target['Target']['Id']:
+                container_instance = i['containerInstanceArn']
+
         state = target['TargetHealth']['State']
         port = target['Target']['Port']
-        return (container_instance, port, state)
+        return container_instance, port, state
 
     def get_deployment(self, deployments, status, key):
         """Return relevant key from deployments dictionary, based on status."""
@@ -360,7 +356,7 @@ class Deployment:
             logger.error("Exception caught while trying to get temporary AWS credentials: " + str(e))
             raise
 
-        return (aws_access_key, aws_secret_key, aws_session_token)
+        return aws_access_key, aws_secret_key, aws_session_token
 
     def set_aws(self, aws):
         """Set an AWS session - used to inject dependency in tests."""
