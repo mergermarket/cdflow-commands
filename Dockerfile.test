@@ -1,0 +1,18 @@
+FROM centos:7
+
+RUN mkdir /infra
+WORKDIR /infra
+
+ADD yum.repos.d/docker.repo /etc/yum.repos.d/
+
+RUN yum install -y epel-release && \
+    yum install -y python-pip bash ca-certificates curl docker-engine gawk \
+                   git openssl unzip wget python-devel gcc
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY test_requirements.txt .
+RUN pip install --no-cache-dir -r test_requirements.txt
+
+COPY . .
