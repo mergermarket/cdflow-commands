@@ -123,12 +123,13 @@ class Deployment:
         if self.plan is False:
             terragrunt.run('apply', secrets, self.tfargs)
 
-        # parse / process terraform output; this is needed to monitor deploy progress
-        (ecs_cluster_name, ecs_service_arn, ecs_service_task_definition_arn) = self.parse_terraform_output(json.loads(terragrunt.output()))
-        monitor_deploy = self.monitor_deploy(ecs_cluster_name, ecs_service_arn, ecs_service_task_definition_arn)
-        if monitor_deploy:
-            self.monitor_deploy_progress(self.aws.client('ecs'), self.aws.client('elbv2'), ecs_cluster_name, ecs_service_arn,
-                                         ecs_service_task_definition_arn, deploy_start_time)
+        if self.metadata['TYPE'] in ('docker', 'slug'):
+            # parse / process terraform output; this is needed to monitor deploy progress
+            (ecs_cluster_name, ecs_service_arn, ecs_service_task_definition_arn) = self.parse_terraform_output(json.loads(terragrunt.output()))
+            monitor_deploy = self.monitor_deploy(ecs_cluster_name, ecs_service_arn, ecs_service_task_definition_arn)
+            if monitor_deploy:
+                self.monitor_deploy_progress(self.aws.client('ecs'), self.aws.client('elbv2'), ecs_cluster_name, ecs_service_arn,
+                                             ecs_service_task_definition_arn, deploy_start_time)
 
         # once finished, establish time taken to complete
         deploy_time = time.strftime("%Mm%Ss", time.gmtime(time.time() - deploy_start_time))
