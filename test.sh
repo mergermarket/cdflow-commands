@@ -8,6 +8,7 @@ docker run \
     --name infra-deployer.test \
     --rm \
     -i $(tty -s && echo -t) \
+    -v $(pwd)/.hypothesis/:/infra/.hypothesis/ \
     infra-deployer.test py.test \
         --cov=. \
         --cov-report term-missing \
