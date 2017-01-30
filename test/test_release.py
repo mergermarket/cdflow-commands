@@ -9,7 +9,7 @@ from hypothesis import given, assume, settings
 from hypothesis.strategies import text
 from botocore.exceptions import ClientError
 
-from infra_deployer.release import Release, ReleaseConfig
+from cdflow_commands.release import Release, ReleaseConfig
 
 
 IDENTIFIER_ALPHABET = uppercase + lowercase + digits + '-_'
@@ -40,7 +40,7 @@ class TestRelease(unittest.TestCase):
         config = ReleaseConfig(dev_account_id, 'dummy-account-id', aws_region)
         boto_ecr_client = Mock()
         release = Release(config, boto_ecr_client, component_name)
-        with patch('infra_deployer.release.check_call') as check_call:
+        with patch('cdflow_commands.release.check_call') as check_call:
             release.create()
 
             image_name = '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
@@ -65,7 +65,7 @@ class TestRelease(unittest.TestCase):
             config, self._boto_ecr_client, component_name, version
         )
 
-        with patch('infra_deployer.release.check_call') as check_call:
+        with patch('cdflow_commands.release.check_call') as check_call:
             release.create()
 
             image_name = '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
@@ -106,7 +106,7 @@ class TestRelease(unittest.TestCase):
         config = ReleaseConfig(dev_account_id, 'dummy-account-id', aws_region)
         release = Release(config, boto_ecr_client, component_name, version)
 
-        with patch('infra_deployer.release.check_call') as check_call:
+        with patch('cdflow_commands.release.check_call') as check_call:
             release.create()
 
             boto_ecr_client.describe_repositories.assert_called_once_with(
@@ -158,7 +158,7 @@ class TestRelease(unittest.TestCase):
             config, boto_ecr_client, component_name, version
         )
 
-        with patch('infra_deployer.release.check_call'):
+        with patch('cdflow_commands.release.check_call'):
             release.create()
 
             boto_ecr_client.create_repository.assert_called_once_with(
@@ -195,7 +195,7 @@ class TestRelease(unittest.TestCase):
             config, boto_ecr_client, component_name, version
         )
 
-        with patch('infra_deployer.release.check_call'):
+        with patch('cdflow_commands.release.check_call'):
             self.assertRaises(ClientError, release.create)
 
     @given(text(alphabet=IDENTIFIER_ALPHABET, min_size=8, max_size=16))
@@ -227,7 +227,7 @@ class TestRelease(unittest.TestCase):
             config, boto_ecr_client, component_name, version
         )
 
-        with patch('infra_deployer.release.check_call'):
+        with patch('cdflow_commands.release.check_call'):
             release.create()
 
             boto_ecr_client.set_repository_policy.assert_called_once_with(
