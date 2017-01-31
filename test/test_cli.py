@@ -2,10 +2,45 @@ import unittest
 
 import json
 from datetime import datetime
+from string import letters, digits, printable
 
 from mock import patch, Mock, MagicMock, mock_open
+from hypothesis import given, example
+from hypothesis.strategies import text, composite
 
 from cdflow_commands import cli
+
+
+ROLE_SAFE_ALPHABET = letters + digits + '+=,.@-'
+ROLE_UNSAFE_CHARACTERS = '\/!$%^&*()#'
+ROLE_UNSAFE_ALPHABET = ROLE_SAFE_ALPHABET + ROLE_UNSAFE_CHARACTERS
+
+
+@composite
+def email(draw, min_size=7):
+    min_generated_characters = min_size - 2
+    user_min_characters = int(min_generated_characters / 3)
+    domain_min_characters = int(
+        min_generated_characters - user_min_characters
+    ) / 2
+    tld_min_characters = min_generated_characters - domain_min_characters
+
+    user = draw(text(
+        alphabet=printable,
+        min_size=user_min_characters,
+        max_size=user_min_characters + 40
+    ))
+    domain = draw(text(
+        alphabet=letters + digits + '-',
+        min_size=domain_min_characters,
+        max_size=domain_min_characters + 20
+    ))
+    tld = draw(text(
+        alphabet=letters,
+        min_size=tld_min_characters,
+        max_size=tld_min_characters + 5
+    ))
+    return '{}@{}.{}'.format(user, domain, tld)
 
 
 class TestLoadConfig(unittest.TestCase):
@@ -147,4 +182,89 @@ class TestAssumeRole(unittest.TestCase):
             'dummy-secret-access-key',
             'dummy-session-token',
             'eu-west-12',
+        )
+
+
+class TestGetRoleSessionName(unittest.TestCase):
+
+    @given(text(alphabet=ROLE_SAFE_ALPHABET, min_size=8, max_size=64))
+    def test_get_session_name_from_safe_job_name(self, job_name):
+        env = {
+            'JOB_NAME': job_name
+        }
+        role_session_name = cli.get_role_session_name(env)
+
+        assert role_session_name == job_name
+
+    @given(text(alphabet=ROLE_UNSAFE_ALPHABET, min_size=8, max_size=64))
+    def test_get_session_name_from_unsafe_job_name(self, job_name):
+        env = {
+            'JOB_NAME': job_name
+        }
+        role_session_name = cli.get_role_session_name(env)
+
+        for character in ROLE_UNSAFE_CHARACTERS:
+            assert character not in role_session_name
+
+    @given(text(alphabet=ROLE_UNSAFE_ALPHABET, min_size=8, max_size=100))
+    @example(
+        'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+    )
+    def test_get_session_name_from_unsafe_job_name_truncated(self, job_name):
+        env = {
+            'JOB_NAME': job_name
+        }
+        role_session_name = cli.get_role_session_name(env)
+
+        assert len(role_session_name) <= 64
+
+    @given(text(alphabet=ROLE_SAFE_ALPHABET, min_size=0, max_size=5))
+    def test_user_error_raised_for_too_short_job_name(self, job_name):
+        env = {
+            'JOB_NAME': job_name
+        }
+        self.assertRaises(
+            cli.JobNameTooShortError,
+            cli.get_role_session_name,
+            env
+        )
+
+    @given(email())
+    @example('user@example.co.uk')
+    def test_get_session_name_from_email(self, email):
+        env = {
+            'EMAIL': email
+        }
+        role_session_name = cli.get_role_session_name(env)
+
+        for character in ROLE_UNSAFE_CHARACTERS:
+            assert character not in role_session_name
+
+    @given(email(min_size=100))
+    def test_get_session_name_from_unsafe_email_truncated(self, email):
+        env = {
+            'EMAIL': email
+        }
+        role_session_name = cli.get_role_session_name(env)
+
+        assert len(role_session_name) <= 64
+
+    @given(text(alphabet=letters))
+    @example(r'Abc.example.com')
+    @example(r'john.doe@example..com')
+    def test_invalid_email_address(self, email):
+        env = {
+            'EMAIL': email
+        }
+        self.assertRaises(
+            cli.InvalidEmailError,
+            cli.get_role_session_name,
+            env
+        )
+
+    def test_user_error_when_no_job_name_or_email(self):
+        self.assertRaises(
+            cli.NoJobNameOrEmailError,
+            cli.get_role_session_name,
+            {}
         )
