@@ -1,6 +1,7 @@
 import unittest
 
 import json
+from datetime import datetime
 
 from mock import patch, Mock, MagicMock, mock_open
 
@@ -101,4 +102,49 @@ class TestReleaseCLI(unittest.TestCase):
 
         Release.assert_called_once_with(
             mock_config, mock_ecr_client, component_name, version
+        )
+
+
+class TestAssumeRole(unittest.TestCase):
+
+    @patch('cdflow_commands.cli.Session')
+    def test_role_is_assumed(self, MockSession):
+
+        mock_root_session = Mock()
+        mock_root_session.region_name = 'eu-west-12'
+
+        mock_session = Mock()
+        MockSession.return_value = mock_session
+
+        mock_sts = Mock()
+        mock_sts.assume_role.return_value = {
+            'Credentials': {
+                'AccessKeyId': 'dummy-access-key-id',
+                'SecretAccessKey': 'dummy-secret-access-key',
+                'SessionToken': 'dummy-session-token',
+                'Expiration': datetime(2015, 1, 1)
+            },
+            'AssumedRoleUser': {
+                'AssumedRoleId': 'dummy-assumed-role-id',
+                'Arn': 'dummy-arn'
+            },
+            'PackedPolicySize': 123
+        }
+        mock_root_session.client.return_value = mock_sts
+
+        account_id = 123456789
+        session_name = 'dummy-session-name'
+        session = cli.assume_role(mock_root_session, account_id, session_name)
+        assert session is mock_session
+
+        mock_root_session.client.assert_called_once_with('sts')
+        mock_sts.assume_role.assert_called_once_with(
+            RoleArn='arn:aws:iam::{}:role/admin'.format(account_id),
+            RoleSessionName=session_name,
+        )
+        MockSession.assert_called_once_with(
+            'dummy-access-key-id',
+            'dummy-secret-access-key',
+            'dummy-session-token',
+            'eu-west-12',
         )

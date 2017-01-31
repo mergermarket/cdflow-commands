@@ -13,6 +13,7 @@ Options:
 import json
 from collections import namedtuple
 
+from boto3.session import Session
 from docopt import docopt
 
 from cdflow_commands.release import Release, ReleaseConfig
@@ -39,8 +40,18 @@ def load_service_metadata():
         )
 
 
-def assume_role():
-    pass
+def assume_role(root_session, acccount_id, session_name):
+    sts = root_session.client('sts')
+    response = sts.assume_role(
+        RoleArn='arn:aws:iam::{}:role/admin'.format(acccount_id),
+        RoleSessionName=session_name,
+    )
+    return Session(
+        response['Credentials']['AccessKeyId'],
+        response['Credentials']['SecretAccessKey'],
+        response['Credentials']['SessionToken'],
+        root_session.region_name,
+    )
 
 
 def load_global_config(account_prefix, aws_region):
