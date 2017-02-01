@@ -24,7 +24,7 @@ class Release(object):
         self._version = version
 
     def create(self):
-        check_call(['docker', 'build', '-t', self._image_name])
+        check_call(['docker', 'build', '-t', self._image_name, '.'])
 
         if self._version:
             self._ensure_ecr_repo_exists()

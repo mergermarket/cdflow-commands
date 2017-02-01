@@ -97,5 +97,5 @@ class TestReleaseCLI(unittest.TestCase):
             version
         )
 
-        check_call.assert_any_call(['docker', 'build', '-t', image_name])
+        check_call.assert_any_call(['docker', 'build', '-t', image_name, '.'])
         check_call.assert_any_call(['docker', 'push',  image_name])

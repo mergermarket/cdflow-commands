@@ -51,7 +51,7 @@ class TestRelease(unittest.TestCase):
             )
 
             check_call.assert_called_once_with(
-                ['docker', 'build', '-t', image_name]
+                ['docker', 'build', '-t', image_name, '.']
             )
 
     @given(text(alphabet=IDENTIFIER_ALPHABET, min_size=1, max_size=12))
@@ -76,7 +76,7 @@ class TestRelease(unittest.TestCase):
             )
 
             check_call.assert_any_call(
-                ['docker', 'build', '-t', image_name]
+                ['docker', 'build', '-t', image_name, '.']
             )
 
     @given(text(alphabet=IDENTIFIER_ALPHABET + ':/', min_size=8, max_size=16))
