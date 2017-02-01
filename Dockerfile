@@ -25,4 +25,8 @@ RUN yum install -y epel-release && \
     chmod +x /usr/local/bin/docker-compose && \
     yum group remove "Development Tools" -y && yum clean all
 
-ADD . /infra
+ADD . /cdflow
+
+ENV PYTHONPATH=/cdflow
+
+ENTRYPOINT ["python", "-m", "cdflow_commands"]
