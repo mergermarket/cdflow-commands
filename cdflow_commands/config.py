@@ -1,23 +1,8 @@
-'''
-CDFlow Commands
-
-Commands for managing the software lifecycle.
-
-Usage:
-    cdflow-commands release [<version>] [options]
-
-Options:
-    -c <component_name>, --component <component_name>
-
-'''
 import json
 from collections import namedtuple
 from re import sub, match, DOTALL
 
 from boto3.session import Session
-from docopt import docopt
-
-from cdflow_commands.release import Release, ReleaseConfig
 
 
 class UserError(Exception):
@@ -106,21 +91,3 @@ def get_role_session_name(env):
     else:
         raise NoJobNameOrEmailError()
     return sub(r'[^\w+=,.@-]+', '-', unsafe_session_name)[:64]
-
-
-def run(argv):
-    args = docopt(__doc__, argv=argv)
-
-    if args['release']:
-        global_config = load_global_config()
-        boto_session = assume_role()
-        ecr_client = boto_session.client('ecr')
-        release_config = ReleaseConfig(
-            global_config.dev_account_id,
-            global_config.prod_account_id,
-            global_config.aws_region
-        )
-        release = Release(
-            release_config, ecr_client, args['--component'], args['<version>']
-        )
-        release.create()
