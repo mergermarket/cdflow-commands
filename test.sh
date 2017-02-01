@@ -10,6 +10,7 @@ docker run \
     -i $(tty -s && echo -t) \
     -v $(pwd)/.hypothesis/:/infra/.hypothesis/ \
     cdflow-commands.test py.test \
+        -n auto \
         --cov=. \
         --cov-report term-missing \
         "$@"
