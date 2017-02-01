@@ -6,22 +6,22 @@ from boto3.session import Session
 
 
 class UserError(Exception):
-    pass
+    _message = 'User error'
+
+    def __repr__(self):
+        return self._message
 
 
 class JobNameTooShortError(UserError):
-    def __str__(self):
-        return 'JOB_NAME must be at least 6 characters'
+    _message = 'JOB_NAME must be at least 6 characters'
 
 
 class InvalidEmailError(UserError):
-    def __str__(self):
-        return 'EMAIL does not contain a valid email address'
+    _message = 'EMAIL does not contain a valid email address'
 
 
 class NoJobNameOrEmailError(UserError):
-    def __str__(self):
-        return 'JOB_NAME or EMAIL must be set'
+    _message = 'JOB_NAME or EMAIL must be set'
 
 
 Metadata = namedtuple(
