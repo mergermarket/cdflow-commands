@@ -19,7 +19,8 @@ from cdflow_commands.config import (
     load_service_metadata,
     load_global_config,
     get_role_session_name,
-    assume_role
+    assume_role,
+    get_component_name
 )
 from cdflow_commands.release import Release, ReleaseConfig
 
@@ -44,7 +45,10 @@ def run(argv):
             global_config.prod_account_id,
             metadata.aws_region
         )
+
+        component_name = get_component_name(args['--component'])
+
         release = Release(
-            release_config, ecr_client, args['--component'], args['<version>']
+            release_config, ecr_client, component_name, args['<version>']
         )
         release.create()
