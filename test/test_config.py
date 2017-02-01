@@ -231,3 +231,57 @@ class TestGetRoleSessionName(unittest.TestCase):
             config.get_role_session_name,
             {}
         )
+
+
+class TestGetComponentName(unittest.TestCase):
+
+    def test_component_passed_as_argument(self):
+        component_name = config.get_component_name('dummy-name')
+        assert component_name == 'dummy-name'
+
+    @given(text(alphabet=letters + digits + '-._', min_size=1, max_size=100))
+    def test_component_not_passed_as_argument(self, component_name):
+        with patch('cdflow_commands.config.check_output') as check_output:
+            check_output.return_value = 'git@github.com:org/{}.git\n'.format(
+                component_name
+            )
+            extraced_component_name = config.get_component_name(None)
+
+            assert extraced_component_name == component_name
+
+    @given(text(alphabet=letters + digits + '-._', min_size=1, max_size=100))
+    def test_component_not_passed_as_argument_without_extension(
+        self, component_name
+    ):
+        with patch('cdflow_commands.config.check_output') as check_output:
+            check_output.return_value = 'git@github.com:org/{}\n'.format(
+                component_name
+            )
+            extraced_component_name = config.get_component_name(None)
+
+            assert extraced_component_name == component_name
+
+    @given(text(alphabet=letters + digits + '-._', min_size=1, max_size=100))
+    def test_component_not_passed_as_argument_with_https_origin(
+        self, component_name
+    ):
+        with patch('cdflow_commands.config.check_output') as check_output:
+            repo_template = 'https://github.com/org/{}.git\n'
+            check_output.return_value = repo_template.format(
+                component_name
+            )
+            extraced_component_name = config.get_component_name(None)
+
+            assert extraced_component_name == component_name
+
+    @given(text(alphabet=letters + digits + '-._', min_size=1, max_size=100))
+    def test_component_not_passed_as_argument_with_https_without_extension(
+        self, component_name
+    ):
+        with patch('cdflow_commands.config.check_output') as check_output:
+            check_output.return_value = 'https://github.com/org/{}\n'.format(
+                component_name
+            )
+            extraced_component_name = config.get_component_name(None)
+
+            assert extraced_component_name == component_name

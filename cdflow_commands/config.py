@@ -1,6 +1,7 @@
 import json
 from collections import namedtuple
 from re import sub, match, DOTALL
+from subprocess import check_output
 
 from boto3.session import Session
 
@@ -91,3 +92,13 @@ def get_role_session_name(env):
     else:
         raise NoJobNameOrEmailError()
     return sub(r'[^\w+=,.@-]+', '-', unsafe_session_name)[:64]
+
+
+def get_component_name(component_name):
+    if component_name:
+        return component_name
+    remote = check_output(['git', 'config', 'remote.origin.url'])
+    name = remote.strip().split('/')[-1]
+    if name.endswith('.git'):
+        return name[:-4]
+    return name
