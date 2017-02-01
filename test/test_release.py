@@ -83,7 +83,7 @@ class TestRelease(unittest.TestCase):
     @given(text(alphabet=IDENTIFIER_ALPHABET, min_size=8, max_size=16))
     @given(text(alphabet=IDENTIFIER_ALPHABET, min_size=8, max_size=16))
     @settings(max_examples=10)
-    def test_build_with_version_pushes_to_repo(
+    def test_build_with_version_pushes_to_ecr_repo(
         self, proxy_endpoint, username, password
     ):
         dev_account_id = 'dummy-account-id'
@@ -132,7 +132,7 @@ class TestRelease(unittest.TestCase):
             ])
 
     @given(text(alphabet=IDENTIFIER_ALPHABET, min_size=8, max_size=16))
-    def test_repo_created_when_it_does_not_exist(self, component_name):
+    def test_ecr_repo_created_when_it_does_not_exist(self, component_name):
         dev_account_id = 'dummy-account-id'
         aws_region = 'dummy-region'
         version = '1.2.3'
