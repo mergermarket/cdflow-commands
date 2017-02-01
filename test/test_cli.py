@@ -53,7 +53,7 @@ class TestReleaseCLI(unittest.TestCase):
         cliSession.return_value = mock_root_session
 
         mock_ecr_client = Mock()
-        mock_ecr_client.get_authorization_details.return_value = {
+        mock_ecr_client.get_authorization_token.return_value = {
             'authorizationData': [
                 {
                     'authorizationToken': 'dXNlcm5hbWU6cGFzc3dvcmQ=',

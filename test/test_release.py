@@ -19,7 +19,7 @@ class TestRelease(unittest.TestCase):
 
     def setUp(self):
         self._boto_ecr_client = Mock()
-        self._boto_ecr_client.get_authorization_details.return_value = {
+        self._boto_ecr_client.get_authorization_token.return_value = {
             'authorizationData': [
                 {
                     'authorizationToken': b64encode('{}:{}'.format(
@@ -92,7 +92,7 @@ class TestRelease(unittest.TestCase):
         version = '1.2.3'
 
         boto_ecr_client = Mock()
-        boto_ecr_client.get_authorization_details.return_value = {
+        boto_ecr_client.get_authorization_token.return_value = {
             'authorizationData': [
                 {
                     'authorizationToken': b64encode('{}:{}'.format(
@@ -113,7 +113,7 @@ class TestRelease(unittest.TestCase):
                 repositoryNames=[component_name]
             )
 
-            boto_ecr_client.get_authorization_details.assert_called_once()
+            boto_ecr_client.get_authorization_token.assert_called_once()
 
             check_call.assert_any_call([
                 'docker', 'login',
@@ -138,7 +138,7 @@ class TestRelease(unittest.TestCase):
         version = '1.2.3'
 
         boto_ecr_client = Mock()
-        boto_ecr_client.get_authorization_details.return_value = {
+        boto_ecr_client.get_authorization_token.return_value = {
             'authorizationData': [
                 {
                     'authorizationToken': b64encode('{}:{}'.format(
@@ -175,7 +175,7 @@ class TestRelease(unittest.TestCase):
         version = '1.2.3'
 
         boto_ecr_client = Mock()
-        boto_ecr_client.get_authorization_details.return_value = {
+        boto_ecr_client.get_authorization_token.return_value = {
             'authorizationData': [
                 {
                     'authorizationToken': b64encode('{}:{}'.format(
@@ -207,7 +207,7 @@ class TestRelease(unittest.TestCase):
         version = '1.2.3'
 
         boto_ecr_client = Mock()
-        boto_ecr_client.get_authorization_details.return_value = {
+        boto_ecr_client.get_authorization_token.return_value = {
             'authorizationData': [
                 {
                     'authorizationToken': b64encode('{}:{}'.format(

@@ -74,7 +74,7 @@ class Release(object):
         )
 
     def _docker_login(self):
-        response = self._boto_ecr_client.get_authorization_details()
+        response = self._boto_ecr_client.get_authorization_token()
 
         username, password = b64decode(
             response['authorizationData'][0]['authorizationToken']
