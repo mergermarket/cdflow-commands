@@ -3,7 +3,7 @@ from mock import patch
 from string import printable
 
 from hypothesis import given
-from hypothesis.strategies import text, booleans, fixed_dictionaries
+from hypothesis.strategies import text, fixed_dictionaries
 from boto3 import Session
 from mock import ANY
 
@@ -17,16 +17,15 @@ class TestDeploy(unittest.TestCase):
 
     def setUp(self):
         # Given
-        session = Session(
+        boto_session = Session(
             'dummy-access-key', 'dummy-secreet-access-key',
             'dummy-session-token', 'eu-west-1'
         )
         self._deploy_config = DeployConfig(
-            'dummy-account-prefix', 'dummy-team', 'dummy-account-id',
-            False
+            'dummy-account-prefix', 'dummy-team', 'dummy-account-id'
         )
         self._deploy = Deploy(
-            session, 'dummy-component', 'dummy-env',
+            boto_session, 'dummy-component', 'dummy-env',
             'dummy-version', self._deploy_config
         )
 
@@ -70,13 +69,13 @@ class TestDeploy(unittest.TestCase):
         self, credentials
     ):
         # Given
-        session = Session(
+        boto_session = Session(
             credentials['access_key_id'],
             credentials['secret_access_key'],
             credentials['session_token'],
             'eu-west-10'
         )
-        deploy = Deploy(session, ANY, ANY, ANY, self._deploy_config)
+        deploy = Deploy(boto_session, ANY, ANY, ANY, self._deploy_config)
 
         with patch('cdflow_commands.deploy.check_call') as check_call:
             # When
@@ -103,7 +102,6 @@ class TestDeploy(unittest.TestCase):
         'account_prefix': text(alphabet=printable, min_size=2, max_size=10),
         'team': text(alphabet=printable, min_size=2, max_size=20),
         'account_id': text(alphabet=printable, min_size=12, max_size=12),
-        'is_prod': booleans(),
         'aws_region': text(alphabet=printable, min_size=5, max_size=12),
         'component_name': text(alphabet=printable, min_size=2, max_size=30),
         'environment_name': text(alphabet=printable, min_size=2, max_size=10),
@@ -116,15 +114,14 @@ class TestDeploy(unittest.TestCase):
         deploy_config = DeployConfig(
             data['account_prefix'],
             data['team'],
-            data['account_id'],
-            data['is_prod']
+            data['account_id']
         )
-        session = Session(
+        boto_session = Session(
             'dummy-access-key-id', 'dummy-secret-access-key', 'dummy-token',
             data['aws_region']
         )
         deploy = Deploy(
-            session,
+            boto_session,
             data['component_name'],
             data['environment_name'],
             data['version'],

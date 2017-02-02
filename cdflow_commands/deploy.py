@@ -5,8 +5,7 @@ from collections import namedtuple
 DeployConfig = namedtuple('DeployConfig', [
     'account_prefix',
     'team',
-    'account_id',
-    'is_prod'
+    'account_id'
 ])
 
 
@@ -17,6 +16,7 @@ class Deploy(object):
         version, config
     ):
         self._boto_session = boto_session
+        self._aws_region = boto_session.region_name
         self._component_name = component_name
         self._environment_name = environment_name
         self._version = version
@@ -32,9 +32,6 @@ class Deploy(object):
         )
 
     @property
-    def _aws_region(self):
-        return self._boto_session.region_name
-
     def _terragrunt_parameters(self):
         return [
             '-var', 'component={}'.format(self._component_name),
@@ -46,18 +43,20 @@ class Deploy(object):
         ]
 
     def run(self):
+        check_call(['terraform', 'get', 'infra'])
+
         credentials = self._boto_session.get_credentials()
         env = {
             'AWS_ACCESS_KEY_ID': credentials.access_key,
             'AWS_SECRET_ACCESS_KEY': credentials.secret_key,
             'AWS_SESSION_TOKEN': credentials.token
         }
-        check_call(['terraform', 'get', 'infra'])
+
         check_call(
-            ['terragrunt', 'plan', 'infra'] + self._terragrunt_parameters(),
+            ['terragrunt', 'plan', 'infra'] + self._terragrunt_parameters,
             env=env
         )
         check_call(
-            ['terragrunt', 'apply', 'infra'] + self._terragrunt_parameters(),
+            ['terragrunt', 'apply', 'infra'] + self._terragrunt_parameters,
             env=env
         )
