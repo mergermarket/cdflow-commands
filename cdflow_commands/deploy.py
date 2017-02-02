@@ -3,9 +3,9 @@ from collections import namedtuple
 
 
 DeployConfig = namedtuple('DeployConfig', [
-    'account_prefix',
     'team',
-    'account_id'
+    'account_id',
+    'platform_config_file'
 ])
 
 
@@ -20,12 +20,14 @@ class Deploy(object):
         self._component_name = component_name
         self._environment_name = environment_name
         self._version = version
-        self._config = config
+        self._team = config.team
+        self._account_id = config.account_id
+        self._platform_config_file = config.platform_config_file
 
     @property
     def _image_name(self):
         return '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
-            self._config.account_id,
+            self._account_id,
             self._aws_region,
             self._component_name,
             self._version
@@ -38,8 +40,9 @@ class Deploy(object):
             '-var', 'aws_region={}'.format(self._aws_region),
             '-var', 'env={}'.format(self._environment_name),
             '-var', 'image={}'.format(self._image_name),
-            '-var', 'team={}'.format(self._config.team),
-            '-var', 'version={}'.format(self._version)
+            '-var', 'team={}'.format(self._team),
+            '-var', 'version={}'.format(self._version),
+            '-var-file', self._platform_config_file
         ]
 
     def run(self):

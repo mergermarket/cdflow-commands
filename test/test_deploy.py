@@ -10,7 +10,7 @@ from mock import ANY
 from cdflow_commands.deploy import Deploy, DeployConfig
 
 
-IGNORED_TERRAGRUNT_PARAMS = [ANY] * 12
+IGNORED_TERRAGRUNT_PARAMS = [ANY] * 14
 
 
 class TestDeploy(unittest.TestCase):
@@ -22,7 +22,7 @@ class TestDeploy(unittest.TestCase):
             'dummy-session-token', 'eu-west-1'
         )
         self._deploy_config = DeployConfig(
-            'dummy-account-prefix', 'dummy-team', 'dummy-account-id'
+            'dummy-team', 'dummy-account-id', 'dummy-platform-config-file'
         )
         self._deploy = Deploy(
             boto_session, 'dummy-component', 'dummy-env',
@@ -61,7 +61,7 @@ class TestDeploy(unittest.TestCase):
         'secret_access_key': text(
             alphabet=printable, min_size=40, max_size=40
         ),
-        'session_token': text(alphabet=printable, min_size=400, max_size=500)
+        'session_token': text(alphabet=printable, min_size=20, max_size=20)
     })
 
     @given(credentials)
@@ -99,22 +99,24 @@ class TestDeploy(unittest.TestCase):
             )
 
     deploy_data = fixed_dictionaries({
-        'account_prefix': text(alphabet=printable, min_size=2, max_size=10),
         'team': text(alphabet=printable, min_size=2, max_size=20),
         'account_id': text(alphabet=printable, min_size=12, max_size=12),
         'aws_region': text(alphabet=printable, min_size=5, max_size=12),
         'component_name': text(alphabet=printable, min_size=2, max_size=30),
         'environment_name': text(alphabet=printable, min_size=2, max_size=10),
-        'version': text(alphabet=printable, min_size=1, max_size=20)
+        'version': text(alphabet=printable, min_size=1, max_size=20),
+        'platform_config_file': text(
+            alphabet=printable, min_size=10, max_size=30
+        ),
     })
 
     @given(deploy_data)
     def test_terragrunt_gets_all_parameters(self, data):
         # Given
         deploy_config = DeployConfig(
-            data['account_prefix'],
             data['team'],
-            data['account_id']
+            data['account_id'],
+            data['platform_config_file']
         )
         boto_session = Session(
             'dummy-access-key-id', 'dummy-secret-access-key', 'dummy-token',
@@ -144,7 +146,8 @@ class TestDeploy(unittest.TestCase):
                 '-var', 'env={}'.format(data['environment_name']),
                 '-var', 'image={}'.format(image_name),
                 '-var', 'team={}'.format(data['team']),
-                '-var', 'version={}'.format(data['version'])
+                '-var', 'version={}'.format(data['version']),
+                '-var-file', data['platform_config_file']
             ]
             check_call.assert_any_call(
                 ['terragrunt', 'plan', 'infra'] + args,
