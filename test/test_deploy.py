@@ -58,11 +58,11 @@ class TestDeploy(unittest.TestCase):
         )
 
     credentials = fixed_dictionaries({
-        'access_key_id': text(alphabet=printable, min_size=12, max_size=12),
+        'access_key_id': text(alphabet=printable, min_size=20, max_size=20),
         'secret_access_key': text(
-            alphabet=printable, min_size=12, max_size=12
+            alphabet=printable, min_size=40, max_size=40
         ),
-        'session_token': text(alphabet=printable, min_size=12, max_size=12)
+        'session_token': text(alphabet=printable, min_size=400, max_size=500)
     })
 
     @given(credentials)
@@ -100,14 +100,14 @@ class TestDeploy(unittest.TestCase):
             )
 
     deploy_data = fixed_dictionaries({
-        'account_prefix': text(alphabet=printable, min_size=12, max_size=12),
-        'team': text(alphabet=printable, min_size=12, max_size=12),
+        'account_prefix': text(alphabet=printable, min_size=2, max_size=10),
+        'team': text(alphabet=printable, min_size=2, max_size=20),
         'account_id': text(alphabet=printable, min_size=12, max_size=12),
         'is_prod': booleans(),
-        'aws_region': text(alphabet=printable, min_size=12, max_size=12),
-        'component_name': text(alphabet=printable, min_size=12, max_size=12),
-        'environment_name': text(alphabet=printable, min_size=12, max_size=12),
-        'version': text(alphabet=printable, min_size=12, max_size=12)
+        'aws_region': text(alphabet=printable, min_size=5, max_size=12),
+        'component_name': text(alphabet=printable, min_size=2, max_size=30),
+        'environment_name': text(alphabet=printable, min_size=2, max_size=10),
+        'version': text(alphabet=printable, min_size=1, max_size=20)
     })
 
     @given(deploy_data)
