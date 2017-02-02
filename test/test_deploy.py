@@ -10,6 +10,9 @@ from mock import ANY
 from cdflow_commands.deploy import Deploy, DeployConfig
 
 
+IGNORED_TERRAGRUNT_PARAMS = [ANY] * 12
+
+
 class TestDeploy(unittest.TestCase):
 
     def setUp(self):
@@ -40,7 +43,7 @@ class TestDeploy(unittest.TestCase):
         self._deploy.run()
         # Then
         check_call.assert_any_call(
-            ['terragrunt', 'plan', 'infra'] + [ANY] * 12,
+            ['terragrunt', 'plan', 'infra'] + IGNORED_TERRAGRUNT_PARAMS,
             env=ANY
         )
 
@@ -50,7 +53,7 @@ class TestDeploy(unittest.TestCase):
         self._deploy.run()
         # Then
         check_call.assert_any_call(
-            ['terragrunt', 'apply', 'infra'] + [ANY] * 12,
+            ['terragrunt', 'apply', 'infra'] + IGNORED_TERRAGRUNT_PARAMS,
             env=ANY
         )
 
@@ -80,7 +83,7 @@ class TestDeploy(unittest.TestCase):
             deploy.run()
             # Then
             check_call.assert_any_call(
-                ['terragrunt', 'plan', 'infra'] + [ANY] * 12,
+                ['terragrunt', 'plan', 'infra'] + IGNORED_TERRAGRUNT_PARAMS,
                 env={
                     'AWS_ACCESS_KEY_ID': credentials['access_key_id'],
                     'AWS_SECRET_ACCESS_KEY': credentials['secret_access_key'],
@@ -88,7 +91,7 @@ class TestDeploy(unittest.TestCase):
                 }
             )
             check_call.assert_any_call(
-                ['terragrunt', 'apply', 'infra'] + [ANY] * 12,
+                ['terragrunt', 'apply', 'infra'] + IGNORED_TERRAGRUNT_PARAMS,
                 env={
                     'AWS_ACCESS_KEY_ID': credentials['access_key_id'],
                     'AWS_SECRET_ACCESS_KEY': credentials['secret_access_key'],
