@@ -49,7 +49,10 @@ class TestDeploy(unittest.TestCase):
         # When
         self._deploy.run()
         # Then
-        check_call.assert_any_call(['terragrunt', 'apply', 'infra'], env=ANY)
+        check_call.assert_any_call(
+            ['terragrunt', 'apply', 'infra'] + [ANY] * 12,
+            env=ANY
+        )
 
     credentials = fixed_dictionaries({
         'access_key_id': text(alphabet=printable, min_size=12, max_size=12),
@@ -84,11 +87,14 @@ class TestDeploy(unittest.TestCase):
                     'AWS_SESSION_TOKEN': credentials['session_token']
                 }
             )
-            check_call.assert_any_call(['terragrunt', 'apply', 'infra'], env={
-                'AWS_ACCESS_KEY_ID': credentials['access_key_id'],
-                'AWS_SECRET_ACCESS_KEY': credentials['secret_access_key'],
-                'AWS_SESSION_TOKEN': credentials['session_token']
-            })
+            check_call.assert_any_call(
+                ['terragrunt', 'apply', 'infra'] + [ANY] * 12,
+                env={
+                    'AWS_ACCESS_KEY_ID': credentials['access_key_id'],
+                    'AWS_SECRET_ACCESS_KEY': credentials['secret_access_key'],
+                    'AWS_SESSION_TOKEN': credentials['session_token']
+                }
+            )
 
     deploy_data = fixed_dictionaries({
         'account_prefix': text(alphabet=printable, min_size=12, max_size=12),
@@ -132,15 +138,19 @@ class TestDeploy(unittest.TestCase):
         with patch('cdflow_commands.deploy.check_call') as check_call:
             deploy.run()
             # Then
+            args = [
+                '-var', 'component={}'.format(data['component_name']),
+                '-var', 'aws_region={}'.format(data['aws_region']),
+                '-var', 'env={}'.format(data['environment_name']),
+                '-var', 'image={}'.format(image_name),
+                '-var', 'team={}'.format(data['team']),
+                '-var', 'version={}'.format(data['version'])
+            ]
             check_call.assert_any_call(
-                [
-                    'terragrunt', 'plan', 'infra',
-                    '-var', 'component={}'.format(data['component_name']),
-                    '-var', 'aws_region={}'.format(data['aws_region']),
-                    '-var', 'env={}'.format(data['environment_name']),
-                    '-var', 'image={}'.format(image_name),
-                    '-var', 'team={}'.format(data['team']),
-                    '-var', 'version={}'.format(data['version'])
-                ],
+                ['terragrunt', 'plan', 'infra'] + args,
+                env=ANY
+            )
+            check_call.assert_any_call(
+                ['terragrunt', 'apply', 'infra'] + args,
                 env=ANY
             )
