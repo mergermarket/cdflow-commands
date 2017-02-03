@@ -1,11 +1,12 @@
 import unittest
 from mock import patch
 from string import printable
+from textwrap import dedent
 
 from hypothesis import given
 from hypothesis.strategies import text, fixed_dictionaries
 from boto3 import Session
-from mock import ANY
+from mock import ANY, mock_open
 
 from cdflow_commands.deploy import Deploy, DeployConfig
 
@@ -22,7 +23,8 @@ class TestDeploy(unittest.TestCase):
             'dummy-session-token', 'eu-west-1'
         )
         self._deploy_config = DeployConfig(
-            'dummy-team', 'dummy-account-id', 'dummy-platform-config-file'
+            'dummy-team', 'dummy-account-id', 'dummy-platform-config-file',
+            'dummy-terragrunt_bucket_name'
         )
         self._deploy = Deploy(
             boto_session, 'dummy-component', 'dummy-env',
@@ -116,7 +118,8 @@ class TestDeploy(unittest.TestCase):
         deploy_config = DeployConfig(
             data['team'],
             data['account_id'],
-            data['platform_config_file']
+            data['platform_config_file'],
+            ANY
         )
         boto_session = Session(
             'dummy-access-key-id', 'dummy-secret-access-key', 'dummy-token',
@@ -157,3 +160,73 @@ class TestDeploy(unittest.TestCase):
                 ['terragrunt', 'apply', 'infra'] + args,
                 env=ANY
             )
+
+    terragrunt_config_params = fixed_dictionaries({
+        'environment_name': text(alphabet=printable, min_size=2, max_size=10),
+        'component_name': text(alphabet=printable, min_size=2, max_size=30),
+        'aws_region': text(alphabet=printable, min_size=2, max_size=10),
+        'bucket': text(alphabet=printable, min_size=2, max_size=20)
+    })
+
+    @given(terragrunt_config_params)
+    def test_terragrunt_config_written(self, terragrunt_config_params):
+        # Given
+        boto_session = Session(
+            'dummy-access-key-id',
+            'dummy-secret-access-key',
+            'dummy-token',
+            terragrunt_config_params['aws_region']
+        )
+        deploy_config = DeployConfig(
+            'dummy-team',
+            'dummy-account_id',
+            'dummy-platform_config_file',
+            terragrunt_config_params['bucket']
+        )
+        deploy = Deploy(
+            boto_session, terragrunt_config_params['component_name'],
+            terragrunt_config_params['environment_name'], ANY, deploy_config
+        )
+
+        with patch(
+            'cdflow_commands.deploy.open', mock_open()
+        ) as mocked_open, patch(
+            'cdflow_commands.deploy.check_call'
+        ):
+            # When
+            deploy.run()
+
+            # Then
+            mocked_open.assert_called_once_with('.terragrunt', 'w')
+            expected_config_template = dedent('''
+                lock = {{
+                    backend = "dynamodb"
+                    config {{
+                        state_file_id = "{state_file_id}"
+                        aws_region = "{aws_region}"
+                        table_name = "terragrunt_locks"
+                        max_lock_retries = 360
+                    }}
+                }}
+                remote_state = {{
+                    backend = "s3"
+                    config {{
+                        encrypt = "true"
+                        bucket = "{bucket}"
+                        key = "{env_name}/{component_name}/terraform.tfstate"
+                        region = "{aws_region}"
+                    }}
+                }}
+            ''').strip() + '\n'
+            state_file_id = '{}-{}'.format(
+                terragrunt_config_params['environment_name'],
+                terragrunt_config_params['component_name']
+            )
+            expected_config = expected_config_template.format(
+                state_file_id=state_file_id,
+                aws_region=terragrunt_config_params['aws_region'],
+                bucket=terragrunt_config_params['bucket'],
+                env_name=terragrunt_config_params['environment_name'],
+                component_name=terragrunt_config_params['component_name']
+            )
+            mocked_open().write.assert_called_once_with(expected_config)
