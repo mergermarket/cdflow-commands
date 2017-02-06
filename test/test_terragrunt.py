@@ -1,15 +1,18 @@
 import unittest
 
-from mock import Mock
+from mock import Mock, patch, mock_open
 from re import match
+from string import printable
+from textwrap import dedent
 
 from hypothesis import given
-from hypothesis.strategies import text
+from hypothesis.strategies import text, fixed_dictionaries
 
 from botocore.exceptions import ClientError
 
-from cdflow_commands import terragrunt
-from cdflow_commands.terragrunt import S3BucketFactory
+from cdflow_commands.terragrunt import (
+    S3BucketFactory, TAG_NAME, TAG_VALUE, write_terragrunt_config
+)
 
 
 NEW_BUCKET_PATTERN = r'^cdflow-tfstate-[a-z0-9]+$'
@@ -33,8 +36,8 @@ class TestS3BucketFactory(unittest.TestCase):
         s3_client.get_bucket_tagging.return_value = {
             'TagSet': [
                 {
-                    'Key': terragrunt.TAG_NAME,
-                    'Value': terragrunt.TAG_VALUE,
+                    'Key': TAG_NAME,
+                    'Value': TAG_VALUE,
                 }
             ]
         }
@@ -69,8 +72,8 @@ class TestS3BucketFactory(unittest.TestCase):
         s3_client.get_bucket_tagging.return_value = {
             'TagSet': [
                 {
-                    'Key': terragrunt.TAG_NAME,
-                    'Value': terragrunt.TAG_VALUE,
+                    'Key': TAG_NAME,
+                    'Value': TAG_VALUE,
                 }
             ]
         }
@@ -100,8 +103,8 @@ class TestS3BucketFactory(unittest.TestCase):
                 return {
                     'TagSet': [
                         {
-                            'Key': terragrunt.TAG_NAME,
-                            'Value': terragrunt.TAG_VALUE,
+                            'Key': TAG_NAME,
+                            'Value': TAG_VALUE,
                         }
                     ]
                 }
@@ -146,8 +149,8 @@ class TestS3BucketFactory(unittest.TestCase):
             Tagging={
                 'TagSet': [
                     {
-                        'Key': terragrunt.TAG_NAME,
-                        'Value': terragrunt.TAG_VALUE,
+                        'Key': TAG_NAME,
+                        'Value': TAG_VALUE,
                     }
                 ]
             }
@@ -223,3 +226,63 @@ class TestS3BucketFactory(unittest.TestCase):
         assert match(NEW_BUCKET_PATTERN, second_bucket_param)
         assert first_bucket_param != bucket_name
         assert second_bucket_param == bucket_name
+
+
+class TestTerragruntConfig(unittest.TestCase):
+
+    terragrunt_config_params = fixed_dictionaries({
+        'environment_name': text(alphabet=printable, min_size=2, max_size=10),
+        'component_name': text(alphabet=printable, min_size=2, max_size=30),
+        'aws_region': text(alphabet=printable, min_size=2, max_size=10),
+        'bucket_name': text(alphabet=printable, min_size=2, max_size=10),
+    })
+
+    @given(terragrunt_config_params)
+    def test_terragrunt_config_written(self, terragrunt_config_params):
+        # Given
+        with patch(
+            'cdflow_commands.terragrunt.open', mock_open()
+        ) as mocked_open:
+            # When
+            write_terragrunt_config(
+                terragrunt_config_params['aws_region'],
+                terragrunt_config_params['bucket_name'],
+                terragrunt_config_params['environment_name'],
+                terragrunt_config_params['component_name'],
+            )
+
+            # Then
+            mocked_open.assert_called_once_with('.terragrunt', 'w')
+            expected_config_template = dedent('''
+                lock = {{
+                    backend = "dynamodb"
+                    config {{
+                        state_file_id = "{state_file_id}"
+                        aws_region = "{aws_region}"
+                        table_name = "terragrunt_locks"
+                        max_lock_retries = 360
+                    }}
+                }}
+                remote_state = {{
+                    backend = "s3"
+                    config {{
+                        encrypt = "true"
+                        bucket = "{bucket_name}"
+                        key = "{key_prefix}/terraform.tfstate"
+                        region = "{aws_region}"
+                    }}
+                }}
+            ''').strip() + '\n'
+            expected_config = expected_config_template.format(
+                state_file_id='-'.join((
+                    terragrunt_config_params['environment_name'],
+                    terragrunt_config_params['component_name']
+                )),
+                key_prefix='/'.join((
+                    terragrunt_config_params['environment_name'],
+                    terragrunt_config_params['component_name']
+                )),
+                aws_region=terragrunt_config_params['aws_region'],
+                bucket_name=terragrunt_config_params['bucket_name'],
+            )
+            mocked_open().write.assert_called_once_with(expected_config)
