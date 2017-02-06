@@ -5,22 +5,23 @@ from re import match
 
 from hypothesis import given
 from hypothesis.strategies import text
+
 from botocore.exceptions import ClientError
 
-
 from cdflow_commands import terragrunt
+from cdflow_commands.terragrunt import S3BucketFactory
 
 
 NEW_BUCKET_PATTERN = r'^cdflow-tfstate-[a-z0-9]+$'
 
 
-class TestTerragrunt(unittest.TestCase):
+class TestS3BucketFactory(unittest.TestCase):
 
     @given(text())
     def test_get_existing_bucket(self, bucket_name):
-
         # Given
         session = Mock()
+        session.region_name = 'dummy-region'
         s3_client = Mock()
         session.client.return_value = s3_client
 
@@ -38,10 +39,10 @@ class TestTerragrunt(unittest.TestCase):
             ]
         }
 
+        s3_bucket_factory = S3BucketFactory(session, 'dummy-account-id')
+
         # When
-        retrieved_bucket_name = terragrunt.get_bucket_name(
-            session, 'dummy-region', 'dummy-account-id'
-        )
+        retrieved_bucket_name = s3_bucket_factory.get_bucket_name()
 
         # Then
         session.client.called_once_with('s3')
@@ -74,17 +75,16 @@ class TestTerragrunt(unittest.TestCase):
             ]
         }
 
-        # Then
-        with self.assertRaises(AssertionError):
-            # When
-            terragrunt.get_bucket_name(
-                session, 'dummy-region', 'dummy-account-id'
-            )
+        s3_bucket_factory = S3BucketFactory(session, 'dummy-account-id')
+
+        # When & Then
+        self.assertRaises(AssertionError, s3_bucket_factory.get_bucket_name)
 
     def test_handle_untagged_buckets(self):
 
         # Given
         session = Mock()
+        session.region_nane = 'dummy-region-name'
         s3_client = Mock()
         session.client.return_value = s3_client
 
@@ -114,10 +114,10 @@ class TestTerragrunt(unittest.TestCase):
                 }, 'GetBucketTagging')
         s3_client.get_bucket_tagging = get_bucket_tagging
 
+        s3_bucket_factory = S3BucketFactory(session, 'dummy-account-id')
+
         # When
-        bucket = terragrunt.get_bucket_name(
-            session, 'dummy-region', 'dummy-account-id'
-        )
+        bucket = s3_bucket_factory.get_bucket_name()
 
         # Then
         assert bucket == 'terragrunt-bucket'
@@ -126,6 +126,7 @@ class TestTerragrunt(unittest.TestCase):
 
         # Given
         session = Mock()
+        session.region_name = 'dummy-region-name'
         s3_client = Mock()
         session.client.return_value = s3_client
 
@@ -133,10 +134,9 @@ class TestTerragrunt(unittest.TestCase):
             'Buckets': []
         }
 
+        s3_bucket_factory = S3BucketFactory(session, 'dummy-account-id')
         # When
-        bucket_name = terragrunt.get_bucket_name(
-            session, 'dummy-region', 'dummy-account-id'
-        )
+        bucket_name = s3_bucket_factory.get_bucket_name()
 
         # Then
         s3_client.create_bucket.assert_called_once_with(Bucket=bucket_name)
@@ -165,18 +165,20 @@ class TestTerragrunt(unittest.TestCase):
         }
 
         # When
-        bucket = terragrunt.get_bucket_name(
-            session, 'region-1', 'account-id-1'
-        )
-        duplicate_bucket = terragrunt.get_bucket_name(
-            session, 'region-1', 'account-id-1'
-        )
-        bucket_different_region = terragrunt.get_bucket_name(
-            session, 'region-2', 'account-id-1'
-        )
-        bucket_different_account = terragrunt.get_bucket_name(
-            session, 'region-1', 'account-id-2'
-        )
+        session.region_name = 'region-1'
+        bucket = S3BucketFactory(
+            session, 'account-id-1'
+        ).get_bucket_name()
+        duplicate_bucket = S3BucketFactory(
+            session, 'account-id-1'
+        ).get_bucket_name()
+        bucket_different_account = S3BucketFactory(
+            session, 'account-id-2'
+        ).get_bucket_name()
+        session.region_name = 'region-2'
+        bucket_different_region = S3BucketFactory(
+            session, 'account-id-1'
+        ).get_bucket_name()
 
         # Then
         assert match(NEW_BUCKET_PATTERN, bucket)
@@ -191,6 +193,7 @@ class TestTerragrunt(unittest.TestCase):
     def test_bucket_name_when_bucket_not_available(self):
         # Given
         session = Mock()
+        session.region_name = 'dummy-region'
         s3_client = Mock()
         session.client.return_value = s3_client
 
@@ -207,10 +210,10 @@ class TestTerragrunt(unittest.TestCase):
             {}
         ]
 
+        s3_bucket_factory = S3BucketFactory(session, 'dummy-account-id')
+
         # When
-        bucket_name = terragrunt.get_bucket_name(
-            session, 'dummy-region', 'dummy-account-id'
-        )
+        bucket_name = s3_bucket_factory.get_bucket_name()
 
         # Then
         first_call, second_call = s3_client.create_bucket.mock_calls

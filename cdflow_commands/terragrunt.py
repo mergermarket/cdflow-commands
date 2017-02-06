@@ -8,80 +8,89 @@ NAME_PREFIX = 'cdflow-tfstate'
 MAX_CREATION_ATTEMPTS = 10
 
 
-def get_bucket_name(session, region, account_id):
+class S3BucketFactory(object):
 
-    boto_s3_client = session.client('s3')
+    def __init__(self, boto_session, account_id):
+        self._boto_s3_client = boto_session.client('s3')
+        self._aws_region = boto_session.region_name
+        self._account_id = account_id
 
-    buckets = {
-        bucket['Name'] for bucket in boto_s3_client.list_buckets()['Buckets']
-    }
+    def get_bucket_name(self):
 
-    tagged_buckets = {
-        bucket for bucket in buckets if _bucket_has_tag(boto_s3_client, bucket)
-    }
-
-    assert len(tagged_buckets) <= 1, '''
-        multiple buckets with {}={} tag found
-    '''.format(TAG_NAME, TAG_VALUE).strip()
-
-    if len(tagged_buckets) == 1:
-        return list(tagged_buckets)[0]
-    else:
-        bucket_name = _create_bucket(boto_s3_client, region, account_id)
-        _tag_bucket(boto_s3_client, bucket_name)
-        return bucket_name
-
-
-def _bucket_has_tag(boto_s3_client, bucket_name):
-    tags = _get_bucket_tags(boto_s3_client, bucket_name)
-    return tags.get(TAG_NAME) == TAG_VALUE
-
-
-def _get_bucket_tags(boto_s3_client, bucket_name):
-    try:
-        tags = boto_s3_client.get_bucket_tagging(Bucket=bucket_name)['TagSet']
-    except ClientError as e:
-        if e.response.get('Error', {}).get('Code') == 'NoSuchTagSet':
-            return {}
-        raise
-    return {tag['Key']: tag['Value'] for tag in tags}
-
-
-def _create_bucket(boto_s3_client, region, account_id):
-    for attempt in range(MAX_CREATION_ATTEMPTS):
-        bucket_name = _generate_bucket_name(region, account_id, attempt)
-        if _attempt_to_create_bucket(boto_s3_client, bucket_name):
-            return bucket_name
-    raise Exception('could not create bucket after {} attempts'.format(
-        MAX_CREATION_ATTEMPTS
-    ))
-
-
-def _attempt_to_create_bucket(boto_s3_client, bucket_name):
-    try:
-        boto_s3_client.create_bucket(Bucket=bucket_name)
-    except ClientError as e:
-        if e.response.get('Error', {}).get('Code') != 'BucketAlreadyExists':
-            raise
-        return False
-    return True
-
-
-def _tag_bucket(boto_s3_client, bucket_name):
-    boto_s3_client.put_bucket_tagging(
-        Bucket=bucket_name,
-        Tagging={
-            'TagSet': [
-                {
-                    'Key': TAG_NAME,
-                    'Value': TAG_VALUE,
-                }
-            ]
+        buckets = {
+            bucket['Name']
+            for bucket
+            in self._boto_s3_client.list_buckets()['Buckets']
         }
-    )
 
+        tagged_buckets = {
+            bucket_name for bucket_name in buckets
+            if self._bucket_has_tag(bucket_name)
+        }
 
-def _generate_bucket_name(region, account_id, attempt):
-    return '{}-{}'.format(
-        NAME_PREFIX, sha1(region + account_id + str(attempt)).hexdigest()[:12]
-    )
+        assert len(tagged_buckets) <= 1, '''
+            multiple buckets with {}={} tag found
+        '''.format(TAG_NAME, TAG_VALUE).strip()
+
+        if len(tagged_buckets) == 1:
+            return list(tagged_buckets)[0]
+        else:
+            bucket_name = self._create_bucket()
+            self._tag_bucket(bucket_name)
+            return bucket_name
+
+    def _bucket_has_tag(self, bucket_name):
+        tags = self._get_bucket_tags(bucket_name)
+        return tags.get(TAG_NAME) == TAG_VALUE
+
+    def _get_bucket_tags(self, bucket_name):
+        try:
+            tags = self._boto_s3_client.get_bucket_tagging(
+                Bucket=bucket_name
+            )['TagSet']
+        except ClientError as e:
+            if e.response.get('Error', {}).get('Code') == 'NoSuchTagSet':
+                return {}
+            raise
+        return {tag['Key']: tag['Value'] for tag in tags}
+
+    def _create_bucket(self):
+        for attempt in range(MAX_CREATION_ATTEMPTS):
+            bucket_name = self._generate_bucket_name(attempt)
+            if self._attempt_to_create_bucket(bucket_name):
+                return bucket_name
+        raise Exception('could not create bucket after {} attempts'.format(
+            MAX_CREATION_ATTEMPTS
+        ))
+
+    def _attempt_to_create_bucket(self, bucket_name):
+        try:
+            self._boto_s3_client.create_bucket(Bucket=bucket_name)
+        except ClientError as e:
+            if e.response.get('Error', {}).get(
+                    'Code') != 'BucketAlreadyExists':
+                raise
+            return False
+        return True
+
+    def _tag_bucket(self, bucket_name):
+        self._boto_s3_client.put_bucket_tagging(
+            Bucket=bucket_name,
+            Tagging={
+                'TagSet': [
+                    {
+                        'Key': TAG_NAME,
+                        'Value': TAG_VALUE,
+                    }
+                ]
+            }
+        )
+
+    def _generate_bucket_name(self, attempt):
+        return '{}-{}'.format(
+            NAME_PREFIX,
+            sha1(
+                self._aws_region + self._account_id + str(attempt)
+            ).hexdigest()[:12]
+        )
+
