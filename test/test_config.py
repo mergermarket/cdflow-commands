@@ -5,8 +5,8 @@ from datetime import datetime
 from string import letters, digits, printable
 
 from mock import patch, Mock, MagicMock, mock_open
-from hypothesis import given, example
-from hypothesis.strategies import text, composite
+from hypothesis import given, example, assume
+from hypothesis.strategies import text, composite, fixed_dictionaries
 
 from cdflow_commands import config
 
@@ -285,3 +285,34 @@ class TestGetComponentName(unittest.TestCase):
             extraced_component_name = config.get_component_name(None)
 
             assert extraced_component_name == component_name
+
+
+class TestGetPlatformConfigPath(unittest.TestCase):
+
+    @given(fixed_dictionaries({
+        'account_prefix': text(alphabet=printable),
+        'environment_name': text(alphabet=printable),
+        'aws_region': text(alphabet=printable),
+    }))
+    def test_get_platform_config_path(self, function_inputs):
+        assume(function_inputs['environment_name'] != 'live')
+        path = config.get_platform_config_path(**function_inputs)
+        assert path == 'infra/platform-config/{}/{}/{}.json'.format(
+            function_inputs['account_prefix'],
+            'dev',
+            function_inputs['aws_region'],
+        )
+
+    @given(fixed_dictionaries({
+        'account_prefix': text(alphabet=printable),
+        'aws_region': text(alphabet=printable),
+    }))
+    def test_get_platform_config_path_for_live(self, other_function_inputs):
+        path = config.get_platform_config_path(
+            environment_name='live', **other_function_inputs
+        )
+        assert path == 'infra/platform-config/{}/{}/{}.json'.format(
+            other_function_inputs['account_prefix'],
+            'prod',
+            other_function_inputs['aws_region'],
+        )

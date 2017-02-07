@@ -102,3 +102,10 @@ def get_component_name(component_name):
     if name.endswith('.git'):
         return name[:-4]
     return name
+
+
+def get_platform_config_path(account_prefix, environment_name, aws_region):
+    environment_path = 'prod' if environment_name == 'live' else 'dev'
+    return 'infra/platform-config/{}/{}/{}.json'.format(
+        account_prefix, environment_path, aws_region
+    )
