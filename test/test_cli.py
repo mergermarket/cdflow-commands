@@ -7,6 +7,9 @@ from collections import namedtuple
 
 from mock import patch, Mock, mock_open, MagicMock
 
+from hypothesis import given, assume
+from hypothesis.strategies import text
+
 from cdflow_commands import cli
 
 
@@ -324,3 +327,86 @@ class TestDeployCLI(unittest.TestCase):
                 'AWS_SESSION_TOKEN': aws_session_token
             }
         )
+
+
+class TestRunDeploy(unittest.TestCase):
+
+    @given(text())
+    def test_dev_session_passed_to_non_live_deployments(
+        self, environment_name
+    ):
+        # Given
+        assume(environment_name != 'live')
+        args = {
+            '<environment>': environment_name,
+            '<version>': 'dummy-version',
+        }
+        metadata = Mock()
+        global_config = Mock()
+        global_config.dev_account_id = 123456789
+        global_config.prod_account_id = 987654321
+        root_session = Mock()
+        sts_client = Mock()
+        sts_client.assume_role.return_value = {'Credentials': {
+            'AccessKeyId': 'dummy-access-key-id',
+            'SecretAccessKey': 'dummy-secret-access-key',
+            'SessionToken': 'dummy-session-token',
+        }}
+        root_session.client.return_value = sts_client
+
+        with patch(
+            'cdflow_commands.cli.os'
+        ) as mock_os, patch(
+            'cdflow_commands.cli.Deploy'
+        ):
+            mock_os.environ = {'JOB_NAME': 'dummy-job'}
+
+            # When
+            cli.run_deploy(
+                args, metadata, global_config,
+                root_session, 'dummy-component-name'
+            )
+
+            # Then
+            sts_client.assume_role.assert_called_once_with(
+                RoleArn='arn:aws:iam::123456789:role/admin',
+                RoleSessionName='dummy-job',
+            )
+
+    def test_prod_session_passed_to_live_deployments(self):
+        # Given
+        args = {
+            '<environment>': 'live',
+            '<version>': 'dummy-version',
+        }
+        metadata = Mock()
+        global_config = Mock()
+        global_config.dev_account_id = 123456789
+        global_config.prod_account_id = 987654321
+        root_session = Mock()
+        sts_client = Mock()
+        sts_client.assume_role.return_value = {'Credentials': {
+            'AccessKeyId': 'dummy-access-key-id',
+            'SecretAccessKey': 'dummy-secret-access-key',
+            'SessionToken': 'dummy-session-token',
+        }}
+        root_session.client.return_value = sts_client
+
+        with patch(
+            'cdflow_commands.cli.os'
+        ) as mock_os, patch(
+            'cdflow_commands.cli.Deploy'
+        ):
+            mock_os.environ = {'JOB_NAME': 'dummy-job'}
+
+            # When
+            cli.run_deploy(
+                args, metadata, global_config,
+                root_session, 'dummy-component-name'
+            )
+
+            # Then
+            sts_client.assume_role.assert_called_once_with(
+                RoleArn='arn:aws:iam::987654321:role/admin',
+                RoleSessionName='dummy-job',
+            )

@@ -100,7 +100,7 @@ class TestDeploy(unittest.TestCase):
 
     deploy_data = fixed_dictionaries({
         'team': text(alphabet=printable, min_size=2, max_size=20),
-        'account_id': text(alphabet=printable, min_size=12, max_size=12),
+        'dev_account_id': text(alphabet=printable, min_size=12, max_size=12),
         'aws_region': text(alphabet=printable, min_size=5, max_size=12),
         'component_name': text(alphabet=printable, min_size=2, max_size=30),
         'environment_name': text(alphabet=printable, min_size=2, max_size=10),
@@ -115,7 +115,7 @@ class TestDeploy(unittest.TestCase):
         # Given
         deploy_config = DeployConfig(
             data['team'],
-            data['account_id'],
+            data['dev_account_id'],
             data['platform_config_file']
         )
         boto_session = Session(
@@ -130,7 +130,7 @@ class TestDeploy(unittest.TestCase):
             deploy_config
         )
         image_name = '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
-            data['account_id'],
+            data['dev_account_id'],
             data['aws_region'],
             data['component_name'],
             data['version']

@@ -3,7 +3,7 @@ from collections import namedtuple
 
 DeployConfig = namedtuple('DeployConfig', [
     'team',
-    'account_id',
+    'dev_account_id',
     'platform_config_file',
 ])
 
@@ -20,13 +20,13 @@ class Deploy(object):
         self._environment_name = environment_name
         self._version = version
         self._team = config.team
-        self._account_id = config.account_id
+        self._dev_account_id = config.dev_account_id
         self._platform_config_file = config.platform_config_file
 
     @property
     def _image_name(self):
         return '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
-            self._account_id,
+            self._dev_account_id,
             self._aws_region,
             self._component_name,
             self._version

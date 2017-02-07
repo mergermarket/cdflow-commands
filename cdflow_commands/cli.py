@@ -67,21 +67,27 @@ def run_release(args, metadata, global_config, root_session, component_name):
 
 def run_deploy(args, metadata, global_config, root_session, component_name):
 
+    environment_name = args['<environment>']
+    if environment_name == 'live':
+        account_id = global_config.prod_account_id
+    else:
+        account_id = global_config.dev_account_id
+
     platform_config_file = './infra/platform-config/{}/{}/{}.json'.format(
         metadata.account_prefix, 'dev', metadata.aws_region
     )
     deploy_config = DeployConfig(
         team=metadata.team,
-        account_id=global_config.dev_account_id,
+        dev_account_id=global_config.dev_account_id,
         platform_config_file=platform_config_file,
     )
     boto_session = assume_role(
         root_session,
-        global_config.dev_account_id,
+        account_id,
         get_role_session_name(os.environ)
     )
     deployment = Deploy(
-        boto_session, component_name, args['<environment>'], args['<version>'],
+        boto_session, component_name, environment_name, args['<version>'],
         deploy_config
     )
     deployment.run()
