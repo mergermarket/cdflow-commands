@@ -3,7 +3,7 @@ from mock import patch
 from string import printable
 
 from hypothesis import given
-from hypothesis.strategies import text, fixed_dictionaries
+from hypothesis.strategies import text, fixed_dictionaries, dictionaries
 from boto3 import Session
 from mock import ANY
 
@@ -11,6 +11,7 @@ from cdflow_commands.deploy import Deploy, DeployConfig
 
 
 IGNORED_TERRAGRUNT_PARAMS = [ANY] * 14
+CALL_KWARGS = 2
 
 
 class TestDeploy(unittest.TestCase):
@@ -81,22 +82,93 @@ class TestDeploy(unittest.TestCase):
             # When
             deploy.run()
             # Then
+            expected_credentials = set({
+                'AWS_ACCESS_KEY_ID': credentials['access_key_id'],
+                'AWS_SECRET_ACCESS_KEY': credentials['secret_access_key'],
+                'AWS_SESSION_TOKEN': credentials['session_token']
+            }.items())
+
             check_call.assert_any_call(
                 ['terragrunt', 'plan', 'infra'] + IGNORED_TERRAGRUNT_PARAMS,
-                env={
-                    'AWS_ACCESS_KEY_ID': credentials['access_key_id'],
-                    'AWS_SECRET_ACCESS_KEY': credentials['secret_access_key'],
-                    'AWS_SESSION_TOKEN': credentials['session_token']
-                }
+                env=ANY
+            )
+            plan_env = check_call.mock_calls[1][CALL_KWARGS]['env']
+            assert expected_credentials.issubset(plan_env.items())
+
+            check_call.assert_any_call(
+                ['terragrunt', 'apply', 'infra'] + IGNORED_TERRAGRUNT_PARAMS,
+                env=ANY
+            )
+            apply_env = check_call.mock_calls[2][CALL_KWARGS]['env']
+            assert expected_credentials.issubset(apply_env.items())
+
+    @given(dictionaries(
+        keys=text(alphabet=printable), values=text(alphabet=printable)
+    ))
+    def test_terragrunt_passed_copy_of_local_process_environment(
+        self, mock_environment
+    ):
+        # Given
+        boto_session = Session(
+            'dummy-access_key_id',
+            'dummy-secret_access_key',
+            'dummy-session_token',
+            'eu-west-10'
+        )
+
+        deploy = Deploy(boto_session, ANY, ANY, ANY, self._deploy_config)
+
+        with patch('cdflow_commands.deploy.os') as mock_os, patch(
+                'cdflow_commands.deploy.check_call') as check_call:
+
+            mock_os.environ = mock_environment.copy()
+            expected_environment = dict(mock_environment.items() + {
+                'AWS_ACCESS_KEY_ID': 'dummy-access_key_id',
+                'AWS_SECRET_ACCESS_KEY': 'dummy-secret_access_key',
+                'AWS_SESSION_TOKEN': 'dummy-session_token'
+            }.items())
+
+            # When
+            deploy.run()
+            # Then
+            check_call.assert_any_call(
+                ['terragrunt', 'plan', 'infra'] + IGNORED_TERRAGRUNT_PARAMS,
+                env=expected_environment
             )
             check_call.assert_any_call(
                 ['terragrunt', 'apply', 'infra'] + IGNORED_TERRAGRUNT_PARAMS,
-                env={
-                    'AWS_ACCESS_KEY_ID': credentials['access_key_id'],
-                    'AWS_SECRET_ACCESS_KEY': credentials['secret_access_key'],
-                    'AWS_SESSION_TOKEN': credentials['session_token']
-                }
+                env=expected_environment
             )
+
+    @given(dictionaries(
+        keys=text(alphabet=printable), values=text(alphabet=printable)
+    ))
+    def test_terragrunt_does_not_mutate_local_process_environment(
+        self, mock_environment
+    ):
+        # Given
+        boto_session = Session(
+            'dummy-access_key_id',
+            'dummy-secret_access_key',
+            'dummy-session_token',
+            'eu-west-10'
+        )
+
+        deploy = Deploy(boto_session, ANY, ANY, ANY, self._deploy_config)
+
+        with patch(
+            'cdflow_commands.deploy.os'
+        ) as mock_os, patch(
+            'cdflow_commands.deploy.check_call'
+        ):
+
+            mock_os.environ = mock_environment.copy()
+
+            # When
+            deploy.run()
+
+            # Then
+            assert mock_os.environ == mock_environment
 
     deploy_data = fixed_dictionaries({
         'team': text(alphabet=printable, min_size=2, max_size=20),

@@ -1,5 +1,6 @@
 from subprocess import check_call
 from collections import namedtuple
+import os
 
 DeployConfig = namedtuple('DeployConfig', [
     'team',
@@ -48,11 +49,12 @@ class Deploy(object):
         check_call(['terraform', 'get', 'infra'])
 
         credentials = self._boto_session.get_credentials()
-        env = {
+        env = os.environ.copy()
+        env.update({
             'AWS_ACCESS_KEY_ID': credentials.access_key,
             'AWS_SECRET_ACCESS_KEY': credentials.secret_key,
             'AWS_SESSION_TOKEN': credentials.token
-        }
+        })
 
         check_call(
             ['terragrunt', 'plan', 'infra'] + self._terragrunt_parameters,

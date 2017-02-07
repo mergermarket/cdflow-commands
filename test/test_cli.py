@@ -207,6 +207,7 @@ BotoCreds = namedtuple('BotoCreds', ['access_key', 'secret_key', 'token'])
 
 class TestDeployCLI(unittest.TestCase):
 
+    @patch('cdflow_commands.deploy.os')
     @patch('cdflow_commands.cli.os')
     @patch('cdflow_commands.cli.Session')
     @patch('cdflow_commands.config.Session')
@@ -215,11 +216,12 @@ class TestDeployCLI(unittest.TestCase):
     @patch('cdflow_commands.config.check_output')
     def test_deploy_is_configured_and_run(
         self, check_output, check_call, mock_open,
-        Session_from_config, Session_from_cli, mock_os
+        Session_from_config, Session_from_cli, mock_os_cli, mock_os_deploy
     ):
-        mock_os.environ = {
+        mock_os_cli.environ = {
             'JOB_NAME': 'dummy-job-name'
         }
+        mock_os_deploy.environ = {}
 
         mock_metadata_file = MagicMock(spec=file)
         metadata = {
