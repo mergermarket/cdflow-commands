@@ -301,7 +301,7 @@ class TestDeployCLI(unittest.TestCase):
                 '-var', 'image={}'.format(image_name),
                 '-var', 'team=dummy-team',
                 '-var', 'version=1.2.3',
-                '-var-file', './infra/platform-config/mmg/dev/eu-west-12.json'
+                '-var-file', 'infra/platform-config/mmg/dev/eu-west-12.json'
             ],
             env={
                 'AWS_ACCESS_KEY_ID': aws_access_key_id,
@@ -319,7 +319,7 @@ class TestDeployCLI(unittest.TestCase):
                 '-var', 'image={}'.format(image_name),
                 '-var', 'team=dummy-team',
                 '-var', 'version=1.2.3',
-                '-var-file', './infra/platform-config/mmg/dev/eu-west-12.json'
+                '-var-file', 'infra/platform-config/mmg/dev/eu-west-12.json'
             ],
             env={
                 'AWS_ACCESS_KEY_ID': aws_access_key_id,

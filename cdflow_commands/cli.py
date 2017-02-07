@@ -20,7 +20,8 @@ from cdflow_commands.config import (
     load_global_config,
     get_role_session_name,
     assume_role,
-    get_component_name
+    get_component_name,
+    get_platform_config_path,
 )
 from cdflow_commands.release import Release, ReleaseConfig
 from cdflow_commands.deploy import Deploy, DeployConfig
@@ -68,13 +69,14 @@ def run_release(args, metadata, global_config, root_session, component_name):
 def run_deploy(args, metadata, global_config, root_session, component_name):
 
     environment_name = args['<environment>']
-    if environment_name == 'live':
+    is_prod = environment_name == 'live'
+    if is_prod:
         account_id = global_config.prod_account_id
     else:
         account_id = global_config.dev_account_id
 
-    platform_config_file = './infra/platform-config/{}/{}/{}.json'.format(
-        metadata.account_prefix, 'dev', metadata.aws_region
+    platform_config_file = get_platform_config_path(
+        metadata.account_prefix, metadata.aws_region, is_prod
     )
     deploy_config = DeployConfig(
         team=metadata.team,
