@@ -6,6 +6,9 @@ from subprocess import check_output
 from boto3.session import Session
 
 
+PLATFORM_CONFIG_PATH_TEMPLATE = 'infra/platform-config/{}/{}/{}.json'
+
+
 class UserError(Exception):
     _message = 'User error'
 
@@ -47,12 +50,14 @@ def load_service_metadata():
 
 
 def load_global_config(account_prefix, aws_region):
-    path_template = 'infra/platform-config/{}/{}/{}.json'
-
-    with open(path_template.format(account_prefix, 'dev', aws_region)) as f:
+    with open(get_platform_config_path(
+        account_prefix, aws_region, is_prod=False
+    )) as f:
         dev_account_id = json.loads(f.read())['platform_config']['account_id']
 
-    with open(path_template.format(account_prefix, 'prod', aws_region)) as f:
+    with open(get_platform_config_path(
+        account_prefix, aws_region, is_prod=True
+    )) as f:
         prod_account_id = json.loads(f.read())['platform_config']['account_id']
 
     return GlobalConfig(dev_account_id, prod_account_id)
@@ -104,8 +109,8 @@ def get_component_name(component_name):
     return name
 
 
-def get_platform_config_path(account_prefix, environment_name, aws_region):
-    environment_path = 'prod' if environment_name == 'live' else 'dev'
+def get_platform_config_path(account_prefix, aws_region, is_prod):
+    account_postfix = 'prod' if is_prod else 'dev'
     return 'infra/platform-config/{}/{}/{}.json'.format(
-        account_prefix, environment_path, aws_region
+        account_prefix, account_postfix, aws_region
     )
