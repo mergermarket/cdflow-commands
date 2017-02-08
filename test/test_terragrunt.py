@@ -296,6 +296,41 @@ class TestS3BucketFactory(unittest.TestCase):
         assert first_bucket_param != bucket_name
         assert second_bucket_param == bucket_name
 
+    def test_bucket_name_when_bucket_owned_in_other_region(self):
+        # Given
+        session = Mock()
+        session.region_name = 'dummy-region'
+        s3_client = Mock()
+        session.client.return_value = s3_client
+
+        s3_client.list_buckets.return_value = {
+            'Buckets': []
+        }
+        s3_client.create_bucket.side_effect = [
+            ClientError({
+                'Error': {
+                    'Code': 'BucketAlreadyOwnedByYou',
+                    'Message': 'Your previous request to create the named ' +
+                               'bucket succeeded and you already own it.'
+                }
+            }, 'CreateBucket'),
+            {}
+        ]
+
+        s3_bucket_factory = S3BucketFactory(session, 'dummy-account-id')
+
+        # When
+        bucket_name = s3_bucket_factory.get_bucket_name()
+
+        # Then
+        first_call, second_call = s3_client.create_bucket.mock_calls
+        first_bucket_param = first_call[2]['Bucket']
+        second_bucket_param = second_call[2]['Bucket']
+        assert match(NEW_BUCKET_PATTERN, first_bucket_param)
+        assert match(NEW_BUCKET_PATTERN, second_bucket_param)
+        assert first_bucket_param != bucket_name
+        assert second_bucket_param == bucket_name
+
 
 class TestTerragruntConfig(unittest.TestCase):
 

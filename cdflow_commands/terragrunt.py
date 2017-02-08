@@ -82,8 +82,9 @@ class S3BucketFactory(object):
                 }
             )
         except ClientError as e:
-            if e.response.get('Error', {}).get(
-                    'Code') != 'BucketAlreadyExists':
+            if e.response.get('Error', {}).get('Code') not in (
+                'BucketAlreadyExists', 'BucketAlreadyOwnedByYou'
+            ):
                 raise
             return False
         return True
