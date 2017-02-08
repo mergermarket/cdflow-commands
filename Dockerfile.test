@@ -10,6 +10,7 @@ RUN yum install -y epel-release && \
                    git openssl unzip wget python-devel gcc
 
 COPY requirements.txt .
+RUN pip install -U pip
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY test_requirements.txt .
