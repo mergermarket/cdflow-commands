@@ -4,6 +4,7 @@ import unittest
 
 from datetime import datetime
 from collections import namedtuple
+from string import printable
 
 from mock import patch, Mock, mock_open, MagicMock
 
@@ -207,6 +208,7 @@ BotoCreds = namedtuple('BotoCreds', ['access_key', 'secret_key', 'token'])
 
 class TestDeployCLI(unittest.TestCase):
 
+    @patch('cdflow_commands.cli.S3BucketFactory')
     @patch('cdflow_commands.deploy.os')
     @patch('cdflow_commands.cli.os')
     @patch('cdflow_commands.cli.Session')
@@ -216,7 +218,7 @@ class TestDeployCLI(unittest.TestCase):
     @patch('cdflow_commands.config.check_output')
     def test_deploy_is_configured_and_run(
         self, check_output, check_call, mock_open,
-        Session_from_config, Session_from_cli, mock_os_cli, mock_os_deploy
+        Session_from_config, Session_from_cli, mock_os_cli, mock_os_deploy, _
     ):
         mock_os_cli.environ = {
             'JOB_NAME': 'dummy-job-name'
@@ -333,7 +335,7 @@ class TestDeployCLI(unittest.TestCase):
 
 class TestRunDeploy(unittest.TestCase):
 
-    @given(text())
+    @given(text(alphabet=printable))
     def test_dev_session_passed_to_non_live_deployments(
         self, environment_name
     ):
@@ -359,6 +361,8 @@ class TestRunDeploy(unittest.TestCase):
         with patch(
             'cdflow_commands.cli.os'
         ) as mock_os, patch(
+            'cdflow_commands.cli.S3BucketFactory'
+        ), patch(
             'cdflow_commands.cli.Deploy'
         ):
             mock_os.environ = {'JOB_NAME': 'dummy-job'}
@@ -375,7 +379,12 @@ class TestRunDeploy(unittest.TestCase):
                 RoleSessionName='dummy-job',
             )
 
-    def test_prod_session_passed_to_live_deployments(self):
+    @patch('cdflow_commands.cli.Deploy')
+    @patch('cdflow_commands.cli.os')
+    @patch('cdflow_commands.cli.S3BucketFactory')
+    def test_prod_session_passed_to_live_deployments(
+        self, S3BucketFactory, mock_os, _
+    ):
         # Given
         args = {
             '<environment>': 'live',
@@ -394,21 +403,62 @@ class TestRunDeploy(unittest.TestCase):
         }}
         root_session.client.return_value = sts_client
 
-        with patch(
-            'cdflow_commands.cli.os'
-        ) as mock_os, patch(
-            'cdflow_commands.cli.Deploy'
-        ):
-            mock_os.environ = {'JOB_NAME': 'dummy-job'}
+        mock_os.environ = {'JOB_NAME': 'dummy-job'}
 
-            # When
-            cli.run_deploy(
-                args, metadata, global_config,
-                root_session, 'dummy-component-name'
-            )
+        # When
+        cli.run_deploy(
+            args, metadata, global_config,
+            root_session, 'dummy-component-name'
+        )
 
-            # Then
-            sts_client.assume_role.assert_called_once_with(
-                RoleArn='arn:aws:iam::987654321:role/admin',
-                RoleSessionName='dummy-job',
-            )
+        # Then
+        sts_client.assume_role.assert_called_once_with(
+            RoleArn='arn:aws:iam::987654321:role/admin',
+            RoleSessionName='dummy-job',
+        )
+
+    @patch('cdflow_commands.cli.os')
+    @patch('cdflow_commands.cli.Deploy')
+    @patch(
+        'cdflow_commands.terragrunt.open', new_callable=mock_open, create=True
+    )
+    @patch('cdflow_commands.config.Session')
+    def test_tfstate_bucket_set_up_in_dev_account_for_aslive_deployment(
+        self, Session, mock_open, _, mock_os
+    ):
+        # Given
+        args = {
+            '<environment>': 'aslive',
+            '<version>': 'dummy-version',
+        }
+        metadata = Mock()
+        global_config = Mock()
+        global_config.dev_account_id = 123456789
+        global_config.prod_account_id = 987654321
+        root_session = Mock()
+        sts_client = Mock()
+        sts_client.assume_role.return_value = {'Credentials': {
+            'AccessKeyId': 'dummy-access-key-id',
+            'SecretAccessKey': 'dummy-secret-access-key',
+            'SessionToken': 'dummy-session-token',
+        }}
+        root_session.client.return_value = sts_client
+
+        mock_s3_client = Mock()
+        mock_s3_client.list_buckets = MagicMock(spec=dict)
+
+        mock_assumed_session = Mock()
+        mock_assumed_session.region_name = 'eu-west-4'
+        mock_assumed_session.client.return_value = mock_s3_client
+        Session.return_value = mock_assumed_session
+
+        mock_os.environ = {'JOB_NAME': 'dummy-job'}
+
+        # When
+        cli.run_deploy(
+            args, metadata, global_config,
+            root_session, 'dummy-component-name'
+        )
+
+        # Then
+        mock_open.assert_called_once_with('.terragrunt', 'w')

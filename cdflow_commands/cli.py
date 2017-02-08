@@ -25,6 +25,7 @@ from cdflow_commands.config import (
 )
 from cdflow_commands.release import Release, ReleaseConfig
 from cdflow_commands.deploy import Deploy, DeployConfig
+from cdflow_commands.terragrunt import S3BucketFactory, write_terragrunt_config
 
 
 def run(argv):
@@ -67,7 +68,6 @@ def run_release(args, metadata, global_config, root_session, component_name):
 
 
 def run_deploy(args, metadata, global_config, root_session, component_name):
-
     environment_name = args['<environment>']
     is_prod = environment_name == 'live'
     if is_prod:
@@ -87,6 +87,11 @@ def run_deploy(args, metadata, global_config, root_session, component_name):
         root_session,
         account_id,
         get_role_session_name(os.environ)
+    )
+    s3_bucket_factory = S3BucketFactory(boto_session, account_id)
+    s3_bucket = s3_bucket_factory.get_bucket_name()
+    write_terragrunt_config(
+        metadata.aws_region, s3_bucket, environment_name, component_name
     )
     deployment = Deploy(
         boto_session, component_name, environment_name, args['<version>'],

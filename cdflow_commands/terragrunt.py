@@ -91,7 +91,7 @@ class S3BucketFactory(object):
         return '{}-{}'.format(
             NAME_PREFIX,
             sha1(
-                self._aws_region + self._account_id + str(attempt)
+                self._aws_region + str(self._account_id) + str(attempt)
             ).hexdigest()[:12]
         )
 
