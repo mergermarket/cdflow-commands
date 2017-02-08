@@ -2,9 +2,9 @@
 
 FROM centos:7
 
-ENV TERRAFORM_VERSION=0.8.0
-ENV TERRAGRUNT_VERSION=v0.6.0
-ENV DOCKER_COMPOSE_VERSION=1.9.0
+ENV TERRAFORM_VERSION=0.8.5
+ENV TERRAGRUNT_VERSION=v0.9.9
+ENV DOCKER_COMPOSE_VERSION=1.10.1
 
 ADD yum.repos.d/docker.repo /etc/yum.repos.d/
 ADD ./requirements.txt /infra/requirements.txt
