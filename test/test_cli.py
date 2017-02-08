@@ -298,14 +298,15 @@ class TestDeployCLI(unittest.TestCase):
 
         check_call.assert_any_call(
             [
-                'terragrunt', 'plan', 'infra',
+                'terragrunt', 'plan',
                 '-var', 'component=dummy-component',
                 '-var', 'aws_region=eu-west-12',
                 '-var', 'env=aslive',
                 '-var', 'image={}'.format(image_name),
                 '-var', 'team=dummy-team',
                 '-var', 'version=1.2.3',
-                '-var-file', 'infra/platform-config/mmg/dev/eu-west-12.json'
+                '-var-file', 'infra/platform-config/mmg/dev/eu-west-12.json',
+                'infra'
             ],
             env={
                 'AWS_ACCESS_KEY_ID': aws_access_key_id,
@@ -316,14 +317,15 @@ class TestDeployCLI(unittest.TestCase):
 
         check_call.assert_any_call(
             [
-                'terragrunt', 'apply', 'infra',
+                'terragrunt', 'apply',
                 '-var', 'component=dummy-component',
                 '-var', 'aws_region=eu-west-12',
                 '-var', 'env=aslive',
                 '-var', 'image={}'.format(image_name),
                 '-var', 'team=dummy-team',
                 '-var', 'version=1.2.3',
-                '-var-file', 'infra/platform-config/mmg/dev/eu-west-12.json'
+                '-var-file', 'infra/platform-config/mmg/dev/eu-west-12.json',
+                'infra'
             ],
             env={
                 'AWS_ACCESS_KEY_ID': aws_access_key_id,

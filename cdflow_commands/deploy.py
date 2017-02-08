@@ -42,7 +42,8 @@ class Deploy(object):
             '-var', 'image={}'.format(self._image_name),
             '-var', 'team={}'.format(self._team),
             '-var', 'version={}'.format(self._version),
-            '-var-file', self._platform_config_file
+            '-var-file', self._platform_config_file,
+            'infra'
         ]
 
     def run(self):
@@ -57,10 +58,10 @@ class Deploy(object):
         })
 
         check_call(
-            ['terragrunt', 'plan', 'infra'] + self._terragrunt_parameters,
+            ['terragrunt', 'plan'] + self._terragrunt_parameters,
             env=env
         )
         check_call(
-            ['terragrunt', 'apply', 'infra'] + self._terragrunt_parameters,
+            ['terragrunt', 'apply'] + self._terragrunt_parameters,
             env=env
         )

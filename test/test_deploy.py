@@ -10,7 +10,7 @@ from mock import ANY
 from cdflow_commands.deploy import Deploy, DeployConfig
 
 
-IGNORED_TERRAGRUNT_PARAMS = [ANY] * 14
+IGNORED_PARAMS = [ANY] * 14
 CALL_KWARGS = 2
 
 
@@ -43,7 +43,7 @@ class TestDeploy(unittest.TestCase):
         self._deploy.run()
         # Then
         check_call.assert_any_call(
-            ['terragrunt', 'plan', 'infra'] + IGNORED_TERRAGRUNT_PARAMS,
+            ['terragrunt', 'plan'] + IGNORED_PARAMS + ['infra'],
             env=ANY
         )
 
@@ -53,7 +53,7 @@ class TestDeploy(unittest.TestCase):
         self._deploy.run()
         # Then
         check_call.assert_any_call(
-            ['terragrunt', 'apply', 'infra'] + IGNORED_TERRAGRUNT_PARAMS,
+            ['terragrunt', 'apply'] + IGNORED_PARAMS + ['infra'],
             env=ANY
         )
 
@@ -83,7 +83,7 @@ class TestDeploy(unittest.TestCase):
             deploy.run()
             # Then
             check_call.assert_any_call(
-                ['terragrunt', 'plan', 'infra'] + IGNORED_TERRAGRUNT_PARAMS,
+                ['terragrunt', 'plan'] + IGNORED_PARAMS + ['infra'],
                 env=ANY
             )
             plan_env = check_call.mock_calls[1][CALL_KWARGS]['env']
@@ -95,7 +95,7 @@ class TestDeploy(unittest.TestCase):
                 credentials['session_token']
 
             check_call.assert_any_call(
-                ['terragrunt', 'apply', 'infra'] + IGNORED_TERRAGRUNT_PARAMS,
+                ['terragrunt', 'apply'] + IGNORED_PARAMS + ['infra'],
                 env=ANY
             )
             apply_env = check_call.mock_calls[2][CALL_KWARGS]['env']
@@ -136,11 +136,11 @@ class TestDeploy(unittest.TestCase):
             deploy.run()
             # Then
             check_call.assert_any_call(
-                ['terragrunt', 'plan', 'infra'] + IGNORED_TERRAGRUNT_PARAMS,
+                ['terragrunt', 'plan'] + IGNORED_PARAMS + ['infra'],
                 env=expected_environment
             )
             check_call.assert_any_call(
-                ['terragrunt', 'apply', 'infra'] + IGNORED_TERRAGRUNT_PARAMS,
+                ['terragrunt', 'apply'] + IGNORED_PARAMS + ['infra'],
                 env=expected_environment
             )
 
@@ -223,13 +223,14 @@ class TestDeploy(unittest.TestCase):
                 '-var', 'image={}'.format(image_name),
                 '-var', 'team={}'.format(data['team']),
                 '-var', 'version={}'.format(data['version']),
-                '-var-file', data['platform_config_file']
+                '-var-file', data['platform_config_file'],
+                'infra'
             ]
             check_call.assert_any_call(
-                ['terragrunt', 'plan', 'infra'] + args,
+                ['terragrunt', 'plan'] + args,
                 env=ANY
             )
             check_call.assert_any_call(
-                ['terragrunt', 'apply', 'infra'] + args,
+                ['terragrunt', 'apply'] + args,
                 env=ANY
             )
