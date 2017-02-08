@@ -82,25 +82,29 @@ class TestDeploy(unittest.TestCase):
             # When
             deploy.run()
             # Then
-            expected_credentials = set({
-                'AWS_ACCESS_KEY_ID': credentials['access_key_id'],
-                'AWS_SECRET_ACCESS_KEY': credentials['secret_access_key'],
-                'AWS_SESSION_TOKEN': credentials['session_token']
-            }.items())
-
             check_call.assert_any_call(
                 ['terragrunt', 'plan', 'infra'] + IGNORED_TERRAGRUNT_PARAMS,
                 env=ANY
             )
             plan_env = check_call.mock_calls[1][CALL_KWARGS]['env']
-            assert expected_credentials.issubset(plan_env.items())
+            assert plan_env['AWS_ACCESS_KEY_ID'] == \
+                credentials['access_key_id']
+            assert plan_env['AWS_SECRET_ACCESS_KEY'] == \
+                credentials['secret_access_key']
+            assert plan_env['AWS_SESSION_TOKEN'] == \
+                credentials['session_token']
 
             check_call.assert_any_call(
                 ['terragrunt', 'apply', 'infra'] + IGNORED_TERRAGRUNT_PARAMS,
                 env=ANY
             )
             apply_env = check_call.mock_calls[2][CALL_KWARGS]['env']
-            assert expected_credentials.issubset(apply_env.items())
+            assert apply_env['AWS_ACCESS_KEY_ID'] == \
+                credentials['access_key_id']
+            assert apply_env['AWS_SECRET_ACCESS_KEY'] == \
+                credentials['secret_access_key']
+            assert apply_env['AWS_SESSION_TOKEN'] == \
+                credentials['session_token']
 
     @given(dictionaries(
         keys=text(alphabet=printable), values=text(alphabet=printable)
