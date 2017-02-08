@@ -1,7 +1,8 @@
-
-from botocore.exceptions import ClientError
 from hashlib import sha1
 from textwrap import dedent
+
+from botocore.exceptions import ClientError
+
 
 TAG_NAME = 'is-cdflow-tfstate-bucket'
 TAG_VALUE = 'true'
@@ -27,6 +28,7 @@ class S3BucketFactory(object):
         tagged_buckets = {
             bucket_name for bucket_name in buckets
             if self._bucket_has_tag(bucket_name)
+            and self._bucket_in_current_region(bucket_name)
         }
 
         assert len(tagged_buckets) <= 1, '''
@@ -43,6 +45,13 @@ class S3BucketFactory(object):
     def _bucket_has_tag(self, bucket_name):
         tags = self._get_bucket_tags(bucket_name)
         return tags.get(TAG_NAME) == TAG_VALUE
+
+    def _bucket_in_current_region(self, bucket_name):
+        region_response = self._boto_s3_client.get_bucket_location(
+            Bucket=bucket_name
+        )
+        region = region_response['LocationConstraint']
+        return region == self._aws_region
 
     def _get_bucket_tags(self, bucket_name):
         try:
@@ -66,7 +75,12 @@ class S3BucketFactory(object):
 
     def _attempt_to_create_bucket(self, bucket_name):
         try:
-            self._boto_s3_client.create_bucket(Bucket=bucket_name)
+            self._boto_s3_client.create_bucket(
+                Bucket=bucket_name,
+                CreateBucketConfiguration={
+                    'LocationConstraint': self._aws_region
+                }
+            )
         except ClientError as e:
             if e.response.get('Error', {}).get(
                     'Code') != 'BucketAlreadyExists':
