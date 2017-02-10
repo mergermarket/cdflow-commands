@@ -8,7 +8,7 @@ docker run \
     --name cdflow-commands.test \
     --rm \
     -i $(tty -s && echo -t) \
-    -v $(pwd)/.hypothesis/:/infra/.hypothesis/ \
+    $(tty -s && echo -v $(pwd)/.hypothesis/:/usr/src/app/.hypothesis/) \
     cdflow-commands.test py.test \
         -n auto \
         --cov=. \
