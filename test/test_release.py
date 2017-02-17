@@ -1,6 +1,6 @@
 import unittest
 
-from string import uppercase, lowercase, digits
+from string import ascii_lowercase, ascii_letters, digits
 from base64 import b64encode
 import json
 
@@ -12,7 +12,7 @@ from botocore.exceptions import ClientError
 from cdflow_commands.release import Release, ReleaseConfig
 
 
-IDENTIFIER_ALPHABET = uppercase + lowercase + digits + '-_'
+IDENTIFIER_ALPHABET = ascii_letters + digits + '-_'
 
 
 class TestRelease(unittest.TestCase):
@@ -24,13 +24,15 @@ class TestRelease(unittest.TestCase):
                 {
                     'authorizationToken': b64encode('{}:{}'.format(
                         'dummy-username', 'dummy-password'
-                    )),
+                    ).encode('utf-8')),
                     'proxyEndpoint': 'dummy-proxy-endpoint'
                 }
             ]
         }
 
-    @given(text(alphabet=lowercase + digits + '-', min_size=1, max_size=10))
+    @given(text(
+        alphabet=ascii_lowercase + digits + '-', min_size=1, max_size=10
+    ))
     @given(text(alphabet=digits, min_size=12, max_size=12))
     @given(text(alphabet=IDENTIFIER_ALPHABET, min_size=1, max_size=10))
     @settings(max_examples=10)
@@ -97,7 +99,7 @@ class TestRelease(unittest.TestCase):
                 {
                     'authorizationToken': b64encode('{}:{}'.format(
                         username, password
-                    )),
+                    ).encode('utf-8')),
                     'proxyEndpoint': proxy_endpoint
                 }
             ]
@@ -143,7 +145,7 @@ class TestRelease(unittest.TestCase):
                 {
                     'authorizationToken': b64encode('{}:{}'.format(
                         'dummy-username', 'dummy-password'
-                    )),
+                    ).encode('utf-8')),
                     'proxyEndpoint': 'dummy-proxy-endpoint'
                 }
             ]
@@ -165,7 +167,7 @@ class TestRelease(unittest.TestCase):
                 repositoryName=component_name
             )
 
-    @given(text(alphabet=lowercase + uppercase, min_size=8, max_size=16))
+    @given(text(alphabet=ascii_letters, min_size=8, max_size=16))
     def test_exception_re_raised(self, error_code):
         assume(error_code != 'RepositoryNotFoundException')
 
@@ -180,7 +182,7 @@ class TestRelease(unittest.TestCase):
                 {
                     'authorizationToken': b64encode('{}:{}'.format(
                         'dummy-username', 'dummy-password'
-                    )),
+                    ).encode('utf-8')),
                     'proxyEndpoint': 'dummy-proxy-endpoint'
                 }
             ]
@@ -212,7 +214,7 @@ class TestRelease(unittest.TestCase):
                 {
                     'authorizationToken': b64encode('{}:{}'.format(
                         'dummy-username', 'dummy-password'
-                    )),
+                    ).encode('utf-8')),
                     'proxyEndpoint': 'dummy-proxy-endpoint'
                 }
             ]

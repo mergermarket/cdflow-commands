@@ -103,10 +103,12 @@ class S3BucketFactory(object):
         )
 
     def _generate_bucket_name(self, attempt):
+        parts = map(str, [self._aws_region, self._account_id, attempt])
+        concatenated = ''.join(parts)
         return '{}-{}'.format(
             NAME_PREFIX,
             sha1(
-                self._aws_region + str(self._account_id) + str(attempt)
+                concatenated.encode('utf-8')
             ).hexdigest()[:12]
         )
 
