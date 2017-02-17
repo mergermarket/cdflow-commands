@@ -69,35 +69,6 @@ def _run_release(args, metadata, global_config, root_session, component_name):
     release.create()
 
 
-def _run_deploy(
-    team, platform_config_file, boto_session, component_name, environment_name,
-    version, dev_account_id
-):
-    deploy_config = DeployConfig(
-        team=team,
-        dev_account_id=dev_account_id,
-        platform_config_file=platform_config_file,
-    )
-    deployment = Deploy(
-        boto_session, component_name, environment_name, version,
-        deploy_config
-    )
-    deployment.run()
-
-
-def _run_destroy(
-    team, platform_config_file, boto_session, component_name, environment_name
-):
-    destroy_config = DestroyConfig(
-        team=team,
-        platform_config_file=platform_config_file,
-    )
-    destroyment = Destroy(
-        boto_session, component_name, environment_name, destroy_config
-    )
-    destroyment.run()
-
-
 def _run_infrastructure_commmand(
     args, metadata, global_config, root_session, component_name
 ):
@@ -148,3 +119,32 @@ def _setup_for_infrastructure(
         metadata.aws_region, s3_bucket, environment_name, component_name
     )
     return boto_session, platform_config_file
+
+
+def _run_deploy(
+    team, platform_config_file, boto_session, component_name, environment_name,
+    version, dev_account_id
+):
+    deploy_config = DeployConfig(
+        team=team,
+        dev_account_id=dev_account_id,
+        platform_config_file=platform_config_file,
+    )
+    deployment = Deploy(
+        boto_session, component_name, environment_name, version,
+        deploy_config
+    )
+    deployment.run()
+
+
+def _run_destroy(
+    team, platform_config_file, boto_session, component_name, environment_name
+):
+    destroy_config = DestroyConfig(
+        team=team,
+        platform_config_file=platform_config_file,
+    )
+    destroyment = Destroy(
+        boto_session, component_name, environment_name, destroy_config
+    )
+    destroyment.run()
