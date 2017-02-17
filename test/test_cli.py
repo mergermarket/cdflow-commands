@@ -300,10 +300,10 @@ class TestDeployCLI(unittest.TestCase):
             [
                 'terragrunt', 'plan',
                 '-var', 'component=dummy-component',
-                '-var', 'aws_region=eu-west-12',
                 '-var', 'env=aslive',
-                '-var', 'image={}'.format(image_name),
+                '-var', 'aws_region=eu-west-12',
                 '-var', 'team=dummy-team',
+                '-var', 'image={}'.format(image_name),
                 '-var', 'version=1.2.3',
                 '-var-file', 'infra/platform-config/mmg/dev/eu-west-12.json',
                 'infra'
@@ -319,10 +319,10 @@ class TestDeployCLI(unittest.TestCase):
             [
                 'terragrunt', 'apply',
                 '-var', 'component=dummy-component',
-                '-var', 'aws_region=eu-west-12',
                 '-var', 'env=aslive',
-                '-var', 'image={}'.format(image_name),
+                '-var', 'aws_region=eu-west-12',
                 '-var', 'team=dummy-team',
+                '-var', 'image={}'.format(image_name),
                 '-var', 'version=1.2.3',
                 '-var-file', 'infra/platform-config/mmg/dev/eu-west-12.json',
                 'infra'

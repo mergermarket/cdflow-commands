@@ -2,6 +2,9 @@ from subprocess import check_call
 from collections import namedtuple
 import os
 
+from cdflow_commands.terragrunt import build_command_parameters
+
+
 DeployConfig = namedtuple('DeployConfig', [
     'team',
     'dev_account_id',
@@ -35,16 +38,15 @@ class Deploy(object):
 
     @property
     def _terragrunt_parameters(self):
-        return [
-            '-var', 'component={}'.format(self._component_name),
-            '-var', 'aws_region={}'.format(self._aws_region),
-            '-var', 'env={}'.format(self._environment_name),
-            '-var', 'image={}'.format(self._image_name),
-            '-var', 'team={}'.format(self._team),
-            '-var', 'version={}'.format(self._version),
-            '-var-file', self._platform_config_file,
-            'infra'
-        ]
+        return build_command_parameters(
+            self._component_name,
+            self._environment_name,
+            self._aws_region,
+            self._team,
+            self._image_name,
+            self._version,
+            self._platform_config_file,
+        )
 
     def run(self):
         check_call(['terraform', 'get', 'infra'])
