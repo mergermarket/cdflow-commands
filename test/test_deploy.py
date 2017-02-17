@@ -35,7 +35,7 @@ class TestDeploy(unittest.TestCase):
         # When
         self._deploy.run()
         # Then
-        check_call.assert_any_call(['terraform', 'get', 'infra'])
+        check_call.assert_any_call(['terragrunt', 'get', 'infra'])
 
     @patch('cdflow_commands.deploy.check_call')
     def test_terragrunt_plan_called(self, check_call):

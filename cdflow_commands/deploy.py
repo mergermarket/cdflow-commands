@@ -49,7 +49,7 @@ class Deploy(object):
         )
 
     def run(self):
-        check_call(['terraform', 'get', 'infra'])
+        check_call(['terragrunt', 'get', 'infra'])
 
         credentials = self._boto_session.get_credentials()
         env = os.environ.copy()

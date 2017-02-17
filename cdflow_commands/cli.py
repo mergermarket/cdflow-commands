@@ -41,20 +41,16 @@ def run(argv):
     component_name = get_component_name(args['--component'])
 
     if args['release']:
-        run_release(
+        _run_release(
             args, metadata, global_config, root_session, component_name
         )
-    elif args['deploy']:
-        run_deploy(
-            args, metadata, global_config, root_session, component_name
-        )
-    elif args['destroy']:
-        run_destroy(
+    elif args['deploy'] or args['destroy']:
+        _run_infrastructure_commmand(
             args, metadata, global_config, root_session, component_name
         )
 
 
-def run_release(args, metadata, global_config, root_session, component_name):
+def _run_release(args, metadata, global_config, root_session, component_name):
     boto_session = assume_role(
         root_session,
         global_config.dev_account_id,
@@ -73,41 +69,65 @@ def run_release(args, metadata, global_config, root_session, component_name):
     release.create()
 
 
-def run_deploy(args, metadata, global_config, root_session, component_name):
-    environment_name = args['<environment>']
-    is_prod = environment_name == 'live'
-    if is_prod:
-        account_id = global_config.prod_account_id
-    else:
-        account_id = global_config.dev_account_id
-
-    platform_config_file = get_platform_config_path(
-        metadata.account_prefix, metadata.aws_region, is_prod
-    )
+def _run_deploy(
+    team, platform_config_file, boto_session, component_name, environment_name,
+    version, dev_account_id
+):
     deploy_config = DeployConfig(
-        team=metadata.team,
-        dev_account_id=global_config.dev_account_id,
+        team=team,
+        dev_account_id=dev_account_id,
         platform_config_file=platform_config_file,
     )
-    boto_session = assume_role(
-        root_session,
-        account_id,
-        get_role_session_name(os.environ)
-    )
-    s3_bucket_factory = S3BucketFactory(boto_session, account_id)
-    s3_bucket = s3_bucket_factory.get_bucket_name()
-    write_terragrunt_config(
-        metadata.aws_region, s3_bucket, environment_name, component_name
-    )
     deployment = Deploy(
-        boto_session, component_name, environment_name, args['<version>'],
+        boto_session, component_name, environment_name, version,
         deploy_config
     )
     deployment.run()
 
 
-def run_destroy(args, metadata, global_config, root_session, component_name):
+def _run_destroy(
+    team, platform_config_file, boto_session, component_name, environment_name
+):
+    destroy_config = DestroyConfig(
+        team=team,
+        platform_config_file=platform_config_file,
+    )
+    destroyment = Destroy(
+        boto_session, component_name, environment_name, destroy_config
+    )
+    destroyment.run()
+
+
+def _run_infrastructure_commmand(
+    args, metadata, global_config, root_session, component_name
+):
     environment_name = args['<environment>']
+    boto_session, platform_config_file = _setup_for_infrastructure(
+        environment_name, component_name, metadata, global_config, root_session
+    )
+    if args['deploy']:
+        _run_deploy(
+            metadata.team,
+            platform_config_file,
+            boto_session,
+            component_name,
+            environment_name,
+            args['<version>'],
+            global_config.dev_account_id
+        )
+    elif args['destroy']:
+        _run_destroy(
+            metadata.team,
+            platform_config_file,
+            boto_session,
+            component_name,
+            environment_name
+        )
+
+
+def _setup_for_infrastructure(
+    environment_name, component_name, metadata, global_config, root_session
+):
     is_prod = environment_name == 'live'
     if is_prod:
         account_id = global_config.prod_account_id
@@ -116,10 +136,6 @@ def run_destroy(args, metadata, global_config, root_session, component_name):
 
     platform_config_file = get_platform_config_path(
         metadata.account_prefix, metadata.aws_region, is_prod
-    )
-    destroy_config = DestroyConfig(
-        team=metadata.team,
-        platform_config_file=platform_config_file,
     )
     boto_session = assume_role(
         root_session,
@@ -131,7 +147,4 @@ def run_destroy(args, metadata, global_config, root_session, component_name):
     write_terragrunt_config(
         metadata.aws_region, s3_bucket, environment_name, component_name
     )
-    destroyment = Destroy(
-        boto_session, component_name, environment_name, destroy_config
-    )
-    destroyment.run()
+    return boto_session, platform_config_file
