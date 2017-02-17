@@ -142,3 +142,24 @@ def write_terragrunt_config(
     )
     with open('.terragrunt', 'w') as f:
         f.write(config)
+
+
+def build_command_parameters(
+    component_name,
+    environment_name,
+    aws_region,
+    team,
+    image,
+    version,
+    config_file
+):
+    return [
+        '-var', 'component={}'.format(component_name),
+        '-var', 'env={}'.format(environment_name),
+        '-var', 'aws_region={}'.format(aws_region),
+        '-var', 'team={}'.format(team),
+        '-var', 'image={}'.format(image),
+        '-var', 'version={}'.format(version),
+        '-var-file', config_file,
+        'infra',
+    ]
