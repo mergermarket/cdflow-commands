@@ -1,8 +1,9 @@
 import unittest
 
 import json
+from io import TextIOWrapper
 from datetime import datetime
-from string import letters, digits, printable
+from string import ascii_letters, digits, printable
 
 from mock import patch, Mock, MagicMock, mock_open
 from hypothesis import example
@@ -12,7 +13,7 @@ from hypothesis.strategies import text, composite, fixed_dictionaries
 from cdflow_commands import config
 
 
-ROLE_SAFE_ALPHABET = letters + digits + '+=,.@-'
+ROLE_SAFE_ALPHABET = ascii_letters + digits + '+=,.@-'
 ROLE_UNSAFE_CHARACTERS = '\/!$%^&*()#'
 ROLE_UNSAFE_ALPHABET = ROLE_SAFE_ALPHABET + ROLE_UNSAFE_CHARACTERS
 
@@ -32,12 +33,12 @@ def email(draw, min_size=7):
         max_size=user_min_characters + 40
     ))
     domain = draw(text(
-        alphabet=letters + digits + '-',
+        alphabet=ascii_letters + digits + '-',
         min_size=domain_min_characters,
         max_size=domain_min_characters + 20
     ))
     tld = draw(text(
-        alphabet=letters,
+        alphabet=ascii_letters,
         min_size=tld_min_characters,
         max_size=tld_min_characters + 5
     ))
@@ -48,7 +49,7 @@ class TestLoadConfig(unittest.TestCase):
 
     @patch('cdflow_commands.config.open', new_callable=mock_open, create=True)
     def test_service_metadata_loaded(self, mock_open):
-        mock_file = MagicMock(spec=file)
+        mock_file = MagicMock(spec=TextIOWrapper)
         expected_config = {
             'TEAM': 'dummy-team',
             'TYPE': 'docker',
@@ -66,7 +67,7 @@ class TestLoadConfig(unittest.TestCase):
 
     @patch('cdflow_commands.config.open', new_callable=mock_open, create=True)
     def test_loaded_from_file(self, mock_open):
-        mock_dev_file = MagicMock(spec=file)
+        mock_dev_file = MagicMock(spec=TextIOWrapper)
         dev_config = {
             'platform_config': {
                 'account_id': 123456789
@@ -74,7 +75,7 @@ class TestLoadConfig(unittest.TestCase):
         }
         mock_dev_file.read.return_value = json.dumps(dev_config)
 
-        mock_prod_file = MagicMock(spec=file)
+        mock_prod_file = MagicMock(spec=TextIOWrapper)
         prod_config = {
             'platform_config': {
                 'account_id': 987654321
@@ -213,7 +214,7 @@ class TestGetRoleSessionName(unittest.TestCase):
 
         assert len(role_session_name) <= 64
 
-    @given(text(alphabet=letters))
+    @given(text(alphabet=ascii_letters))
     @example(r'Abc.example.com')
     @example(r'john.doe@example..com')
     def test_invalid_email_address(self, email):
@@ -240,7 +241,9 @@ class TestGetComponentName(unittest.TestCase):
         component_name = config.get_component_name('dummy-name')
         assert component_name == 'dummy-name'
 
-    @given(text(alphabet=letters + digits + '-._', min_size=1, max_size=100))
+    @given(text(
+        alphabet=ascii_letters + digits + '-._', min_size=1, max_size=100
+    ))
     def test_component_not_passed_as_argument(self, component_name):
         with patch('cdflow_commands.config.check_output') as check_output:
             check_output.return_value = 'git@github.com:org/{}.git\n'.format(
@@ -250,7 +253,9 @@ class TestGetComponentName(unittest.TestCase):
 
             assert extraced_component_name == component_name
 
-    @given(text(alphabet=letters + digits + '-._', min_size=1, max_size=100))
+    @given(text(
+        alphabet=ascii_letters + digits + '-._', min_size=1, max_size=100
+    ))
     def test_component_not_passed_as_argument_without_extension(
         self, component_name
     ):
@@ -262,7 +267,9 @@ class TestGetComponentName(unittest.TestCase):
 
             assert extraced_component_name == component_name
 
-    @given(text(alphabet=letters + digits + '-._', min_size=1, max_size=100))
+    @given(text(
+        alphabet=ascii_letters + digits + '-._', min_size=1, max_size=100
+    ))
     def test_component_not_passed_as_argument_with_https_origin(
         self, component_name
     ):
@@ -275,7 +282,9 @@ class TestGetComponentName(unittest.TestCase):
 
             assert extraced_component_name == component_name
 
-    @given(text(alphabet=letters + digits + '-._', min_size=1, max_size=100))
+    @given(text(
+        alphabet=ascii_letters + digits + '-._', min_size=1, max_size=100
+    ))
     def test_component_not_passed_as_argument_with_https_without_extension(
         self, component_name
     ):
