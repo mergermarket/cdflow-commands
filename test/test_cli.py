@@ -289,7 +289,7 @@ class TestDeployCLI(unittest.TestCase):
 
         cli.run(['deploy', 'aslive', '1.2.3'])
 
-        check_call.assert_any_call(['terraform', 'get', 'infra'])
+        check_call.assert_any_call(['terragrunt', 'get', 'infra'])
 
         image_name = (
             '123456789.dkr.ecr.eu-west-12.amazonaws.com/'
@@ -335,7 +335,7 @@ class TestDeployCLI(unittest.TestCase):
         )
 
 
-class TestRunDeploy(unittest.TestCase):
+class TestSetupForInfrastructure(unittest.TestCase):
 
     @given(text(alphabet=printable))
     def test_dev_session_passed_to_non_live_deployments(
@@ -343,10 +343,6 @@ class TestRunDeploy(unittest.TestCase):
     ):
         # Given
         assume(environment_name != 'live')
-        args = {
-            '<environment>': environment_name,
-            '<version>': 'dummy-version',
-        }
         metadata = Mock()
         global_config = Mock()
         global_config.dev_account_id = 123456789
@@ -364,15 +360,13 @@ class TestRunDeploy(unittest.TestCase):
             'cdflow_commands.cli.os'
         ) as mock_os, patch(
             'cdflow_commands.cli.S3BucketFactory'
-        ), patch(
-            'cdflow_commands.cli.Deploy'
         ):
             mock_os.environ = {'JOB_NAME': 'dummy-job'}
 
             # When
-            cli.run_deploy(
-                args, metadata, global_config,
-                root_session, 'dummy-component-name'
+            cli._setup_for_infrastructure(
+                environment_name, 'dummy-component-name',
+                metadata, global_config, root_session
             )
 
             # Then
@@ -381,17 +375,12 @@ class TestRunDeploy(unittest.TestCase):
                 RoleSessionName='dummy-job',
             )
 
-    @patch('cdflow_commands.cli.Deploy')
     @patch('cdflow_commands.cli.os')
     @patch('cdflow_commands.cli.S3BucketFactory')
     def test_prod_session_passed_to_live_deployments(
-        self, S3BucketFactory, mock_os, _
+        self, S3BucketFactory, mock_os
     ):
         # Given
-        args = {
-            '<environment>': 'live',
-            '<version>': 'dummy-version',
-        }
         metadata = Mock()
         global_config = Mock()
         global_config.dev_account_id = 123456789
@@ -408,9 +397,9 @@ class TestRunDeploy(unittest.TestCase):
         mock_os.environ = {'JOB_NAME': 'dummy-job'}
 
         # When
-        cli.run_deploy(
-            args, metadata, global_config,
-            root_session, 'dummy-component-name'
+        cli._setup_for_infrastructure(
+            'live', 'dummy-component-name',
+            metadata, global_config, root_session
         )
 
         # Then
@@ -429,10 +418,6 @@ class TestRunDeploy(unittest.TestCase):
         self, Session, mock_open, _, mock_os
     ):
         # Given
-        args = {
-            '<environment>': 'aslive',
-            '<version>': 'dummy-version',
-        }
         metadata = Mock()
         global_config = Mock()
         global_config.dev_account_id = 123456789
@@ -457,9 +442,9 @@ class TestRunDeploy(unittest.TestCase):
         mock_os.environ = {'JOB_NAME': 'dummy-job'}
 
         # When
-        cli.run_deploy(
-            args, metadata, global_config,
-            root_session, 'dummy-component-name'
+        cli._setup_for_infrastructure(
+            'aslive', 'dummy-component-name',
+            metadata, global_config, root_session
         )
 
         # Then
