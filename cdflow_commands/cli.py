@@ -5,6 +5,7 @@ Commands for managing the software lifecycle.
 Usage:
     cdflow-commands release [<version>] [options]
     cdflow-commands deploy <environment> <version> [options]
+    cdflow-commands destroy <environment> [options]
 
 Options:
     -c <component_name>, --component <component_name>
@@ -25,6 +26,7 @@ from cdflow_commands.config import (
 )
 from cdflow_commands.release import Release, ReleaseConfig
 from cdflow_commands.deploy import Deploy, DeployConfig
+from cdflow_commands.destroy import Destroy, DestroyConfig
 from cdflow_commands.terragrunt import S3BucketFactory, write_terragrunt_config
 
 
@@ -44,6 +46,10 @@ def run(argv):
         )
     elif args['deploy']:
         run_deploy(
+            args, metadata, global_config, root_session, component_name
+        )
+    elif args['destroy']:
+        run_destroy(
             args, metadata, global_config, root_session, component_name
         )
 
@@ -98,3 +104,34 @@ def run_deploy(args, metadata, global_config, root_session, component_name):
         deploy_config
     )
     deployment.run()
+
+
+def run_destroy(args, metadata, global_config, root_session, component_name):
+    environment_name = args['<environment>']
+    is_prod = environment_name == 'live'
+    if is_prod:
+        account_id = global_config.prod_account_id
+    else:
+        account_id = global_config.dev_account_id
+
+    platform_config_file = get_platform_config_path(
+        metadata.account_prefix, metadata.aws_region, is_prod
+    )
+    destroy_config = DestroyConfig(
+        team=metadata.team,
+        platform_config_file=platform_config_file,
+    )
+    boto_session = assume_role(
+        root_session,
+        account_id,
+        get_role_session_name(os.environ)
+    )
+    s3_bucket_factory = S3BucketFactory(boto_session, account_id)
+    s3_bucket = s3_bucket_factory.get_bucket_name()
+    write_terragrunt_config(
+        metadata.aws_region, s3_bucket, environment_name, component_name
+    )
+    destroyment = Destroy(
+        boto_session, component_name, environment_name, destroy_config
+    )
+    destroyment.run()
