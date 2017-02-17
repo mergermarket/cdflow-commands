@@ -218,10 +218,10 @@ class TestDeploy(unittest.TestCase):
             # Then
             args = [
                 '-var', 'component={}'.format(data['component_name']),
-                '-var', 'aws_region={}'.format(data['aws_region']),
                 '-var', 'env={}'.format(data['environment_name']),
-                '-var', 'image={}'.format(image_name),
+                '-var', 'aws_region={}'.format(data['aws_region']),
                 '-var', 'team={}'.format(data['team']),
+                '-var', 'image={}'.format(image_name),
                 '-var', 'version={}'.format(data['version']),
                 '-var-file', data['platform_config_file'],
                 'infra'
