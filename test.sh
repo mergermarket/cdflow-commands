@@ -13,6 +13,7 @@ docker run \
         -n auto \
         --cov=. \
         --cov-report term-missing \
+        --tb=short \
         "$@"
 
 docker run --rm cdflow-commands.test flake8 --max-complexity=4
