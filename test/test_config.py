@@ -246,11 +246,9 @@ class TestGetComponentName(unittest.TestCase):
     ))
     def test_component_not_passed_as_argument(self, component_name):
         with patch('cdflow_commands.config.check_output') as check_output:
-            check_output.return_value = bytes(
-                'git@github.com:org/{}.git\n'.format(
-                    component_name
-                ).encode('utf-8')
-            )
+            check_output.return_value = 'git@github.com:org/{}.git\n'.format(
+                component_name
+            ).encode('utf-8')
             extraced_component_name = config.get_component_name(None)
 
             assert extraced_component_name == component_name
@@ -262,11 +260,9 @@ class TestGetComponentName(unittest.TestCase):
         self, component_name
     ):
         with patch('cdflow_commands.config.check_output') as check_output:
-            check_output.return_value = bytes(
-                'git@github.com:org/{}\n'.format(
-                    component_name
-                ).encode('utf-8')
-            )
+            check_output.return_value = 'git@github.com:org/{}\n'.format(
+                component_name
+            ).encode('utf-8')
             extraced_component_name = config.get_component_name(None)
 
             assert extraced_component_name == component_name
@@ -279,9 +275,9 @@ class TestGetComponentName(unittest.TestCase):
     ):
         with patch('cdflow_commands.config.check_output') as check_output:
             repo_template = 'https://github.com/org/{}.git\n'
-            check_output.return_value = bytes(
-                repo_template.format(component_name).encode('utf-8')
-            )
+            check_output.return_value = repo_template.format(
+                component_name
+            ).encode('utf-8')
             extraced_component_name = config.get_component_name(None)
 
             assert extraced_component_name == component_name
@@ -293,11 +289,9 @@ class TestGetComponentName(unittest.TestCase):
         self, component_name
     ):
         with patch('cdflow_commands.config.check_output') as check_output:
-            check_output.return_value = bytes(
-                'https://github.com/org/{}\n'.format(
-                    component_name
-                ).encode('utf-8')
-            )
+            check_output.return_value = 'https://github.com/org/{}\n'.format(
+                component_name
+            ).encode('utf-8')
             extraced_component_name = config.get_component_name(None)
 
             assert extraced_component_name == component_name

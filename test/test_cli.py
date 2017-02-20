@@ -186,9 +186,9 @@ class TestReleaseCLI(unittest.TestCase):
         component_name = 'dummy-component'
         version = '1.2.3'
 
-        check_output.return_value = bytes('git@github.com:org/{}.git'.format(
+        check_output.return_value = 'git@github.com:org/{}.git'.format(
             component_name
-        ).encode('utf-8'))
+        ).encode('utf-8')
 
         cli.run(['release', version])
 
@@ -283,9 +283,9 @@ class TestDeployCLI(unittest.TestCase):
 
         component_name = 'dummy-component'
 
-        check_output.return_value = bytes('git@github.com:org/{}.git'.format(
+        check_output.return_value = 'git@github.com:org/{}.git'.format(
             component_name
-        ).encode('utf-8'))
+        ).encode('utf-8')
 
         cli.run(['deploy', 'aslive', '1.2.3'])
 
@@ -528,9 +528,9 @@ class TestDestroyCLI(unittest.TestCase):
 
         component_name = 'dummy-component'
 
-        check_output.return_value = bytes('git@github.com:org/{}.git'.format(
+        check_output.return_value = 'git@github.com:org/{}.git'.format(
             component_name
-        ).encode('utf-8'))
+        ).encode('utf-8')
 
         cli.run(['destroy', 'aslive'])
 
