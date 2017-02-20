@@ -9,13 +9,13 @@ RUN apt-get update && \
      ca-certificates \
      curl \
      software-properties-common \
-     unzip
-
-RUN curl -fsSL https://apt.dockerproject.org/gpg | apt-key add - && \
+     unzip && \
+    curl -fsSL https://apt.dockerproject.org/gpg | apt-key add - && \
     add-apt-repository "deb https://apt.dockerproject.org/repo/ \
        debian-$(lsb_release -cs) \
        main" && \
-    apt-get update && apt-get -y install docker-engine
+    apt-get update && apt-get -y install docker-engine && \
+    apt-get clean
 
 RUN cd /tmp && \
     curl -sSLO https://github.com/gruntwork-io/terragrunt/releases/download/${TERRAGRUNT_VERSION}/terragrunt_linux_amd64 && \
