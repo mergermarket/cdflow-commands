@@ -1,7 +1,7 @@
-import json
-
 import unittest
 
+import json
+from io import TextIOWrapper
 from datetime import datetime
 from collections import namedtuple
 from string import printable
@@ -25,7 +25,7 @@ class TestReleaseCLI(unittest.TestCase):
         self, check_call, mock_open,
         Session_from_config, Session_from_cli, mock_os
     ):
-        mock_metadata_file = MagicMock(spec=file)
+        mock_metadata_file = MagicMock(spec=TextIOWrapper)
         metadata = {
             'TEAM': 'dummy-team',
             'TYPE': 'docker',
@@ -34,7 +34,7 @@ class TestReleaseCLI(unittest.TestCase):
         }
         mock_metadata_file.read.return_value = json.dumps(metadata)
 
-        mock_dev_file = MagicMock(spec=file)
+        mock_dev_file = MagicMock(spec=TextIOWrapper)
         dev_config = {
             'platform_config': {
                 'account_id': 123456789
@@ -42,7 +42,7 @@ class TestReleaseCLI(unittest.TestCase):
         }
         mock_dev_file.read.return_value = json.dumps(dev_config)
 
-        mock_prod_file = MagicMock(spec=file)
+        mock_prod_file = MagicMock(spec=TextIOWrapper)
         prod_config = {
             'platform_config': {
                 'account_id': 987654321
@@ -116,7 +116,7 @@ class TestReleaseCLI(unittest.TestCase):
         self, check_call, check_output, mock_open,
         Session_from_config, Session_from_cli, mock_os
     ):
-        mock_metadata_file = MagicMock(spec=file)
+        mock_metadata_file = MagicMock(spec=TextIOWrapper)
         metadata = {
             'TEAM': 'dummy-team',
             'TYPE': 'docker',
@@ -125,7 +125,7 @@ class TestReleaseCLI(unittest.TestCase):
         }
         mock_metadata_file.read.return_value = json.dumps(metadata)
 
-        mock_dev_file = MagicMock(spec=file)
+        mock_dev_file = MagicMock(spec=TextIOWrapper)
         dev_config = {
             'platform_config': {
                 'account_id': 123456789
@@ -133,7 +133,7 @@ class TestReleaseCLI(unittest.TestCase):
         }
         mock_dev_file.read.return_value = json.dumps(dev_config)
 
-        mock_prod_file = MagicMock(spec=file)
+        mock_prod_file = MagicMock(spec=TextIOWrapper)
         prod_config = {
             'platform_config': {
                 'account_id': 987654321
@@ -188,7 +188,7 @@ class TestReleaseCLI(unittest.TestCase):
 
         check_output.return_value = 'git@github.com:org/{}.git'.format(
             component_name
-        )
+        ).encode('utf-8')
 
         cli.run(['release', version])
 
@@ -225,7 +225,7 @@ class TestDeployCLI(unittest.TestCase):
         }
         mock_os_deploy.environ = {}
 
-        mock_metadata_file = MagicMock(spec=file)
+        mock_metadata_file = MagicMock(spec=TextIOWrapper)
         metadata = {
             'TEAM': 'dummy-team',
             'TYPE': 'docker',
@@ -234,7 +234,7 @@ class TestDeployCLI(unittest.TestCase):
         }
         mock_metadata_file.read.return_value = json.dumps(metadata)
 
-        mock_dev_file = MagicMock(spec=file)
+        mock_dev_file = MagicMock(spec=TextIOWrapper)
         dev_config = {
             'platform_config': {
                 'account_id': 123456789
@@ -242,7 +242,7 @@ class TestDeployCLI(unittest.TestCase):
         }
         mock_dev_file.read.return_value = json.dumps(dev_config)
 
-        mock_prod_file = MagicMock(spec=file)
+        mock_prod_file = MagicMock(spec=TextIOWrapper)
         prod_config = {
             'platform_config': {
                 'account_id': 987654321
@@ -285,7 +285,7 @@ class TestDeployCLI(unittest.TestCase):
 
         check_output.return_value = 'git@github.com:org/{}.git'.format(
             component_name
-        )
+        ).encode('utf-8')
 
         cli.run(['deploy', 'aslive', '1.2.3'])
 
@@ -470,7 +470,7 @@ class TestDestroyCLI(unittest.TestCase):
         }
         mock_os_deploy.environ = {}
 
-        mock_metadata_file = MagicMock(spec=file)
+        mock_metadata_file = MagicMock(spec=TextIOWrapper)
         metadata = {
             'TEAM': 'dummy-team',
             'TYPE': 'docker',
@@ -479,7 +479,7 @@ class TestDestroyCLI(unittest.TestCase):
         }
         mock_metadata_file.read.return_value = json.dumps(metadata)
 
-        mock_dev_file = MagicMock(spec=file)
+        mock_dev_file = MagicMock(spec=TextIOWrapper)
         dev_config = {
             'platform_config': {
                 'account_id': 123456789
@@ -487,7 +487,7 @@ class TestDestroyCLI(unittest.TestCase):
         }
         mock_dev_file.read.return_value = json.dumps(dev_config)
 
-        mock_prod_file = MagicMock(spec=file)
+        mock_prod_file = MagicMock(spec=TextIOWrapper)
         prod_config = {
             'platform_config': {
                 'account_id': 987654321
@@ -530,7 +530,7 @@ class TestDestroyCLI(unittest.TestCase):
 
         check_output.return_value = 'git@github.com:org/{}.git'.format(
             component_name
-        )
+        ).encode('utf-8')
 
         cli.run(['destroy', 'aslive'])
 

@@ -126,11 +126,12 @@ class TestDeploy(unittest.TestCase):
                 'cdflow_commands.deploy.check_call') as check_call:
 
             mock_os.environ = mock_environment.copy()
-            expected_environment = dict(mock_environment.items() + {
+            aws_env_vars = {
                 'AWS_ACCESS_KEY_ID': 'dummy-access_key_id',
                 'AWS_SECRET_ACCESS_KEY': 'dummy-secret_access_key',
                 'AWS_SESSION_TOKEN': 'dummy-session_token'
-            }.items())
+            }
+            expected_environment = {**mock_environment, **aws_env_vars}
 
             # When
             deploy.run()

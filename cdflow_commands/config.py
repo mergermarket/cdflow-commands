@@ -103,7 +103,7 @@ def get_component_name(component_name):
     if component_name:
         return component_name
     remote = check_output(['git', 'config', 'remote.origin.url'])
-    name = remote.strip().split('/')[-1]
+    name = remote.decode('utf-8').strip().split('/')[-1]
     if name.endswith('.git'):
         return name[:-4]
     return name

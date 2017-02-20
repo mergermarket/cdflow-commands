@@ -1,7 +1,7 @@
-FROM python:2
+FROM python:3
 
-RUN mkdir /infra
-WORKDIR /infra
+RUN mkdir /cdflow
+WORKDIR /cdflow
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
