@@ -78,7 +78,7 @@ class Release(object):
 
         username, password = b64decode(
             response['authorizationData'][0]['authorizationToken']
-        ).split(':')
+        ).decode('utf-8').split(':')
 
         proxy_endpoint = response['authorizationData'][0]['proxyEndpoint']
 
