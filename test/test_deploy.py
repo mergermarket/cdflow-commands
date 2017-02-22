@@ -235,3 +235,57 @@ class TestDeploy(unittest.TestCase):
                 ['terragrunt', 'apply'] + args,
                 env=ANY
             )
+
+
+class TestEnvironmentSpecificConfigAddedToTerraformArgs(unittest.TestCase):
+
+    @given(text())
+    def test_environment_specific_config_in_args(self, env_name):
+
+        # Given
+        boto_session = Session(
+            'dummy-access-key', 'dummy-secreet-access-key',
+            'dummy-session-token', 'eu-west-1'
+        )
+        deploy_config = DeployConfig(
+            'dummy-team', 'dummy-account-id', 'dummy-platform-config-file'
+        )
+        deploy = Deploy(
+            boto_session, 'dummy-component', env_name,
+            'dummy-version', deploy_config
+        )
+
+        # When
+        with patch(
+            'cdflow_commands.deploy.check_call'
+        ) as check_call, patch(
+            'cdflow_commands.terragrunt.path'
+        ) as path:
+            path.exists.return_value = True
+            deploy.run()
+            # Then
+            config_file = 'config/{}.json'.format(env_name)
+            image_name = '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
+                'dummy-account-id', 'eu-west-1',
+                'dummy-component', 'dummy-version'
+            )
+            args = [
+                '-var', 'component=dummy-component',
+                '-var', 'env={}'.format(env_name),
+                '-var', 'aws_region=eu-west-1',
+                '-var', 'team=dummy-team',
+                '-var', 'image={}'.format(image_name),
+                '-var', 'version=dummy-version',
+                '-var-file', 'dummy-platform-config-file',
+                '-var-file', config_file,
+                'infra'
+            ]
+            check_call.assert_any_call(
+                ['terragrunt', 'plan'] + args,
+                env=ANY
+            )
+            check_call.assert_any_call(
+                ['terragrunt', 'apply'] + args,
+                env=ANY
+            )
+            path.exists.assert_any_call(config_file)
