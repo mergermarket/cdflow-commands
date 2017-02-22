@@ -1,5 +1,6 @@
 from hashlib import sha1
 from textwrap import dedent
+from os import path
 
 from botocore.exceptions import ClientError
 
@@ -153,15 +154,18 @@ def build_command_parameters(
     team,
     image,
     version,
-    config_file
+    platform_config_file
 ):
-    return [
+    parameters = [
         '-var', 'component={}'.format(component_name),
         '-var', 'env={}'.format(environment_name),
         '-var', 'aws_region={}'.format(aws_region),
         '-var', 'team={}'.format(team),
         '-var', 'image={}'.format(image),
         '-var', 'version={}'.format(version),
-        '-var-file', config_file,
-        'infra',
+        '-var-file', platform_config_file,
     ]
+    config_file = 'config/{}.json'.format(environment_name)
+    if path.exists(config_file):
+        parameters += ['-var-file', config_file]
+    return parameters + ['infra']
