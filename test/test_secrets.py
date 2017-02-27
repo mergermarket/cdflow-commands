@@ -1,5 +1,4 @@
 import unittest
-from textwrap import dedent
 from string import ascii_letters, digits, printable
 from mock import patch
 from hypothesis import given, assume
@@ -39,7 +38,6 @@ class TestGetBuildSecretsFromCredstash(unittest.TestCase):
 
     @given(inputs)
     def test_secrets_fetched(self, inputs):
-
         # Given
         assume(inputs['prefix'] != 'deploy')
         assume(inputs['component_name'] != inputs['other_component_name'])
@@ -48,28 +46,45 @@ class TestGetBuildSecretsFromCredstash(unittest.TestCase):
         assume(inputs['secret_value'] != 'dummy')
         assume(inputs['other_secret_value'] != 'dummy')
         with patch(
-            'cdflow_commands.secrets.check_output'
-        ) as check_output, patch(
-            'cdflow_commands.secrets.os'
-        ) as mock_os:
-            # second and forth are valid, others are decoys
-            return_values = []
+            'cdflow_commands.secrets.credstash'
+        ) as mock_credstash:
+            secret_key_1 = ("deploy.{env_name}.{component_name}.{secret}"
+                            .format(**inputs))
+            secret_key_2 = ("deploy.{env_name}.{component_name}.{other_secret}"
+                            .format(**inputs))
+            mock_credstash.listSecrets.return_value = [
+                {
+                    u'version': u'0000000000000000001',
+                    u'name': ("{prefix}.{env_name}.{component_name}.{secret}"
+                              .format(**inputs))
+                },
+                {
+                    u'version': u'0000000000000000002',
+                    u'name': secret_key_1
+                },
+                {
+                    u'version': u'0000000000000000002',
+                    u'name': ("deploy.{other_env_name}.{component_name}."
+                              "{secret}".format(**inputs))
+                },
+                {
+                    u'version': u'0000000000000000002',
+                    u'name': secret_key_2
+                },
+                {
+                    u'version': u'0000000000000000002',
+                    u'name': ("deploy.{env_name}.{other_component_name}."
+                              "{secret}".format(**inputs))
+                }
+            ]
 
-            return_values.append(dedent("""
-                {prefix}.{env_name}.{component_name}.{secret} -- decoy
-                deploy.{env_name}.{component_name}.{secret} -- valid
-                deploy.{other_env_name}.{component_name}.{secret} -- decoy
-                deploy.{env_name}.{component_name}.{other_secret} -- valid
-                deploy.{env_name}.{other_component_name}.{secret} -- decoy
-            """.format(**inputs)).strip() + '\n')
+            def _get_secret(name, *args, **kwargs):
+                if name == secret_key_1:
+                    return inputs['secret_value']
+                if name == secret_key_2:
+                    return inputs['other_secret_value']
 
-            return_values.append(
-                inputs['secret_value'] + '\n'
-            )
-            return_values.append(
-                inputs['other_secret_value'] + '\n'
-            )
-            check_output.side_effect = return_values
+            mock_credstash.getSecret = _get_secret
 
             boto_session = Session(
                 inputs['access_key_id'],
@@ -77,19 +92,11 @@ class TestGetBuildSecretsFromCredstash(unittest.TestCase):
                 inputs['session_token'],
                 inputs['aws_region']
             )
-            mock_os.environ = inputs['env'].copy()
 
             expected_secrets = {
                 inputs['secret']: inputs['secret_value'],
                 inputs['other_secret']: inputs['other_secret_value']
             }
-
-            aws_env_vars = {
-                'AWS_ACCESS_KEY_ID': inputs['access_key_id'],
-                'AWS_SECRET_ACCESS_KEY': inputs['secret_access_key'],
-                'AWS_SESSION_TOKEN': inputs['session_token']
-            }
-            expected_env = {**inputs['env'], **aws_env_vars}
 
             # When
             credentials = get_secrets(
@@ -100,12 +107,4 @@ class TestGetBuildSecretsFromCredstash(unittest.TestCase):
             )
 
             # Then
-            mock_calls = check_output.mock_calls
-
             assert credentials == expected_secrets
-
-            assert expected_env == mock_calls[0][CALL_KWARGS]['env']
-            assert expected_env == mock_calls[1][CALL_KWARGS]['env']
-            assert expected_env == mock_calls[2][CALL_KWARGS]['env']
-
-            assert inputs['env'] == mock_os.environ
