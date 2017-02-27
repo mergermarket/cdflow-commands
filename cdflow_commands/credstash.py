@@ -31,9 +31,9 @@ def _get_secret_value_without_final_newline(base_command, env, name):
 
 
 def _component_secrets_for_environment(base_command, env, prefix):
-    secret_names = check_output(base_command + ['list'], env=env).splitlines()
+    lines = check_output(base_command + ['list'], env=env).splitlines()
     return [
         line.split(' ')[0]
-        for line in secret_names
+        for line in lines
         if line.startswith(prefix)
     ]
