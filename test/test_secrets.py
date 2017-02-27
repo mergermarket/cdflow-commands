@@ -1,9 +1,12 @@
 import unittest
 from string import ascii_letters, digits, printable
+
 from mock import patch
 from hypothesis import given, assume
 from hypothesis.strategies import text, fixed_dictionaries, dictionaries
+
 from boto3.session import Session
+from botocore.exceptions import ClientError
 
 from cdflow_commands.secrets import get_secrets
 
@@ -108,3 +111,45 @@ class TestGetBuildSecretsFromCredstash(unittest.TestCase):
 
             # Then
             assert credentials == expected_secrets
+
+    def test_missing_credtash_table_is_handled_gracefully(self):
+        boto_session = Session(
+            'dummy-access_key_id',
+            'dummy-secret_access_key',
+            'dummy-session_token',
+            'dummy-aws_region'
+        )
+
+        with patch('cdflow_commands.secrets.credstash') as credstash:
+            credstash.listSecrets.side_effect = ClientError(
+                {'Error': {'Code': 'ResourceNotFoundException'}},
+                'Operation'
+            )
+
+            secrets = get_secrets(
+                'dummy-env',
+                'dummy-team',
+                'dummy-component',
+                boto_session
+            )
+
+            assert {} == secrets
+
+    def test_other_exception_surfaced(self):
+        boto_session = Session(
+            'dummy-access_key_id',
+            'dummy-secret_access_key',
+            'dummy-session_token',
+            'dummy-aws_region'
+        )
+
+        with patch('cdflow_commands.secrets.credstash') as credstash:
+            credstash.listSecrets.side_effect = ClientError(
+                {'Error': {'Code': 'OtherException'}},
+                'Operation'
+            )
+
+            self.assertRaises(
+                ClientError, get_secrets,
+                'dummy-env', 'dummy-team', 'dummy-component', boto_session
+            )
