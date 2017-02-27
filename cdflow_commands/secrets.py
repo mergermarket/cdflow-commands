@@ -1,5 +1,7 @@
 import credstash
 
+from botocore.exceptions import ClientError
+
 
 def get_secrets(env_name, team, component_name, boto_session):
     credentials = boto_session.get_credentials()
@@ -32,12 +34,19 @@ def get_secrets(env_name, team, component_name, boto_session):
 def _component_secrets_for_environment(
     table, region_name, prefix, aws_credentials
 ):
-    return [
-        secret_data['name']
-        for secret_data in credstash.listSecrets(
-            table=table,
-            region=region_name,
-            **aws_credentials
-        )
-        if secret_data['name'].startswith(prefix)
-    ]
+
+    try:
+        return [
+            secret_data['name']
+            for secret_data in credstash.listSecrets(
+                table=table,
+                region=region_name,
+                **aws_credentials
+            )
+            if secret_data['name'].startswith(prefix)
+        ]
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'ResourceNotFoundException':
+            return []
+        else:
+            raise
