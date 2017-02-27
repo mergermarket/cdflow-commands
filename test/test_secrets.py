@@ -6,7 +6,7 @@ from hypothesis import given, assume
 from hypothesis.strategies import text, fixed_dictionaries, dictionaries
 from boto3.session import Session
 
-from cdflow_commands.credstash import get_secrets
+from cdflow_commands.secrets import get_secrets
 
 CALL_KWARGS = 2
 IDENTIFIERS = ascii_letters + digits + '-._'
@@ -48,9 +48,9 @@ class TestGetBuildSecretsFromCredstash(unittest.TestCase):
         assume(inputs['secret_value'] != 'dummy')
         assume(inputs['other_secret_value'] != 'dummy')
         with patch(
-            'cdflow_commands.credstash.check_output'
+            'cdflow_commands.secrets.check_output'
         ) as check_output, patch(
-            'cdflow_commands.credstash.os'
+            'cdflow_commands.secrets.os'
         ) as mock_os:
             # second and forth are valid, others are decoys
             return_values = []
