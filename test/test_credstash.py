@@ -1,7 +1,7 @@
 import unittest
 from textwrap import dedent
 from string import ascii_letters, digits, printable
-from mock import patch, ANY
+from mock import patch
 from hypothesis import given, assume
 from hypothesis.strategies import text, fixed_dictionaries, dictionaries
 from boto3.session import Session
@@ -79,6 +79,18 @@ class TestGetBuildSecretsFromCredstash(unittest.TestCase):
             )
             mock_os.environ = inputs['env'].copy()
 
+            expected_secrets = {
+                inputs['secret']: inputs['secret_value'],
+                inputs['other_secret']: inputs['other_secret_value']
+            }
+
+            aws_env_vars = {
+                'AWS_ACCESS_KEY_ID': inputs['access_key_id'],
+                'AWS_SECRET_ACCESS_KEY': inputs['secret_access_key'],
+                'AWS_SESSION_TOKEN': inputs['session_token']
+            }
+            expected_env = {**inputs['env'], **aws_env_vars}
+
             # When
             credentials = get_secrets(
                 inputs['env_name'],
@@ -88,46 +100,12 @@ class TestGetBuildSecretsFromCredstash(unittest.TestCase):
             )
 
             # Then
-            self.assertDictEqual({
-                inputs['secret']: inputs['secret_value'],
-                inputs['other_secret']: inputs['other_secret_value']
-            }, credentials)
+            mock_calls = check_output.mock_calls
 
-            check_output.assert_any_call([
-                'credstash',
-                '-t', 'credstash-{}'.format(inputs['team']),
-                '-r', inputs['aws_region'],
-                'list'
-            ], env=ANY)
+            assert credentials == expected_secrets
 
-            check_output.assert_any_call([
-                'credstash',
-                '-t', 'credstash-{}'.format(inputs['team']),
-                '-r', inputs['aws_region'],
-                'get',
-                'deploy.{env_name}.{component_name}.{secret}'.format(**inputs)
-            ], env=ANY)
+            assert expected_env == mock_calls[0][CALL_KWARGS]['env']
+            assert expected_env == mock_calls[1][CALL_KWARGS]['env']
+            assert expected_env == mock_calls[2][CALL_KWARGS]['env']
 
-            check_output.assert_any_call([
-                'credstash',
-                '-t', 'credstash-{}'.format(inputs['team']),
-                '-r', inputs['aws_region'],
-                'get',
-                'deploy.{env_name}.{component_name}.{other_secret}'.format(
-                    **inputs
-                )
-            ], env=ANY)
-
-            aws_env_vars = {
-                'AWS_ACCESS_KEY_ID': inputs['access_key_id'],
-                'AWS_SECRET_ACCESS_KEY': inputs['secret_access_key'],
-                'AWS_SESSION_TOKEN': inputs['session_token']
-            }
-            expected_env = {**inputs['env'], **aws_env_vars}
-
-            env = check_output.mock_calls[0][CALL_KWARGS]['env']
-            self.assertDictEqual(expected_env, env)
-            assert(env == check_output.mock_calls[1][CALL_KWARGS]['env'])
-            assert(env == check_output.mock_calls[2][CALL_KWARGS]['env'])
-
-            self.assertDictEqual(inputs['env'], mock_os.environ)
+            assert inputs['env'] == mock_os.environ
