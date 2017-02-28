@@ -69,7 +69,8 @@ class Deploy(object):
                 self._component_name,
                 self._boto_session
             )
-            json.dump({'secrets': secrets}, f)
+            f.write(json.dumps({'secrets': secrets}).encode('utf-8'))
+            f.flush()
             parameters = self._terragrunt_parameters(f.name)
             check_call(
                 ['terragrunt', 'plan'] + parameters,
