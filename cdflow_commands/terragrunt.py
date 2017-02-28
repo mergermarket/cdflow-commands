@@ -1,6 +1,5 @@
 from hashlib import sha1
 from textwrap import dedent
-from os import path
 
 from botocore.exceptions import ClientError
 
@@ -145,27 +144,3 @@ def write_terragrunt_config(
     )
     with open('.terragrunt', 'w') as f:
         f.write(config)
-
-
-def build_command_parameters(
-    component_name,
-    environment_name,
-    aws_region,
-    team,
-    image,
-    version,
-    platform_config_file
-):
-    parameters = [
-        '-var', 'component={}'.format(component_name),
-        '-var', 'env={}'.format(environment_name),
-        '-var', 'aws_region={}'.format(aws_region),
-        '-var', 'team={}'.format(team),
-        '-var', 'image={}'.format(image),
-        '-var', 'version={}'.format(version),
-        '-var-file', platform_config_file,
-    ]
-    config_file = 'config/{}.json'.format(environment_name)
-    if path.exists(config_file):
-        parameters += ['-var-file', config_file]
-    return parameters + ['infra']

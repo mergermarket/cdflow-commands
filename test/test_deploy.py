@@ -1,6 +1,6 @@
 import unittest
 from mock import patch
-from string import printable
+from string import printable, ascii_letters
 
 from hypothesis import given
 from hypothesis.strategies import text, fixed_dictionaries, dictionaries
@@ -239,7 +239,7 @@ class TestDeploy(unittest.TestCase):
 
 class TestEnvironmentSpecificConfigAddedToTerraformArgs(unittest.TestCase):
 
-    @given(text())
+    @given(text(alphabet=ascii_letters, min_size=2, max_size=10))
     def test_environment_specific_config_in_args(self, env_name):
 
         # Given
@@ -259,7 +259,7 @@ class TestEnvironmentSpecificConfigAddedToTerraformArgs(unittest.TestCase):
         with patch(
             'cdflow_commands.deploy.check_call'
         ) as check_call, patch(
-            'cdflow_commands.terragrunt.path'
+            'cdflow_commands.deploy.path'
         ) as path:
             path.exists.return_value = True
             deploy.run()
