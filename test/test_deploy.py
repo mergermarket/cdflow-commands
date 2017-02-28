@@ -33,9 +33,11 @@ class TestDeploy(unittest.TestCase):
     @patch('cdflow_commands.deploy.check_call')
     @patch('cdflow_commands.deploy.get_secrets')
     @patch('cdflow_commands.deploy.NamedTemporaryFile')
-    def test_terraform_modules_fetched(self, NTF, get_secrets, check_call):
+    def test_terraform_modules_fetched(
+        self, NamedTemporaryFile, get_secrets, check_call
+    ):
         # When
-        NTF.return_value.__enter__.return_value.name = ANY
+        NamedTemporaryFile.return_value.__enter__.return_value.name = ANY
         get_secrets.return_value = {}
         self._deploy.run()
         # Then
@@ -44,9 +46,11 @@ class TestDeploy(unittest.TestCase):
     @patch('cdflow_commands.deploy.check_call')
     @patch('cdflow_commands.deploy.get_secrets')
     @patch('cdflow_commands.deploy.NamedTemporaryFile')
-    def test_terragrunt_plan_called(self, NTF, get_secrets, check_call):
+    def test_terragrunt_plan_called(
+        self, NamedTemporaryFile, get_secrets, check_call
+    ):
         # When
-        NTF.return_value.__enter__.return_value.name = ANY
+        NamedTemporaryFile.return_value.__enter__.return_value.name = ANY
         get_secrets.return_value = {}
         self._deploy.run()
         # Then
@@ -58,9 +62,11 @@ class TestDeploy(unittest.TestCase):
     @patch('cdflow_commands.deploy.check_call')
     @patch('cdflow_commands.deploy.get_secrets')
     @patch('cdflow_commands.deploy.NamedTemporaryFile')
-    def test_terrgrunt_apply_called(self, NTF, get_secrets, check_call):
+    def test_terrgrunt_apply_called(
+        self, NamedTemporaryFile, get_secrets, check_call
+    ):
         # When
-        NTF.return_value.__enter__.return_value.name = ANY
+        NamedTemporaryFile.return_value.__enter__.return_value.name = ANY
         get_secrets.return_value = {}
         self._deploy.run()
         # Then
@@ -94,10 +100,10 @@ class TestDeploy(unittest.TestCase):
             'cdflow_commands.deploy.check_call'
         ) as check_call, patch(
             'cdflow_commands.deploy.NamedTemporaryFile', autospec=True
-        ) as mock_NTF, patch(
+        ) as NamedTemporaryFile, patch(
             'cdflow_commands.deploy.get_secrets'
         ) as get_secrets:
-            mock_NTF.return_value.__enter__.return_value.name = ANY
+            NamedTemporaryFile.return_value.__enter__.return_value.name = ANY
             get_secrets.return_value = {}
 
             # When
@@ -150,10 +156,10 @@ class TestDeploy(unittest.TestCase):
             'cdflow_commands.deploy.check_call'
         ) as check_call, patch(
             'cdflow_commands.deploy.NamedTemporaryFile', autospec=True
-        ) as mock_NTF, patch(
+        ) as NamedTemporaryFile, patch(
             'cdflow_commands.deploy.get_secrets'
         ) as get_secrets:
-            mock_NTF.return_value.__enter__.return_value.name = ANY
+            NamedTemporaryFile.return_value.__enter__.return_value.name = ANY
             get_secrets.return_value = {}
             mock_os.environ = mock_environment.copy()
             aws_env_vars = {
@@ -197,10 +203,10 @@ class TestDeploy(unittest.TestCase):
             'cdflow_commands.deploy.check_call'
         ), patch(
             'cdflow_commands.deploy.NamedTemporaryFile', autospec=True
-        ) as mock_NTF, patch(
+        ) as NamedTemporaryFile, patch(
             'cdflow_commands.deploy.get_secrets'
         ) as get_secrets:
-            mock_NTF.return_value.__enter__.return_value.name = ANY
+            NamedTemporaryFile.return_value.__enter__.return_value.name = ANY
             get_secrets.return_value = {}
             mock_os.environ = mock_environment.copy()
 
@@ -255,10 +261,10 @@ class TestDeploy(unittest.TestCase):
             'cdflow_commands.deploy.check_call'
         ) as check_call, patch(
             'cdflow_commands.deploy.NamedTemporaryFile', autospec=True
-        ) as mock_NTF, patch(
+        ) as NamedTemporaryFile, patch(
             'cdflow_commands.deploy.get_secrets'
         ) as get_secrets:
-            mock_NTF.return_value.__enter__.return_value.name = \
+            NamedTemporaryFile.return_value.__enter__.return_value.name = \
                 secret_file_path
             get_secrets.return_value = {}
 
@@ -311,10 +317,10 @@ class TestEnvironmentSpecificConfigAddedToTerraformArgs(unittest.TestCase):
             'cdflow_commands.terragrunt.path'
         ) as path, patch(
             'cdflow_commands.deploy.NamedTemporaryFile', autospec=True
-        ) as mock_NTF, patch(
+        ) as NamedTemporaryFile, patch(
             'cdflow_commands.deploy.get_secrets'
         ) as get_secrets:
-            mock_NTF.return_value.__enter__.return_value.name = ANY
+            NamedTemporaryFile.return_value.__enter__.return_value.name = ANY
             get_secrets.return_value = {}
             path.exists.return_value = True
             deploy.run()

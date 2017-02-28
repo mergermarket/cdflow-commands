@@ -219,8 +219,9 @@ class TestDeployCLI(unittest.TestCase):
     @patch('cdflow_commands.deploy.get_secrets')
     @patch('cdflow_commands.deploy.NamedTemporaryFile')
     def test_deploy_is_configured_and_run(
-        self, NTF, get_secrets, check_output, check_call, mock_open,
-        Session_from_config, Session_from_cli, mock_os_cli, mock_os_deploy, _
+        self, NamedTemporaryFile, get_secrets, check_output, check_call,
+        mock_open, Session_from_config, Session_from_cli, mock_os_cli,
+        mock_os_deploy, _
     ):
         mock_os_cli.environ = {
             'JOB_NAME': 'dummy-job-name'
@@ -289,7 +290,7 @@ class TestDeployCLI(unittest.TestCase):
             component_name
         ).encode('utf-8')
 
-        NTF.return_value.__enter__.return_value.name = ANY
+        NamedTemporaryFile.return_value.__enter__.return_value.name = ANY
         get_secrets.return_value = {}
 
         cli.run(['deploy', 'aslive', '1.2.3'])
