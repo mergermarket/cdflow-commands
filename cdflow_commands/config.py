@@ -1,7 +1,7 @@
 import json
 from collections import namedtuple
 from re import sub, match, DOTALL
-from subprocess import check_output
+from subprocess import check_output, CalledProcessError
 
 from boto3.session import Session
 
@@ -12,7 +12,7 @@ PLATFORM_CONFIG_PATH_TEMPLATE = 'infra/platform-config/{}/{}/{}.json'
 class UserError(Exception):
     _message = 'User error'
 
-    def __repr__(self):
+    def __str__(self):
         return self._message
 
 
@@ -26,6 +26,10 @@ class InvalidEmailError(UserError):
 
 class NoJobNameOrEmailError(UserError):
     _message = 'JOB_NAME or EMAIL must be set'
+
+
+class NoGitRemoteError(UserError):
+    _message = 'No git remote configured - cannot infer component name'
 
 
 Metadata = namedtuple(
@@ -102,7 +106,14 @@ def get_role_session_name(env):
 def get_component_name(component_name):
     if component_name:
         return component_name
-    remote = check_output(['git', 'config', 'remote.origin.url'])
+    return _get_component_name_from_git_remote()
+
+
+def _get_component_name_from_git_remote():
+    try:
+        remote = check_output(['git', 'config', 'remote.origin.url'])
+    except CalledProcessError as e:
+        raise NoGitRemoteError()
     name = remote.decode('utf-8').strip().split('/')[-1]
     if name.endswith('.git'):
         return name[:-4]
