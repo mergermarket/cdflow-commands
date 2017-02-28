@@ -30,6 +30,7 @@ class Destroy(object):
             'any',
             'all',
             self._platform_config_file,
+            ''
         )
 
     def run(self):

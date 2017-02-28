@@ -59,6 +59,7 @@ class TestDestroy(unittest.TestCase):
                     '-var', 'image=any',
                     '-var', 'version=all',
                     '-var-file', './dummy/file/path.json',
+                    '-var-file', ANY,
                     'infra',
                 ],
                 env=ANY
@@ -94,6 +95,7 @@ class TestDestroy(unittest.TestCase):
                     '-var', 'image=any',
                     '-var', 'version=all',
                     '-var-file', './dummy/file/path.json',
+                    '-var-file', ANY,
                     'infra',
                 ],
                 env=ANY

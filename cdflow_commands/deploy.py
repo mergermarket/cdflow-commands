@@ -1,7 +1,10 @@
+import os
+import json
 from subprocess import check_call
 from collections import namedtuple
-import os
+from tempfile import NamedTemporaryFile
 
+from cdflow_commands.secrets import get_secrets
 from cdflow_commands.terragrunt import build_command_parameters
 
 
@@ -36,8 +39,7 @@ class Deploy(object):
             self._version
         )
 
-    @property
-    def _terragrunt_parameters(self):
+    def _terragrunt_parameters(self, secrets_file):
         return build_command_parameters(
             self._component_name,
             self._environment_name,
@@ -46,6 +48,7 @@ class Deploy(object):
             self._image_name,
             self._version,
             self._platform_config_file,
+            secrets_file
         )
 
     def run(self):
@@ -59,11 +62,21 @@ class Deploy(object):
             'AWS_SESSION_TOKEN': credentials.token
         })
 
-        check_call(
-            ['terragrunt', 'plan'] + self._terragrunt_parameters,
-            env=env
-        )
-        check_call(
-            ['terragrunt', 'apply'] + self._terragrunt_parameters,
-            env=env
-        )
+        with NamedTemporaryFile() as f:
+            secrets = get_secrets(
+                self._environment_name,
+                self._team,
+                self._component_name,
+                self._boto_session
+            )
+            f.write(json.dumps({'secrets': secrets}).encode('utf-8'))
+            f.flush()
+            parameters = self._terragrunt_parameters(f.name)
+            check_call(
+                ['terragrunt', 'plan'] + parameters,
+                env=env
+            )
+            check_call(
+                ['terragrunt', 'apply'] + parameters,
+                env=env
+            )
