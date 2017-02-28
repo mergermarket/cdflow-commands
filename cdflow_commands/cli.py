@@ -12,6 +12,7 @@ Options:
 
 """
 import os
+import sys
 
 from boto3.session import Session
 from docopt import docopt
@@ -23,6 +24,7 @@ from cdflow_commands.config import (
     assume_role,
     get_component_name,
     get_platform_config_path,
+    UserError
 )
 from cdflow_commands.release import Release, ReleaseConfig
 from cdflow_commands.deploy import Deploy, DeployConfig
@@ -31,13 +33,20 @@ from cdflow_commands.terragrunt import S3BucketFactory, write_terragrunt_config
 
 
 def run(argv):
-    args = docopt(__doc__, argv=argv)
+    try:
+        _run(argv)
+    except UserError as err:
+        print(str(err), file=sys.stderr)
 
+
+def _run(argv):
+    args = docopt(__doc__, argv=argv)
     metadata = load_service_metadata()
     global_config = load_global_config(
         metadata.account_prefix, metadata.aws_region
     )
     root_session = Session(region_name=metadata.aws_region)
+
     component_name = get_component_name(args['--component'])
 
     if args['release']:

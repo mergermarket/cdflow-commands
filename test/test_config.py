@@ -2,6 +2,7 @@ import unittest
 
 import json
 from io import TextIOWrapper
+from subprocess import CalledProcessError
 from datetime import datetime
 from string import ascii_letters, digits, printable
 
@@ -295,6 +296,15 @@ class TestGetComponentName(unittest.TestCase):
             extraced_component_name = config.get_component_name(None)
 
             assert extraced_component_name == component_name
+
+    @patch('cdflow_commands.config.check_output')
+    def test_user_error_raised_for_no_git_remote(self, check_output):
+        check_output.side_effect = CalledProcessError(1, 'git')
+        self.assertRaises(
+            config.NoGitRemoteError,
+            config.get_component_name,
+            None
+        )
 
 
 class TestGetPlatformConfigPath(unittest.TestCase):
