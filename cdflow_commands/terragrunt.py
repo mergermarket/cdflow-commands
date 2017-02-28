@@ -154,7 +154,8 @@ def build_command_parameters(
     team,
     image,
     version,
-    platform_config_file
+    platform_config_file,
+    secrets_file
 ):
     parameters = [
         '-var', 'component={}'.format(component_name),
@@ -164,6 +165,7 @@ def build_command_parameters(
         '-var', 'image={}'.format(image),
         '-var', 'version={}'.format(version),
         '-var-file', platform_config_file,
+        '-var-file', secrets_file,
     ]
     config_file = 'config/{}.json'.format(environment_name)
     if path.exists(config_file):

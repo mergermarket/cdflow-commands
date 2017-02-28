@@ -10,7 +10,7 @@ from mock import ANY
 from cdflow_commands.deploy import Deploy, DeployConfig
 
 
-IGNORED_PARAMS = [ANY] * 14
+IGNORED_PARAMS = [ANY] * 16
 CALL_KWARGS = 2
 
 
@@ -31,15 +31,27 @@ class TestDeploy(unittest.TestCase):
         )
 
     @patch('cdflow_commands.deploy.check_call')
-    def test_terraform_modules_fetched(self, check_call):
+    @patch('cdflow_commands.deploy.get_secrets')
+    @patch('cdflow_commands.deploy.NamedTemporaryFile')
+    def test_terraform_modules_fetched(
+        self, NamedTemporaryFile, get_secrets, check_call
+    ):
         # When
+        NamedTemporaryFile.return_value.__enter__.return_value.name = ANY
+        get_secrets.return_value = {}
         self._deploy.run()
         # Then
         check_call.assert_any_call(['terragrunt', 'get', 'infra'])
 
     @patch('cdflow_commands.deploy.check_call')
-    def test_terragrunt_plan_called(self, check_call):
+    @patch('cdflow_commands.deploy.get_secrets')
+    @patch('cdflow_commands.deploy.NamedTemporaryFile')
+    def test_terragrunt_plan_called(
+        self, NamedTemporaryFile, get_secrets, check_call
+    ):
         # When
+        NamedTemporaryFile.return_value.__enter__.return_value.name = ANY
+        get_secrets.return_value = {}
         self._deploy.run()
         # Then
         check_call.assert_any_call(
@@ -48,8 +60,14 @@ class TestDeploy(unittest.TestCase):
         )
 
     @patch('cdflow_commands.deploy.check_call')
-    def test_terrgrunt_apply_called(self, check_call):
+    @patch('cdflow_commands.deploy.get_secrets')
+    @patch('cdflow_commands.deploy.NamedTemporaryFile')
+    def test_terrgrunt_apply_called(
+        self, NamedTemporaryFile, get_secrets, check_call
+    ):
         # When
+        NamedTemporaryFile.return_value.__enter__.return_value.name = ANY
+        get_secrets.return_value = {}
         self._deploy.run()
         # Then
         check_call.assert_any_call(
@@ -78,9 +96,19 @@ class TestDeploy(unittest.TestCase):
         )
         deploy = Deploy(boto_session, ANY, ANY, ANY, self._deploy_config)
 
-        with patch('cdflow_commands.deploy.check_call') as check_call:
+        with patch(
+            'cdflow_commands.deploy.check_call'
+        ) as check_call, patch(
+            'cdflow_commands.deploy.NamedTemporaryFile', autospec=True
+        ) as NamedTemporaryFile, patch(
+            'cdflow_commands.deploy.get_secrets'
+        ) as get_secrets:
+            NamedTemporaryFile.return_value.__enter__.return_value.name = ANY
+            get_secrets.return_value = {}
+
             # When
             deploy.run()
+
             # Then
             check_call.assert_any_call(
                 ['terragrunt', 'plan'] + IGNORED_PARAMS + ['infra'],
@@ -122,9 +150,17 @@ class TestDeploy(unittest.TestCase):
 
         deploy = Deploy(boto_session, ANY, ANY, ANY, self._deploy_config)
 
-        with patch('cdflow_commands.deploy.os') as mock_os, patch(
-                'cdflow_commands.deploy.check_call') as check_call:
-
+        with patch(
+            'cdflow_commands.deploy.os'
+        ) as mock_os, patch(
+            'cdflow_commands.deploy.check_call'
+        ) as check_call, patch(
+            'cdflow_commands.deploy.NamedTemporaryFile', autospec=True
+        ) as NamedTemporaryFile, patch(
+            'cdflow_commands.deploy.get_secrets'
+        ) as get_secrets:
+            NamedTemporaryFile.return_value.__enter__.return_value.name = ANY
+            get_secrets.return_value = {}
             mock_os.environ = mock_environment.copy()
             aws_env_vars = {
                 'AWS_ACCESS_KEY_ID': 'dummy-access_key_id',
@@ -165,8 +201,13 @@ class TestDeploy(unittest.TestCase):
             'cdflow_commands.deploy.os'
         ) as mock_os, patch(
             'cdflow_commands.deploy.check_call'
-        ):
-
+        ), patch(
+            'cdflow_commands.deploy.NamedTemporaryFile', autospec=True
+        ) as NamedTemporaryFile, patch(
+            'cdflow_commands.deploy.get_secrets'
+        ) as get_secrets:
+            NamedTemporaryFile.return_value.__enter__.return_value.name = ANY
+            get_secrets.return_value = {}
             mock_os.environ = mock_environment.copy()
 
             # When
@@ -213,9 +254,22 @@ class TestDeploy(unittest.TestCase):
             data['version']
         )
 
+        secret_file_path = '/mock/file/path'
+
         # When
-        with patch('cdflow_commands.deploy.check_call') as check_call:
+        with patch(
+            'cdflow_commands.deploy.check_call'
+        ) as check_call, patch(
+            'cdflow_commands.deploy.NamedTemporaryFile', autospec=True
+        ) as NamedTemporaryFile, patch(
+            'cdflow_commands.deploy.get_secrets'
+        ) as get_secrets:
+            NamedTemporaryFile.return_value.__enter__.return_value.name = \
+                secret_file_path
+            get_secrets.return_value = {}
+
             deploy.run()
+
             # Then
             args = [
                 '-var', 'component={}'.format(data['component_name']),
@@ -225,6 +279,7 @@ class TestDeploy(unittest.TestCase):
                 '-var', 'image={}'.format(image_name),
                 '-var', 'version={}'.format(data['version']),
                 '-var-file', data['platform_config_file'],
+                '-var-file', secret_file_path,
                 'infra'
             ]
             check_call.assert_any_call(
@@ -260,7 +315,13 @@ class TestEnvironmentSpecificConfigAddedToTerraformArgs(unittest.TestCase):
             'cdflow_commands.deploy.check_call'
         ) as check_call, patch(
             'cdflow_commands.terragrunt.path'
-        ) as path:
+        ) as path, patch(
+            'cdflow_commands.deploy.NamedTemporaryFile', autospec=True
+        ) as NamedTemporaryFile, patch(
+            'cdflow_commands.deploy.get_secrets'
+        ) as get_secrets:
+            NamedTemporaryFile.return_value.__enter__.return_value.name = ANY
+            get_secrets.return_value = {}
             path.exists.return_value = True
             deploy.run()
             # Then
@@ -277,6 +338,7 @@ class TestEnvironmentSpecificConfigAddedToTerraformArgs(unittest.TestCase):
                 '-var', 'image={}'.format(image_name),
                 '-var', 'version=dummy-version',
                 '-var-file', 'dummy-platform-config-file',
+                '-var-file', ANY,
                 '-var-file', config_file,
                 'infra'
             ]

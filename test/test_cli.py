@@ -6,7 +6,7 @@ from datetime import datetime
 from collections import namedtuple
 from string import printable
 
-from mock import patch, Mock, mock_open, MagicMock
+from mock import patch, Mock, mock_open, MagicMock, ANY
 
 from hypothesis import given, assume
 from hypothesis.strategies import text
@@ -216,9 +216,12 @@ class TestDeployCLI(unittest.TestCase):
     @patch('cdflow_commands.config.open', new_callable=mock_open, create=True)
     @patch('cdflow_commands.deploy.check_call')
     @patch('cdflow_commands.config.check_output')
+    @patch('cdflow_commands.deploy.get_secrets')
+    @patch('cdflow_commands.deploy.NamedTemporaryFile')
     def test_deploy_is_configured_and_run(
-        self, check_output, check_call, mock_open,
-        Session_from_config, Session_from_cli, mock_os_cli, mock_os_deploy, _
+        self, NamedTemporaryFile, get_secrets, check_output, check_call,
+        mock_open, Session_from_config, Session_from_cli, mock_os_cli,
+        mock_os_deploy, _
     ):
         mock_os_cli.environ = {
             'JOB_NAME': 'dummy-job-name'
@@ -287,6 +290,9 @@ class TestDeployCLI(unittest.TestCase):
             component_name
         ).encode('utf-8')
 
+        NamedTemporaryFile.return_value.__enter__.return_value.name = ANY
+        get_secrets.return_value = {}
+
         cli.run(['deploy', 'aslive', '1.2.3'])
 
         check_call.assert_any_call(['terragrunt', 'get', 'infra'])
@@ -306,6 +312,7 @@ class TestDeployCLI(unittest.TestCase):
                 '-var', 'image={}'.format(image_name),
                 '-var', 'version=1.2.3',
                 '-var-file', 'infra/platform-config/mmg/dev/eu-west-12.json',
+                '-var-file', ANY,
                 'infra'
             ],
             env={
@@ -325,6 +332,7 @@ class TestDeployCLI(unittest.TestCase):
                 '-var', 'image={}'.format(image_name),
                 '-var', 'version=1.2.3',
                 '-var-file', 'infra/platform-config/mmg/dev/eu-west-12.json',
+                '-var-file', ANY,
                 'infra'
             ],
             env={
@@ -546,6 +554,7 @@ class TestDestroyCLI(unittest.TestCase):
                 '-var', 'image=any',
                 '-var', 'version=all',
                 '-var-file', 'infra/platform-config/mmg/dev/eu-west-12.json',
+                '-var-file', ANY,
                 'infra'
             ],
             env={
@@ -565,6 +574,7 @@ class TestDestroyCLI(unittest.TestCase):
                 '-var', 'image=any',
                 '-var', 'version=all',
                 '-var-file', 'infra/platform-config/mmg/dev/eu-west-12.json',
+                '-var-file', ANY,
                 'infra'
             ],
             env={
