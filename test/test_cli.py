@@ -542,20 +542,11 @@ class TestDestroyCLI(unittest.TestCase):
 
         cli.run(['destroy', 'aslive'])
 
-        check_call.assert_any_call(['terragrunt', 'get', 'infra'])
-
         check_call.assert_any_call(
             [
-                'terragrunt', 'plan',
-                '-var', 'component=dummy-component',
-                '-var', 'env=aslive',
+                'terragrunt', 'plan', '-destroy',
                 '-var', 'aws_region=eu-west-12',
-                '-var', 'team=dummy-team',
-                '-var', 'image=any',
-                '-var', 'version=all',
-                '-var-file', 'infra/platform-config/mmg/dev/eu-west-12.json',
-                '-var-file', ANY,
-                'infra'
+                '/cdflow/tf-destroy'
             ],
             env={
                 'AWS_ACCESS_KEY_ID': aws_access_key_id,
@@ -567,15 +558,8 @@ class TestDestroyCLI(unittest.TestCase):
         check_call.assert_any_call(
             [
                 'terragrunt', 'destroy', '-force',
-                '-var', 'component=dummy-component',
-                '-var', 'env=aslive',
                 '-var', 'aws_region=eu-west-12',
-                '-var', 'team=dummy-team',
-                '-var', 'image=any',
-                '-var', 'version=all',
-                '-var-file', 'infra/platform-config/mmg/dev/eu-west-12.json',
-                '-var-file', ANY,
-                'infra'
+                '/cdflow/tf-destroy'
             ],
             env={
                 'AWS_ACCESS_KEY_ID': aws_access_key_id,

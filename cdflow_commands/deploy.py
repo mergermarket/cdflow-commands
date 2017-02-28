@@ -1,11 +1,10 @@
 import os
+from os import path
 import json
 from subprocess import check_call
 from collections import namedtuple
 from tempfile import NamedTemporaryFile
-
 from cdflow_commands.secrets import get_secrets
-from cdflow_commands.terragrunt import build_command_parameters
 
 
 DeployConfig = namedtuple('DeployConfig', [
@@ -40,16 +39,20 @@ class Deploy(object):
         )
 
     def _terragrunt_parameters(self, secrets_file):
-        return build_command_parameters(
-            self._component_name,
-            self._environment_name,
-            self._aws_region,
-            self._team,
-            self._image_name,
-            self._version,
-            self._platform_config_file,
-            secrets_file
-        )
+        parameters = [
+            '-var', 'component={}'.format(self._component_name),
+            '-var', 'env={}'.format(self._environment_name),
+            '-var', 'aws_region={}'.format(self._aws_region),
+            '-var', 'team={}'.format(self._team),
+            '-var', 'image={}'.format(self._image_name),
+            '-var', 'version={}'.format(self._version),
+            '-var-file', self._platform_config_file,
+            '-var-file', secrets_file
+        ]
+        config_file = 'config/{}.json'.format(self._environment_name)
+        if path.exists(config_file):
+            parameters += ['-var-file', config_file]
+        return parameters + ['infra']
 
     def run(self):
         check_call(['terragrunt', 'get', 'infra'])
