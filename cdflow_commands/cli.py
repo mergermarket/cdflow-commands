@@ -28,7 +28,7 @@ from cdflow_commands.config import (
 )
 from cdflow_commands.release import Release, ReleaseConfig
 from cdflow_commands.deploy import Deploy, DeployConfig
-from cdflow_commands.destroy import Destroy, DestroyConfig
+from cdflow_commands.destroy import Destroy
 from cdflow_commands.terragrunt import S3BucketFactory, write_terragrunt_config
 
 
@@ -96,13 +96,7 @@ def _run_infrastructure_commmand(
             global_config.dev_account_id
         )
     elif args['destroy']:
-        _run_destroy(
-            metadata.team,
-            platform_config_file,
-            boto_session,
-            component_name,
-            environment_name
-        )
+        _run_destroy(boto_session, component_name, environment_name)
 
 
 def _setup_for_infrastructure(
@@ -146,14 +140,6 @@ def _run_deploy(
     deployment.run()
 
 
-def _run_destroy(
-    team, platform_config_file, boto_session, component_name, environment_name
-):
-    destroy_config = DestroyConfig(
-        team=team,
-        platform_config_file=platform_config_file,
-    )
-    destroyment = Destroy(
-        boto_session, component_name, environment_name, destroy_config
-    )
+def _run_destroy(boto_session, component_name, environment_name):
+    destroyment = Destroy(boto_session, component_name, environment_name)
     destroyment.run()
