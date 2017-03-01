@@ -156,7 +156,7 @@ class TestDestroy(unittest.TestCase):
         # Then
         boto_s3_client.delete_object.assert_any_call(
             Bucket=test_fixtures['s3_bucket_name'],
-            Key='{}/{}/tfstate.json'.format(
+            Key='{}/{}/terraform.tfstate'.format(
                 test_fixtures['environment_name'],
                 test_fixtures['component_name']
             )

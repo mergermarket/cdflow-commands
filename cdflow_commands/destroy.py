@@ -40,7 +40,7 @@ class Destroy(object):
         boto_s3_client = self._boto_session.client('s3')
         boto_s3_client.delete_object(
             Bucket=self._bucket_name,
-            Key='{}/{}/tfstate.json'.format(
+            Key='{}/{}/terraform.tfstate'.format(
                 self._environment_name, self._component_name
             )
         )
