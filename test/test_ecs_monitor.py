@@ -196,6 +196,8 @@ class TestECSEventIterator(unittest.TestCase):
 
         event_list = [e for e in events]
 
+        mock_ecs_client.describe_task_definition.assert_called_once()
+
         assert len(event_list) == 3
         assert not event_list[0].done
         assert event_list[0].running == 0
