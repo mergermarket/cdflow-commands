@@ -4,11 +4,14 @@ from subprocess import check_call
 
 class Destroy(object):
 
-    def __init__(self, boto_session, component_name, environment_name):
+    def __init__(
+        self, boto_session, component_name, environment_name, bucket_name
+    ):
         self._boto_session = boto_session
         self._aws_region = boto_session.region_name
         self._component_name = component_name
         self._environment_name = environment_name
+        self._bucket_name = bucket_name
 
     @property
     def _terragrunt_parameters(self):
@@ -33,4 +36,11 @@ class Destroy(object):
         check_call(
             ['terragrunt', 'destroy', '-force'] + self._terragrunt_parameters,
             env=env
+        )
+        boto_s3_client = self._boto_session.client('s3')
+        boto_s3_client.delete_object(
+            Bucket=self._bucket_name,
+            Key='{}/{}/terraform.tfstate'.format(
+                self._environment_name, self._component_name
+            )
         )
