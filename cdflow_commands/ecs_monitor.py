@@ -1,4 +1,5 @@
 from hashlib import sha1
+from functools import lru_cache
 
 
 def build_service_name(environment, component):
@@ -29,7 +30,9 @@ class ECSEventIterator():
             raise StopIteration
 
         primary_deployment = self._get_primary_deployment()
-        release_image = self._get_release_image(primary_deployment)
+        release_image = self._get_release_image(
+            primary_deployment['taskDefinition']
+        )
 
         if release_image != '{}:{}'.format(self._component, self._version):
             raise ImageDoesNotMatchError
@@ -52,9 +55,10 @@ class ECSEventIterator():
             self._ecs_client = self._boto_session.client('ecs')
         return self._ecs_client
 
-    def _get_release_image(self, primary_deployment):
+    @lru_cache(maxsize=10)
+    def _get_release_image(self, task_definition_arn):
         task_def = self._ecs.describe_task_definition(
-            taskDefinition=primary_deployment['taskDefinition']
+            taskDefinition=task_definition_arn
         )['taskDefinition']['containerDefinitions'][0]
 
         return task_def['image'].split('/')[1]
