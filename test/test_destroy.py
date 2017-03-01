@@ -1,15 +1,15 @@
 import unittest
 
 from string import printable
+from collections import namedtuple
 
-from mock import patch, ANY
+from mock import patch, ANY, Mock
 from hypothesis import given
 from hypothesis.strategies import text, dictionaries, fixed_dictionaries
 
-from boto3 import Session
-
 from cdflow_commands.destroy import Destroy
 
+BotoCreds = namedtuple('BotoCreds', ['access_key', 'secret_key', 'token'])
 
 CALL_KWARGS = 2
 
@@ -24,9 +24,11 @@ class TestDestroy(unittest.TestCase):
     def test_plan_was_called_via_terragrunt(self, test_fixtures):
         component_name = test_fixtures['component_name']
         environment_name = test_fixtures['environment_name']
-        boto_session = Session('ANY', 'ANY', 'ANY', test_fixtures['region'])
+
+        boto_session = Mock()
+        boto_session.region_name = test_fixtures['region']
         destroy = Destroy(
-            boto_session, component_name, environment_name
+            boto_session, component_name, environment_name, 'dummy-bucket'
         )
 
         with patch('cdflow_commands.destroy.check_call') as check_call:
@@ -45,9 +47,10 @@ class TestDestroy(unittest.TestCase):
     def test_destroy_was_called_via_terragrunt(self, test_fixtures):
         component_name = test_fixtures['component_name']
         environment_name = test_fixtures['environment_name']
-        boto_session = Session('ANY', 'ANY', 'ANY', test_fixtures['region'])
+        boto_session = Mock()
+        boto_session.region_name = test_fixtures['region']
         destroy = Destroy(
-            boto_session, component_name, environment_name
+            boto_session, component_name, environment_name, 'dummy-bucket'
         )
 
         with patch('cdflow_commands.destroy.check_call') as check_call:
@@ -64,14 +67,16 @@ class TestDestroy(unittest.TestCase):
         'session_token': text(alphabet=printable, min_size=1),
     }))
     def test_aws_config_was_passed_into_envionrment(self, aws_config):
-        boto_session = Session(
+        boto_session = Mock()
+        boto_session.region_name = 'dummy-region'
+        boto_session.get_credentials.return_value = BotoCreds(
             aws_config['access_key'],
             aws_config['secret_key'],
             aws_config['session_token'],
-            'dummy-region'
         )
         destroy = Destroy(
-            boto_session, 'dummy-component', 'dummy-environment'
+            boto_session, 'dummy-component',
+            'dummy-environment', 'dummy-bucket'
         )
 
         with patch('cdflow_commands.destroy.check_call') as check_call:
@@ -93,14 +98,16 @@ class TestDestroy(unittest.TestCase):
         min_size=1
     ))
     def test_original_environment_was_preserved(self, mock_env):
-        boto_session = Session(
+        boto_session = Mock()
+        boto_session.region_name = 'dummy-region'
+        boto_session.get_credentials.return_value = BotoCreds(
             'dummy-access-key',
             'dummy-secret-key',
             'dummy-session-token',
-            'dummy-region'
         )
         destroy = Destroy(
-            boto_session, 'dummy-component', 'dummy-environment'
+            boto_session, 'dummy-component',
+            'dummy-environment', 'dummy-bucket'
         )
 
         with patch(
@@ -118,3 +125,39 @@ class TestDestroy(unittest.TestCase):
             env = check_call.mock_calls[1][CALL_KWARGS]['env']
             for key, value in mock_env.items():
                 assert env[key] == value
+
+    @given(fixed_dictionaries({
+        'component_name': text(alphabet=printable, min_size=1),
+        'environment_name': text(alphabet=printable, min_size=1),
+        's3_bucket_name': text(alphabet=printable, min_size=1),
+    }))
+    def test_tfstate_removed_from_s3(self, test_fixtures):
+        # Given
+        boto_session = Mock()
+        boto_session.region_name = 'dummy-region'
+        boto_session.get_credentials.return_value = BotoCreds(
+            'dummy-access-key',
+            'dummy-secret-key',
+            'dummy-session-token',
+        )
+        boto_s3_client = Mock()
+        boto_session.client.return_value = boto_s3_client
+        destroy = Destroy(
+            boto_session,
+            test_fixtures['component_name'],
+            test_fixtures['environment_name'],
+            test_fixtures['s3_bucket_name']
+        )
+
+        # When
+        with patch('cdflow_commands.destroy.check_call'):
+            destroy.run()
+
+        # Then
+        boto_s3_client.delete_object.assert_any_call(
+            Bucket=test_fixtures['s3_bucket_name'],
+            Key='{}/{}/terraform.tfstate'.format(
+                test_fixtures['environment_name'],
+                test_fixtures['component_name']
+            )
+        )

@@ -82,7 +82,7 @@ def _run_infrastructure_commmand(
     args, metadata, global_config, root_session, component_name
 ):
     environment_name = args['<environment>']
-    boto_session, platform_config_file = _setup_for_infrastructure(
+    boto_session, platform_config_file, s3_bucket = _setup_for_infrastructure(
         environment_name, component_name, metadata, global_config, root_session
     )
     if args['deploy']:
@@ -96,7 +96,7 @@ def _run_infrastructure_commmand(
             global_config.dev_account_id
         )
     elif args['destroy']:
-        _run_destroy(boto_session, component_name, environment_name)
+        _run_destroy(boto_session, component_name, environment_name, s3_bucket)
 
 
 def _setup_for_infrastructure(
@@ -121,7 +121,7 @@ def _setup_for_infrastructure(
     write_terragrunt_config(
         metadata.aws_region, s3_bucket, environment_name, component_name
     )
-    return boto_session, platform_config_file
+    return boto_session, platform_config_file, s3_bucket
 
 
 def _run_deploy(
@@ -140,6 +140,8 @@ def _run_deploy(
     deployment.run()
 
 
-def _run_destroy(boto_session, component_name, environment_name):
-    destroyment = Destroy(boto_session, component_name, environment_name)
+def _run_destroy(boto_session, component_name, environment_name, s3_bucket):
+    destroyment = Destroy(
+        boto_session, component_name, environment_name, s3_bucket
+    )
     destroyment.run()
