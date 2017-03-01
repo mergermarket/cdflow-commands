@@ -28,25 +28,9 @@ class ECSEventIterator():
         if self._done:
             raise StopIteration
 
-        ecs = self._boto_session.client('ecs')
-        service_name = build_service_name(self._environment, self._component)
+        primary_deployment = self._get_primary_deployment()
+        release_image = self._get_release_image(primary_deployment)
 
-        services = ecs.describe_services(
-            cluster=self._cluster,
-            services=[service_name]
-        )
-
-        primary_deployment = [
-            deployment
-            for deployment in services['services'][0]['deployments']
-            if deployment['status'] == 'PRIMARY'
-        ][0]
-
-        task_def = ecs.describe_task_definition(
-            taskDefinition=primary_deployment['taskDefinition']
-        )['taskDefinition']['containerDefinitions'][0]
-
-        release_image = task_def['image'].split('/')[1]
         if release_image != '{}:{}'.format(self._component, self._version):
             raise ImageDoesNotMatchError
 
@@ -57,6 +41,35 @@ class ECSEventIterator():
 
         self._done = True
         return DoneEvent(running, desired)
+
+    @property
+    def service_name(self):
+        return build_service_name(self._environment, self._component)
+
+    @property
+    def _ecs(self):
+        if not getattr(self, '_ecs_client', None):
+            self._ecs_client = self._boto_session.client('ecs')
+        return self._ecs_client
+
+    def _get_release_image(self, primary_deployment):
+        task_def = self._ecs.describe_task_definition(
+            taskDefinition=primary_deployment['taskDefinition']
+        )['taskDefinition']['containerDefinitions'][0]
+
+        return task_def['image'].split('/')[1]
+
+    def _get_primary_deployment(self):
+        services = self._ecs.describe_services(
+            cluster=self._cluster,
+            services=[self.service_name]
+        )
+
+        return [
+            deployment
+            for deployment in services['services'][0]['deployments']
+            if deployment['status'] == 'PRIMARY'
+        ][0]
 
 
 class DoneEvent():
