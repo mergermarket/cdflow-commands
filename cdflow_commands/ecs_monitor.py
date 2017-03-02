@@ -75,20 +75,25 @@ class ECSEventIterator():
         ][0]
 
 
-class DoneEvent():
+class Event():
 
     def __init__(self, running, desired):
+        self.running = running
+        self.desired = desired
+
+
+class DoneEvent(Event):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.done = True
-        self.running = running
-        self.desired = desired
 
 
-class InProgressEvent():
+class InProgressEvent(Event):
 
-    def __init__(self, running, desired):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.done = False
-        self.running = running
-        self.desired = desired
 
 
 class TimeoutError(Exception):
