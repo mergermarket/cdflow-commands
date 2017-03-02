@@ -50,10 +50,9 @@ class ECSEventIterator():
         return build_service_name(self._environment, self._component)
 
     @property
+    @lru_cache(maxsize=1)
     def _ecs(self):
-        if not getattr(self, '_ecs_client', None):
-            self._ecs_client = self._boto_session.client('ecs')
-        return self._ecs_client
+        return self._boto_session.client('ecs')
 
     @lru_cache(maxsize=10)
     def _get_release_image(self, task_definition_arn):
