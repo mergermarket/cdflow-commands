@@ -71,7 +71,8 @@ class TestLoadConfig(unittest.TestCase):
         mock_dev_file = MagicMock(spec=TextIOWrapper)
         dev_config = {
             'platform_config': {
-                'account_id': 123456789
+                'account_id': 123456789,
+                'ecs_cluster.default.name': 'non-production'
             }
         }
         mock_dev_file.read.return_value = json.dumps(dev_config)
@@ -79,7 +80,8 @@ class TestLoadConfig(unittest.TestCase):
         mock_prod_file = MagicMock(spec=TextIOWrapper)
         prod_config = {
             'platform_config': {
-                'account_id': 987654321
+                'account_id': 987654321,
+                'ecs_cluster.default.name': 'production'
             }
         }
         mock_prod_file.read.return_value = json.dumps(prod_config)
@@ -94,6 +96,8 @@ class TestLoadConfig(unittest.TestCase):
 
         assert global_config.dev_account_id == 123456789
         assert global_config.prod_account_id == 987654321
+        assert global_config.dev_ecs_cluster == 'non-production'
+        assert global_config.prod_ecs_cluster == 'production'
 
         file_path_template = 'infra/platform-config/{}/{}/{}.json'
         mock_open.assert_any_call(
