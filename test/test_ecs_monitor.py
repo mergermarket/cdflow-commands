@@ -196,8 +196,6 @@ class TestECSEventIterator(unittest.TestCase):
 
         event_list = [e for e in events]
 
-        mock_ecs_client.describe_task_definition.assert_called_once()
-
         assert len(event_list) == 3
         assert not event_list[0].done
         assert event_list[0].running == 0
@@ -263,6 +261,63 @@ class TestECSEventIterator(unittest.TestCase):
         )
         statuses = [e.done for e in islice(events, 1000)]
         assert not any(statuses)
+
+    def test_memoization_on_object_instance(self):
+        environment = 'dummy-environment'
+        component = 'dummy-component'
+        version = 'dummy-version'
+        cluster = 'dummy-cluster'
+        boto_session = MagicMock(spec=Session)
+        mock_ecs_client = Mock()
+        task_definition_arn = ('arn:aws:ecs:eu-west-3:111111111111:'
+                               'task-definition/{}:1'.format(component)),
+
+        mock_ecs_client.describe_services.return_value = {
+            'services': [
+                {
+                    'clusterArn': 'arn:aws:ecs:eu-1:7:cstr/non-prod',
+                    'deployments': [
+                        {
+                            'desiredCount': 2,
+                            'id': 'ecs-svc/9223370553143707624',
+                            'runningCount': 1,
+                            'status': 'PRIMARY',
+                            'taskDefinition': task_definition_arn,
+                        }
+                    ],
+                    'status': 'ACTIVE',
+                    'taskDefinition': task_definition_arn
+                }
+            ]
+        }
+
+        mock_ecs_client.describe_task_definition.return_value = {
+            'taskDefinition': {
+                'containerDefinitions': [{
+                    'cpu': 64,
+                    'dockerLabels': {
+                        'component': component,
+                        'env': 'ci',
+                        'team': 'platform',
+                        'version': '123'
+                    },
+                    'image': ('111111111111.dkr.ecr.eu-west-1.amazonaws.com/'
+                              '{}:{}'.format(component, version)),
+                }],
+                'status': 'ACTIVE',
+                'taskDefinitionArn': task_definition_arn,
+                'taskRoleArn': 'arn:aws:iam::7:role/role',
+                'volumes': []
+            }
+        }
+        boto_session.client.return_value = mock_ecs_client
+        events = ECSEventIterator(
+            cluster, environment, component, version, boto_session
+        )
+        [e.done for e in islice(events, 1000)]
+
+        boto_session.client.assert_called_once()
+        mock_ecs_client.describe_task_definition.assert_called_once()
 
     @given(fixed_dictionaries({
         'environment': text(),
