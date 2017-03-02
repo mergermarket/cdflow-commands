@@ -12,6 +12,9 @@ from hypothesis import given, assume
 from hypothesis.strategies import text
 
 from cdflow_commands import cli
+from cdflow_commands.ecs_monitor import (
+    ECSMonitor, InProgressEvent, DoneEvent
+)
 
 
 class TestReleaseCLI(unittest.TestCase):
@@ -212,6 +215,7 @@ BotoCreds = namedtuple('BotoCreds', ['access_key', 'secret_key', 'token'])
 
 class TestDeployCLI(unittest.TestCase):
 
+    @patch('cdflow_commands.cli.ECSEventIterator')
     @patch('cdflow_commands.cli.S3BucketFactory')
     @patch('cdflow_commands.deploy.os')
     @patch('cdflow_commands.cli.os')
@@ -225,7 +229,7 @@ class TestDeployCLI(unittest.TestCase):
     def test_deploy_is_configured_and_run(
         self, NamedTemporaryFile, get_secrets, check_output, check_call,
         mock_open, Session_from_config, Session_from_cli, mock_os_cli,
-        mock_os_deploy, _
+        mock_os_deploy, _, ECSEventIterator
     ):
         mock_os_cli.environ = {
             'JOB_NAME': 'dummy-job-name'
@@ -299,8 +303,18 @@ class TestDeployCLI(unittest.TestCase):
         NamedTemporaryFile.return_value.__enter__.return_value.name = ANY
         get_secrets.return_value = {}
 
-        cli.run(['deploy', 'aslive', '1.2.3'])
+        ECSEventIterator.return_value = [
+            InProgressEvent(0, 2),
+            InProgressEvent(1, 2),
+            DoneEvent(2, 2)
+        ]
+        ECSMonitor._ITERATION_DELAY = 0
 
+        # When
+        with self.assertLogs('cdflow_commands.logger', level='INFO') as logs:
+            cli.run(['deploy', 'aslive', '1.2.3'])
+
+        # Then
         check_call.assert_any_call(['terragrunt', 'get', 'infra'])
 
         image_name = (
@@ -347,6 +361,14 @@ class TestDeployCLI(unittest.TestCase):
                 'AWS_SESSION_TOKEN': aws_session_token
             }
         )
+
+        assert logs.output == [
+            ('INFO:cdflow_commands.logger:Deploying ECS tasks: '
+             'desired 2 running 0'),
+            ('INFO:cdflow_commands.logger:Deploying ECS tasks: '
+             'desired 2 running 1'),
+            'INFO:cdflow_commands.logger:Deployment complete'
+        ]
 
 
 class TestSetupForInfrastructure(unittest.TestCase):
@@ -479,6 +501,7 @@ class TestDestroyCLI(unittest.TestCase):
         self, check_output, check_call, mock_open,
         Session_from_config, Session_from_cli, mock_os_cli, mock_os_deploy, _
     ):
+        # Given
         mock_os_cli.environ = {
             'JOB_NAME': 'dummy-job-name'
         }
@@ -548,8 +571,10 @@ class TestDestroyCLI(unittest.TestCase):
             component_name
         ).encode('utf-8')
 
+        # When
         cli.run(['destroy', 'aslive'])
 
+        # Then
         check_call.assert_any_call(
             [
                 'terragrunt', 'plan', '-destroy',
