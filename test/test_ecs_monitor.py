@@ -1,6 +1,6 @@
 import unittest
 import datetime
-from itertools import islice
+from itertools import cycle, islice
 
 from mock import MagicMock, Mock
 from hypothesis import given, settings
@@ -9,8 +9,73 @@ from hypothesis.strategies import text, fixed_dictionaries
 from boto3 import Session
 
 from cdflow_commands.ecs_monitor import (
-    ECSEventIterator, build_service_name, ImageDoesNotMatchError
+    ECSEventIterator, ECSMonitor, build_service_name, DoneEvent,
+    InProgressEvent, ImageDoesNotMatchError, TimeoutError
 )
+
+
+class TestECSMonitor(unittest.TestCase):
+
+    def test_ecs_monitor_successful_deployment(self):
+        # Given
+        ecs_event_iterator = [
+            DoneEvent(2, 2)
+        ]
+        ecs_monitor = ECSMonitor(ecs_event_iterator)
+
+        # When
+        with self.assertLogs('cdflow_commands.logger', level='INFO') as logs:
+            ecs_monitor.wait()
+
+        # Then
+        assert logs.output == [
+            'INFO:cdflow_commands.logger:Deployment complete'
+        ]
+
+    def test_ecs_monitor_eventual_successful_deployment(self):
+        # Given
+        ecs_event_iterator = [
+            InProgressEvent(0, 2),
+            InProgressEvent(1, 2),
+            DoneEvent(2, 2)
+        ]
+        ECSMonitor._ITERATION_DELAY = 0
+        ecs_monitor = ECSMonitor(ecs_event_iterator)
+
+        # When
+        with self.assertLogs('cdflow_commands.logger', level='INFO') as logs:
+            ecs_monitor.wait()
+
+        # Then
+        assert logs.output == [
+            ('INFO:cdflow_commands.logger:Deploying ECS tasks: '
+             'desired 2 running 0'),
+            ('INFO:cdflow_commands.logger:Deploying ECS tasks: '
+             'desired 2 running 1'),
+            'INFO:cdflow_commands.logger:Deployment complete'
+        ]
+
+    def test_ecs_monitor_deployment_times_out(self):
+        # Given
+        ecs_event_iterator = cycle([
+            InProgressEvent(0, 2),
+            InProgressEvent(1, 2)
+        ])
+        ECSMonitor._ITERATION_DELAY = 0
+        ECSMonitor._TIMEOUT = 1
+        ecs_monitor = ECSMonitor(ecs_event_iterator)
+
+        # When
+        with self.assertLogs('cdflow_commands.logger', level='INFO') as logs:
+            self.assertRaises(TimeoutError, ecs_monitor.wait)
+
+        # Then
+        assert logs.output[-1:] == [
+            ('ERROR:cdflow_commands.logger:Deployment timed out! '
+             'Didn\'t complete within {} seconds'.format(
+                    ECSMonitor._TIMEOUT
+                ))
+        ]
 
 
 class TestECSEventIterator(unittest.TestCase):

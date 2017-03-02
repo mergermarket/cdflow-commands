@@ -1,5 +1,8 @@
 from hashlib import sha1
 from functools import lru_cache
+from time import sleep, time
+
+from cdflow_commands.logger import logger
 
 
 def build_service_name(environment, component):
@@ -10,6 +13,35 @@ def build_service_name(environment, component):
             service_name[:24], service_name_hash[:4]
         )
     return service_name
+
+
+class ECSMonitor():
+
+    _TIMEOUT = 600
+    _ITERATION_DELAY = 15
+
+    def __init__(self, ecs_event_iterator):
+        self._ecs_event_iterator = ecs_event_iterator
+
+    def wait(self):
+        start = time()
+        for event in self._ecs_event_iterator:
+            if time() - start > self._TIMEOUT:
+                logger.error(
+                    'Deployment timed out! '
+                    'Didn\'t complete within {} seconds'.format(self._TIMEOUT)
+                )
+                raise TimeoutError
+            if event.done:
+                logger.info('Deployment complete')
+                return True
+            logger.info(
+                'Deploying ECS tasks: desired {} running {}'.format(
+                    event.desired, event.running
+                )
+            )
+
+            sleep(self._ITERATION_DELAY)
 
 
 class ECSEventIterator():
