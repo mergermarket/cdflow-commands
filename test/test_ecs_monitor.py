@@ -3,7 +3,7 @@ import datetime
 from itertools import cycle, islice
 
 from mock import MagicMock, Mock
-from hypothesis import given, settings
+from hypothesis import given, settings, example
 from hypothesis.strategies import text, fixed_dictionaries
 
 from boto3 import Session
@@ -86,6 +86,12 @@ class TestECSEventIterator(unittest.TestCase):
         'component': text(),
         'version': text()
     }))
+    @example({
+        'cluster': '',
+        'environment': '',
+        'component': 'hello/world',
+        'version': '1'
+    })
     @settings(max_examples=5)
     def test_monitor_exited_when_the_deployment_is_stable(
         self, deployment_data

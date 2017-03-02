@@ -92,7 +92,7 @@ class ECSEventIterator():
             taskDefinition=task_definition_arn
         )['taskDefinition']['containerDefinitions'][0]
 
-        return task_def['image'].split('/')[1]
+        return task_def['image'].split('/', 1)[1]
 
     def _get_primary_deployment(self):
         services = self._ecs.describe_services(
