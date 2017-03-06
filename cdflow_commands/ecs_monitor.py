@@ -61,7 +61,8 @@ class ECSEventIterator():
         if self._done:
             raise StopIteration
 
-        primary_deployment = self._get_primary_deployment()
+        deployments = self._get_deployments()
+        primary_deployment = self._get_primary_deployment(deployments)
         release_image = self._get_release_image(
             primary_deployment['taskDefinition']
         )
@@ -70,12 +71,14 @@ class ECSEventIterator():
             raise ImageDoesNotMatchError
 
         running = primary_deployment['runningCount']
+        pending = primary_deployment['pendingCount']
         desired = primary_deployment['desiredCount']
-        if running != desired:
-            return InProgressEvent(running, desired)
+        previous_running = self._get_previous_running_count(deployments)
+        if running != desired or previous_running:
+            return InProgressEvent(running, pending, desired, previous_running)
 
         self._done = True
-        return DoneEvent(running, desired)
+        return DoneEvent(running, pending, desired, previous_running)
 
     @property
     def service_name(self):
@@ -94,38 +97,52 @@ class ECSEventIterator():
 
         return task_def['image'].split('/', 1)[1]
 
-    def _get_primary_deployment(self):
+    def _get_deployments(self):
         services = self._ecs.describe_services(
             cluster=self._cluster,
             services=[self.service_name]
         )
-
         return [
             deployment
             for deployment in services['services'][0]['deployments']
+        ]
+
+    def _get_primary_deployment(self, deployments):
+        return [
+            deployment
+            for deployment in deployments
             if deployment['status'] == 'PRIMARY'
         ][0]
+
+    def _get_previous_running_count(self, deployments):
+        return sum(
+            deployment['runningCount']
+            for deployment in deployments
+            if deployment['status'] != 'PRIMARY'
+        )
 
 
 class Event():
 
-    def __init__(self, running, desired):
+    def __init__(self, running, pending, desired, previous_running):
         self.running = running
+        self.pending = pending
         self.desired = desired
+        self.previous_running = previous_running
 
 
 class DoneEvent(Event):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.done = True
+    @property
+    def done(self):
+        return True
 
 
 class InProgressEvent(Event):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.done = False
+    @property
+    def done(self):
+        return False
 
 
 class TimeoutError(Exception):
