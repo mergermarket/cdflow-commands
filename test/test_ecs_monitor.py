@@ -29,14 +29,14 @@ class TestECSMonitor(unittest.TestCase):
 
         # Then
         assert logs.output == [
-            'INFO:cdflow_commands.logger:Deployment complete'
+            'INFO:cdflow_commands.logger:Deployment complete - running: 2'
         ]
 
     def test_ecs_monitor_eventual_successful_deployment(self):
         # Given
         ecs_event_iterator = [
-            InProgressEvent(0, 0, 2, 0),
-            InProgressEvent(1, 0, 2, 0),
+            InProgressEvent(0, 1, 2, 2),
+            InProgressEvent(1, 0, 2, 1),
             DoneEvent(2, 0, 2, 0)
         ]
         ECSMonitor._ITERATION_DELAY = 0
@@ -48,11 +48,11 @@ class TestECSMonitor(unittest.TestCase):
 
         # Then
         assert logs.output == [
-            ('INFO:cdflow_commands.logger:Deploying ECS tasks: '
-             'desired 2 running 0'),
-            ('INFO:cdflow_commands.logger:Deploying ECS tasks: '
-             'desired 2 running 1'),
-            'INFO:cdflow_commands.logger:Deployment complete'
+            ('INFO:cdflow_commands.logger:Deploying ECS tasks - '
+             'desired: 2 pending: 1 running: 0 previous: 2'),
+            ('INFO:cdflow_commands.logger:Deploying ECS tasks - '
+             'desired: 2 pending: 0 running: 1 previous: 1'),
+            'INFO:cdflow_commands.logger:Deployment complete - running: 2'
         ]
 
     def test_ecs_monitor_deployment_times_out(self):
@@ -71,10 +71,9 @@ class TestECSMonitor(unittest.TestCase):
 
         # Then
         assert logs.output[-1:] == [
-            ('ERROR:cdflow_commands.logger:Deployment timed out! '
-             'Didn\'t complete within {} seconds'.format(
-                    ECSMonitor._TIMEOUT
-                ))
+            ('ERROR:cdflow_commands.logger:Deployment timed out - '
+             'didn\'t complete within {} seconds'.format(
+                    ECSMonitor._TIMEOUT))
         ]
 
 
@@ -180,6 +179,7 @@ class TestECSEventIterator(unittest.TestCase):
 
         assert len(event_list) == 1
         assert event_list[0].done
+        assert event_list[0].previous_running == 0
 
     def test_deployment_completed_after_reaching_desired_running_count(self):
         environment = 'dummy-environment'

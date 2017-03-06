@@ -28,16 +28,20 @@ class ECSMonitor():
         for event in self._ecs_event_iterator:
             if time() - start > self._TIMEOUT:
                 logger.error(
-                    'Deployment timed out! '
-                    'Didn\'t complete within {} seconds'.format(self._TIMEOUT)
+                    'Deployment timed out - '
+                    'didn\'t complete within {} seconds'.format(self._TIMEOUT)
                 )
                 raise TimeoutError
             if event.done:
-                logger.info('Deployment complete')
+                logger.info('Deployment complete - running: {}'.format(
+                    event.running
+                ))
                 return True
             logger.info(
-                'Deploying ECS tasks: desired {} running {}'.format(
-                    event.desired, event.running
+                'Deploying ECS tasks - '
+                'desired: {} pending: {} running: {} previous: {}'.format(
+                    event.desired, event.pending,
+                    event.running, event.previous_running
                 )
             )
 
