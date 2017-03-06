@@ -363,11 +363,11 @@ class TestDeployCLI(unittest.TestCase):
         )
 
         assert logs.output == [
-            ('INFO:cdflow_commands.logger:Deploying ECS tasks: '
-             'desired 2 running 0'),
-            ('INFO:cdflow_commands.logger:Deploying ECS tasks: '
-             'desired 2 running 1'),
-            'INFO:cdflow_commands.logger:Deployment complete'
+            ('INFO:cdflow_commands.logger:Deploying ECS tasks - '
+             'desired: 2 pending: 0 running: 0 previous: 0'),
+            ('INFO:cdflow_commands.logger:Deploying ECS tasks - '
+             'desired: 2 pending: 0 running: 1 previous: 0'),
+            'INFO:cdflow_commands.logger:Deployment complete - running: 2'
         ]
 
 
