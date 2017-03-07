@@ -30,7 +30,9 @@ class TestECSMonitor(unittest.TestCase):
 
         # Then
         assert logs.output == [
-            'INFO:cdflow_commands.logger:Deployment complete - running: 2'
+            ('INFO:cdflow_commands.logger:Deploying ECS tasks - desired: 2 '
+             'pending: 0 running: 2 previous: 0'),
+            'INFO:cdflow_commands.logger:Deployment complete'
         ]
 
     def test_ecs_monitor_eventual_successful_deployment(self):
@@ -53,7 +55,9 @@ class TestECSMonitor(unittest.TestCase):
              'desired: 2 pending: 1 running: 0 previous: 2'),
             ('INFO:cdflow_commands.logger:Deploying ECS tasks - '
              'desired: 2 pending: 0 running: 1 previous: 1'),
-            'INFO:cdflow_commands.logger:Deployment complete - running: 2'
+            ('INFO:cdflow_commands.logger:Deploying ECS tasks - '
+             'desired: 2 pending: 0 running: 2 previous: 0'),
+            'INFO:cdflow_commands.logger:Deployment complete'
         ]
 
     def test_ecs_monitor_deployment_times_out(self):

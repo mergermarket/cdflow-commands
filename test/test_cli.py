@@ -370,7 +370,9 @@ class TestDeployCLI(unittest.TestCase):
              'desired: 2 pending: 0 running: 0 previous: 0'),
             ('INFO:cdflow_commands.logger:Deploying ECS tasks - '
              'desired: 2 pending: 0 running: 1 previous: 0'),
-            'INFO:cdflow_commands.logger:Deployment complete - running: 2'
+            ('INFO:cdflow_commands.logger:Deploying ECS tasks - '
+             'desired: 2 pending: 0 running: 2 previous: 0'),
+            'INFO:cdflow_commands.logger:Deployment complete'
         ]
 
 
