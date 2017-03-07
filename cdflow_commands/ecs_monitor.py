@@ -151,8 +151,10 @@ class TimeoutError(UserError):
             TIMEOUT
         )
     )
-    pass
 
 
-class ImageDoesNotMatchError(Exception):
-    pass
+class ImageDoesNotMatchError(UserError):
+    _message = (
+        'Image for the PRIMARY deployment has changed (most likely due to '
+        'another deploy running'
+    )
