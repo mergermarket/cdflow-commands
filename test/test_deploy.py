@@ -10,7 +10,7 @@ from mock import ANY
 from cdflow_commands.deploy import Deploy, DeployConfig
 
 
-IGNORED_PARAMS = [ANY] * 16
+IGNORED_PARAMS = [ANY] * 18
 CALL_KWARGS = 2
 
 
@@ -27,7 +27,7 @@ class TestDeploy(unittest.TestCase):
         )
         self._deploy = Deploy(
             boto_session, 'dummy-component', 'dummy-env',
-            'dummy-version', self._deploy_config
+            'dummy-version', 'dummy-ecs-cluster', self._deploy_config
         )
 
     @patch('cdflow_commands.deploy.check_call')
@@ -94,7 +94,7 @@ class TestDeploy(unittest.TestCase):
             credentials['session_token'],
             'eu-west-10'
         )
-        deploy = Deploy(boto_session, ANY, ANY, ANY, self._deploy_config)
+        deploy = Deploy(boto_session, ANY, ANY, ANY, ANY, self._deploy_config)
 
         with patch(
             'cdflow_commands.deploy.check_call'
@@ -148,7 +148,7 @@ class TestDeploy(unittest.TestCase):
             'eu-west-10'
         )
 
-        deploy = Deploy(boto_session, ANY, ANY, ANY, self._deploy_config)
+        deploy = Deploy(boto_session, ANY, ANY, ANY, ANY, self._deploy_config)
 
         with patch(
             'cdflow_commands.deploy.os'
@@ -195,7 +195,7 @@ class TestDeploy(unittest.TestCase):
             'eu-west-10'
         )
 
-        deploy = Deploy(boto_session, ANY, ANY, ANY, self._deploy_config)
+        deploy = Deploy(boto_session, ANY, ANY, ANY, ANY, self._deploy_config)
 
         with patch(
             'cdflow_commands.deploy.os'
@@ -223,6 +223,7 @@ class TestDeploy(unittest.TestCase):
         'component_name': text(alphabet=printable, min_size=2, max_size=30),
         'environment_name': text(alphabet=printable, min_size=2, max_size=10),
         'version': text(alphabet=printable, min_size=1, max_size=20),
+        'ecs_cluster': text(alphabet=ascii_letters, min_size=8, max_size=32),
         'platform_config_file': text(
             alphabet=printable, min_size=10, max_size=30
         ),
@@ -245,6 +246,7 @@ class TestDeploy(unittest.TestCase):
             data['component_name'],
             data['environment_name'],
             data['version'],
+            data['ecs_cluster'],
             deploy_config
         )
         image_name = '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
@@ -278,6 +280,7 @@ class TestDeploy(unittest.TestCase):
                 '-var', 'team={}'.format(data['team']),
                 '-var', 'image={}'.format(image_name),
                 '-var', 'version={}'.format(data['version']),
+                '-var', 'ecs_cluster={}'.format(data['ecs_cluster']),
                 '-var-file', data['platform_config_file'],
                 '-var-file', secret_file_path,
                 'infra'
@@ -307,7 +310,7 @@ class TestEnvironmentSpecificConfigAddedToTerraformArgs(unittest.TestCase):
         )
         deploy = Deploy(
             boto_session, 'dummy-component', env_name,
-            'dummy-version', deploy_config
+            'dummy-version', 'dummy-ecs-cluster', deploy_config
         )
 
         # When
@@ -337,6 +340,7 @@ class TestEnvironmentSpecificConfigAddedToTerraformArgs(unittest.TestCase):
                 '-var', 'team=dummy-team',
                 '-var', 'image={}'.format(image_name),
                 '-var', 'version=dummy-version',
+                '-var', 'ecs_cluster=dummy-ecs-cluster',
                 '-var-file', 'dummy-platform-config-file',
                 '-var-file', ANY,
                 '-var-file', config_file,

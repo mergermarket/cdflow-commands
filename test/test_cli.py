@@ -11,7 +11,11 @@ from mock import patch, Mock, mock_open, MagicMock, ANY
 from hypothesis import given, assume
 from hypothesis.strategies import text
 
+from cdflow_commands import ecs_monitor as ecs_monitor_module
 from cdflow_commands import cli
+from cdflow_commands.ecs_monitor import (
+    InProgressEvent, DoneEvent
+)
 
 
 class TestReleaseCLI(unittest.TestCase):
@@ -37,7 +41,8 @@ class TestReleaseCLI(unittest.TestCase):
         mock_dev_file = MagicMock(spec=TextIOWrapper)
         dev_config = {
             'platform_config': {
-                'account_id': 123456789
+                'account_id': 123456789,
+                'ecs_cluster.default.name': 'non-production'
             }
         }
         mock_dev_file.read.return_value = json.dumps(dev_config)
@@ -45,7 +50,8 @@ class TestReleaseCLI(unittest.TestCase):
         mock_prod_file = MagicMock(spec=TextIOWrapper)
         prod_config = {
             'platform_config': {
-                'account_id': 987654321
+                'account_id': 987654321,
+                'ecs_cluster.default.name': 'production'
             }
         }
         mock_prod_file.read.return_value = json.dumps(prod_config)
@@ -128,7 +134,8 @@ class TestReleaseCLI(unittest.TestCase):
         mock_dev_file = MagicMock(spec=TextIOWrapper)
         dev_config = {
             'platform_config': {
-                'account_id': 123456789
+                'account_id': 123456789,
+                'ecs_cluster.default.name': 'production'
             }
         }
         mock_dev_file.read.return_value = json.dumps(dev_config)
@@ -136,7 +143,8 @@ class TestReleaseCLI(unittest.TestCase):
         mock_prod_file = MagicMock(spec=TextIOWrapper)
         prod_config = {
             'platform_config': {
-                'account_id': 987654321
+                'account_id': 987654321,
+                'ecs_cluster.default.name': 'production'
             }
         }
         mock_prod_file.read.return_value = json.dumps(prod_config)
@@ -208,6 +216,7 @@ BotoCreds = namedtuple('BotoCreds', ['access_key', 'secret_key', 'token'])
 
 class TestDeployCLI(unittest.TestCase):
 
+    @patch('cdflow_commands.cli.ECSEventIterator')
     @patch('cdflow_commands.cli.S3BucketFactory')
     @patch('cdflow_commands.deploy.os')
     @patch('cdflow_commands.cli.os')
@@ -221,7 +230,7 @@ class TestDeployCLI(unittest.TestCase):
     def test_deploy_is_configured_and_run(
         self, NamedTemporaryFile, get_secrets, check_output, check_call,
         mock_open, Session_from_config, Session_from_cli, mock_os_cli,
-        mock_os_deploy, _
+        mock_os_deploy, _, ECSEventIterator
     ):
         mock_os_cli.environ = {
             'JOB_NAME': 'dummy-job-name'
@@ -240,7 +249,8 @@ class TestDeployCLI(unittest.TestCase):
         mock_dev_file = MagicMock(spec=TextIOWrapper)
         dev_config = {
             'platform_config': {
-                'account_id': 123456789
+                'account_id': 123456789,
+                'ecs_cluster.default.name': 'non-production'
             }
         }
         mock_dev_file.read.return_value = json.dumps(dev_config)
@@ -248,7 +258,8 @@ class TestDeployCLI(unittest.TestCase):
         mock_prod_file = MagicMock(spec=TextIOWrapper)
         prod_config = {
             'platform_config': {
-                'account_id': 987654321
+                'account_id': 987654321,
+                'ecs_cluster.default.name': 'production'
             }
         }
         mock_prod_file.read.return_value = json.dumps(prod_config)
@@ -293,8 +304,18 @@ class TestDeployCLI(unittest.TestCase):
         NamedTemporaryFile.return_value.__enter__.return_value.name = ANY
         get_secrets.return_value = {}
 
-        cli.run(['deploy', 'aslive', '1.2.3'])
+        ECSEventIterator.return_value = [
+            InProgressEvent(0, 0, 2, 0),
+            InProgressEvent(1, 0, 2, 0),
+            DoneEvent(2, 0, 2, 0)
+        ]
+        ecs_monitor_module.INTERVAL = 0
 
+        # When
+        with self.assertLogs('cdflow_commands.logger', level='INFO') as logs:
+            cli.run(['deploy', 'aslive', '1.2.3'])
+
+        # Then
         check_call.assert_any_call(['terragrunt', 'get', 'infra'])
 
         image_name = (
@@ -311,6 +332,7 @@ class TestDeployCLI(unittest.TestCase):
                 '-var', 'team=dummy-team',
                 '-var', 'image={}'.format(image_name),
                 '-var', 'version=1.2.3',
+                '-var', 'ecs_cluster=default',
                 '-var-file', 'infra/platform-config/mmg/dev/eu-west-12.json',
                 '-var-file', ANY,
                 'infra'
@@ -331,6 +353,7 @@ class TestDeployCLI(unittest.TestCase):
                 '-var', 'team=dummy-team',
                 '-var', 'image={}'.format(image_name),
                 '-var', 'version=1.2.3',
+                '-var', 'ecs_cluster=default',
                 '-var-file', 'infra/platform-config/mmg/dev/eu-west-12.json',
                 '-var-file', ANY,
                 'infra'
@@ -341,6 +364,16 @@ class TestDeployCLI(unittest.TestCase):
                 'AWS_SESSION_TOKEN': aws_session_token
             }
         )
+
+        assert logs.output == [
+            ('INFO:cdflow_commands.logger:Deploying ECS tasks - '
+             'desired: 2 pending: 0 running: 0 previous: 0'),
+            ('INFO:cdflow_commands.logger:Deploying ECS tasks - '
+             'desired: 2 pending: 0 running: 1 previous: 0'),
+            ('INFO:cdflow_commands.logger:Deploying ECS tasks - '
+             'desired: 2 pending: 0 running: 2 previous: 0'),
+            'INFO:cdflow_commands.logger:Deployment complete'
+        ]
 
 
 class TestSetupForInfrastructure(unittest.TestCase):
@@ -473,6 +506,7 @@ class TestDestroyCLI(unittest.TestCase):
         self, check_output, check_call, mock_open,
         Session_from_config, Session_from_cli, mock_os_cli, mock_os_deploy, _
     ):
+        # Given
         mock_os_cli.environ = {
             'JOB_NAME': 'dummy-job-name'
         }
@@ -490,7 +524,8 @@ class TestDestroyCLI(unittest.TestCase):
         mock_dev_file = MagicMock(spec=TextIOWrapper)
         dev_config = {
             'platform_config': {
-                'account_id': 123456789
+                'account_id': 123456789,
+                'ecs_cluster.default.name': 'non-production'
             }
         }
         mock_dev_file.read.return_value = json.dumps(dev_config)
@@ -498,7 +533,8 @@ class TestDestroyCLI(unittest.TestCase):
         mock_prod_file = MagicMock(spec=TextIOWrapper)
         prod_config = {
             'platform_config': {
-                'account_id': 987654321
+                'account_id': 987654321,
+                'ecs_cluster.default.name': 'production'
             }
         }
         mock_prod_file.read.return_value = json.dumps(prod_config)
@@ -540,8 +576,10 @@ class TestDestroyCLI(unittest.TestCase):
             component_name
         ).encode('utf-8')
 
+        # When
         cli.run(['destroy', 'aslive'])
 
+        # Then
         check_call.assert_any_call(
             [
                 'terragrunt', 'plan', '-destroy',

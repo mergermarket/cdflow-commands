@@ -49,7 +49,7 @@ def email(draw, min_size=7):
 class TestLoadConfig(unittest.TestCase):
 
     @patch('cdflow_commands.config.open', new_callable=mock_open, create=True)
-    def test_service_metadata_loaded(self, mock_open):
+    def test_service_metadata_loaded_with_default_ecs_cluster(self, mock_open):
         mock_file = MagicMock(spec=TextIOWrapper)
         expected_config = {
             'TEAM': 'dummy-team',
@@ -64,14 +64,41 @@ class TestLoadConfig(unittest.TestCase):
         assert metadata.type == expected_config['TYPE']
         assert metadata.aws_region == expected_config['REGION']
         assert metadata.account_prefix == expected_config['ACCOUNT_PREFIX']
+        assert metadata.ecs_cluster == 'default'
         mock_open.assert_called_once_with('service.json')
+
+    @given(text(alphabet=ascii_letters, min_size=8, max_size=32))
+    def test_service_metadata_loaded_with_specific_ecs_cluster(
+        self, ecs_cluster_name
+    ):
+        mock_file = MagicMock(spec=TextIOWrapper)
+        expected_config = {
+            'TEAM': 'dummy-team',
+            'TYPE': 'docker',
+            'REGION': 'eu-west-1',
+            'ACCOUNT_PREFIX': 'mmg',
+            'ECS_CLUSTER': ecs_cluster_name
+        }
+        with patch(
+            'cdflow_commands.config.open', new_callable=mock_open, create=True
+        ) as mocked_open:
+            mock_file.read.return_value = json.dumps(expected_config)
+            mocked_open.return_value.__enter__.return_value = mock_file
+            metadata = config.load_service_metadata()
+            assert metadata.team == expected_config['TEAM']
+            assert metadata.type == expected_config['TYPE']
+            assert metadata.aws_region == expected_config['REGION']
+            assert metadata.account_prefix == expected_config['ACCOUNT_PREFIX']
+            assert metadata.ecs_cluster == ecs_cluster_name
+            mocked_open.assert_called_once_with('service.json')
 
     @patch('cdflow_commands.config.open', new_callable=mock_open, create=True)
     def test_loaded_from_file(self, mock_open):
         mock_dev_file = MagicMock(spec=TextIOWrapper)
         dev_config = {
             'platform_config': {
-                'account_id': 123456789
+                'account_id': 123456789,
+                'ecs_cluster.default.name': 'non-production'
             }
         }
         mock_dev_file.read.return_value = json.dumps(dev_config)
@@ -79,7 +106,8 @@ class TestLoadConfig(unittest.TestCase):
         mock_prod_file = MagicMock(spec=TextIOWrapper)
         prod_config = {
             'platform_config': {
-                'account_id': 987654321
+                'account_id': 987654321,
+                'ecs_cluster.default.name': 'production'
             }
         }
         mock_prod_file.read.return_value = json.dumps(prod_config)
@@ -94,6 +122,8 @@ class TestLoadConfig(unittest.TestCase):
 
         assert global_config.dev_account_id == 123456789
         assert global_config.prod_account_id == 987654321
+        assert global_config.dev_ecs_cluster == 'non-production'
+        assert global_config.prod_ecs_cluster == 'production'
 
         file_path_template = 'infra/platform-config/{}/{}/{}.json'
         mock_open.assert_any_call(

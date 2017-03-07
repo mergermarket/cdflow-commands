@@ -5,15 +5,10 @@ from subprocess import check_output, CalledProcessError
 
 from boto3.session import Session
 
+from cdflow_commands.exceptions import UserError
+
 
 PLATFORM_CONFIG_PATH_TEMPLATE = 'infra/platform-config/{}/{}/{}.json'
-
-
-class UserError(Exception):
-    _message = 'User error'
-
-    def __str__(self):
-        return self._message
 
 
 class JobNameTooShortError(UserError):
@@ -33,12 +28,17 @@ class NoGitRemoteError(UserError):
 
 
 Metadata = namedtuple(
-    'Metadata', ['team', 'type', 'aws_region', 'account_prefix']
+    'Metadata', ['team', 'type', 'aws_region', 'account_prefix', 'ecs_cluster']
 )
 
 
 GlobalConfig = namedtuple(
-    'GlobalConfig', ['dev_account_id', 'prod_account_id']
+    'GlobalConfig', [
+        'dev_account_id',
+        'prod_account_id',
+        'dev_ecs_cluster',
+        'prod_ecs_cluster'
+    ]
 )
 
 
@@ -49,22 +49,31 @@ def load_service_metadata():
             metadata['TEAM'],
             metadata['TYPE'],
             metadata['REGION'],
-            metadata['ACCOUNT_PREFIX']
+            metadata['ACCOUNT_PREFIX'],
+            metadata.get('ECS_CLUSTER', 'default')
         )
 
 
 def load_global_config(account_prefix, aws_region):
+    ecs_cluster = 'default'
+    ecs_cluster_key = 'ecs_cluster.{}.name'.format(ecs_cluster)
     with open(get_platform_config_path(
         account_prefix, aws_region, is_prod=False
     )) as f:
-        dev_account_id = json.loads(f.read())['platform_config']['account_id']
+        config = json.loads(f.read())
+        dev_account_id = config['platform_config']['account_id']
+        dev_ecs_cluster = config['platform_config'][ecs_cluster_key]
 
     with open(get_platform_config_path(
         account_prefix, aws_region, is_prod=True
     )) as f:
-        prod_account_id = json.loads(f.read())['platform_config']['account_id']
+        config = json.loads(f.read())
+        prod_account_id = config['platform_config']['account_id']
+        prod_ecs_cluster = config['platform_config'][ecs_cluster_key]
 
-    return GlobalConfig(dev_account_id, prod_account_id)
+    return GlobalConfig(
+        dev_account_id, prod_account_id, dev_ecs_cluster, prod_ecs_cluster
+    )
 
 
 def assume_role(root_session, acccount_id, session_name):
@@ -112,7 +121,7 @@ def get_component_name(component_name):
 def _get_component_name_from_git_remote():
     try:
         remote = check_output(['git', 'config', 'remote.origin.url'])
-    except CalledProcessError as e:
+    except CalledProcessError:
         raise NoGitRemoteError()
     name = remote.decode('utf-8').strip().split('/')[-1]
     if name.endswith('.git'):
