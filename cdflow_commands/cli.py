@@ -94,6 +94,7 @@ def _run_infrastructure_commmand(
             component_name,
             environment_name,
             args['<version>'],
+            metadata.ecs_cluster,
             global_config
         )
     elif args['destroy']:
@@ -127,14 +128,8 @@ def _setup_for_infrastructure(
 
 def _run_deploy(
     team, platform_config_file, boto_session, component_name, environment_name,
-    version, global_config
+    version, ecs_cluster, global_config
 ):
-    is_prod = environment_name == 'live'
-    if is_prod:
-        cluster = global_config.prod_ecs_cluster
-    else:
-        cluster = global_config.dev_ecs_cluster
-
     deploy_config = DeployConfig(
         team=team,
         dev_account_id=global_config.dev_account_id,
@@ -142,11 +137,11 @@ def _run_deploy(
     )
     deployment = Deploy(
         boto_session, component_name, environment_name, version,
-        deploy_config
+        ecs_cluster, deploy_config
     )
     deployment.run()
     events = ECSEventIterator(
-        cluster, environment_name, component_name, version, boto_session
+        ecs_cluster, environment_name, component_name, version, boto_session
     )
     monitor = ECSMonitor(events)
     monitor.wait()
