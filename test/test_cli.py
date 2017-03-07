@@ -331,6 +331,7 @@ class TestDeployCLI(unittest.TestCase):
                 '-var', 'team=dummy-team',
                 '-var', 'image={}'.format(image_name),
                 '-var', 'version=1.2.3',
+                '-var', 'ecs_cluster=default',
                 '-var-file', 'infra/platform-config/mmg/dev/eu-west-12.json',
                 '-var-file', ANY,
                 'infra'
@@ -351,6 +352,7 @@ class TestDeployCLI(unittest.TestCase):
                 '-var', 'team=dummy-team',
                 '-var', 'image={}'.format(image_name),
                 '-var', 'version=1.2.3',
+                '-var', 'ecs_cluster=default',
                 '-var-file', 'infra/platform-config/mmg/dev/eu-west-12.json',
                 '-var-file', ANY,
                 'infra'

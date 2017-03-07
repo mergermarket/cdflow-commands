@@ -33,7 +33,7 @@ class NoGitRemoteError(UserError):
 
 
 Metadata = namedtuple(
-    'Metadata', ['team', 'type', 'aws_region', 'account_prefix']
+    'Metadata', ['team', 'type', 'aws_region', 'account_prefix', 'ecs_cluster']
 )
 
 
@@ -54,7 +54,8 @@ def load_service_metadata():
             metadata['TEAM'],
             metadata['TYPE'],
             metadata['REGION'],
-            metadata['ACCOUNT_PREFIX']
+            metadata['ACCOUNT_PREFIX'],
+            metadata.get('ECS_CLUSTER', 'default')
         )
 
 
@@ -125,7 +126,7 @@ def get_component_name(component_name):
 def _get_component_name_from_git_remote():
     try:
         remote = check_output(['git', 'config', 'remote.origin.url'])
-    except CalledProcessError as e:
+    except CalledProcessError:
         raise NoGitRemoteError()
     name = remote.decode('utf-8').strip().split('/')[-1]
     if name.endswith('.git'):
