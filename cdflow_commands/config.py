@@ -5,15 +5,10 @@ from subprocess import check_output, CalledProcessError
 
 from boto3.session import Session
 
+from cdflow_commands.exceptions import UserError
+
 
 PLATFORM_CONFIG_PATH_TEMPLATE = 'infra/platform-config/{}/{}/{}.json'
-
-
-class UserError(Exception):
-    _message = 'User error'
-
-    def __str__(self):
-        return self._message
 
 
 class JobNameTooShortError(UserError):

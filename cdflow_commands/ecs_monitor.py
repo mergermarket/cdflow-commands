@@ -3,6 +3,11 @@ from functools import lru_cache
 from time import sleep, time
 
 from cdflow_commands.logger import logger
+from cdflow_commands.exceptions import UserError
+
+
+TIMEOUT = 600
+INTERVAL = 15
 
 
 def build_service_name(environment, component):
@@ -17,20 +22,13 @@ def build_service_name(environment, component):
 
 class ECSMonitor():
 
-    _TIMEOUT = 600
-    _ITERATION_DELAY = 15
-
     def __init__(self, ecs_event_iterator):
         self._ecs_event_iterator = ecs_event_iterator
 
     def wait(self):
         start = time()
         for event in self._ecs_event_iterator:
-            if time() - start > self._TIMEOUT:
-                logger.error(
-                    'Deployment timed out - '
-                    'didn\'t complete within {} seconds'.format(self._TIMEOUT)
-                )
+            if time() - start > TIMEOUT:
                 raise TimeoutError
             if event.done:
                 logger.info('Deployment complete - running: {}'.format(
@@ -45,7 +43,7 @@ class ECSMonitor():
                 )
             )
 
-            sleep(self._ITERATION_DELAY)
+            sleep(INTERVAL)
 
 
 class ECSEventIterator():
@@ -149,7 +147,12 @@ class InProgressEvent(Event):
         return False
 
 
-class TimeoutError(Exception):
+class TimeoutError(UserError):
+    _message = (
+        'Deployment timed out - didn\'t complete within {} seconds'.format(
+            TIMEOUT
+        )
+    )
     pass
 
 
