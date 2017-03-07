@@ -23,13 +23,14 @@ from cdflow_commands.config import (
     get_role_session_name,
     assume_role,
     get_component_name,
-    get_platform_config_path,
-    UserError
+    get_platform_config_path
 )
 from cdflow_commands.release import Release, ReleaseConfig
 from cdflow_commands.deploy import Deploy, DeployConfig
 from cdflow_commands.destroy import Destroy
 from cdflow_commands.terragrunt import S3BucketFactory, write_terragrunt_config
+from cdflow_commands.ecs_monitor import ECSEventIterator, ECSMonitor
+from cdflow_commands.exceptions import UserError
 
 
 def run(argv):
@@ -93,7 +94,8 @@ def _run_infrastructure_commmand(
             component_name,
             environment_name,
             args['<version>'],
-            global_config.dev_account_id
+            metadata.ecs_cluster,
+            global_config
         )
     elif args['destroy']:
         _run_destroy(boto_session, component_name, environment_name, s3_bucket)
@@ -126,18 +128,23 @@ def _setup_for_infrastructure(
 
 def _run_deploy(
     team, platform_config_file, boto_session, component_name, environment_name,
-    version, dev_account_id
+    version, ecs_cluster, global_config
 ):
     deploy_config = DeployConfig(
         team=team,
-        dev_account_id=dev_account_id,
+        dev_account_id=global_config.dev_account_id,
         platform_config_file=platform_config_file,
     )
     deployment = Deploy(
         boto_session, component_name, environment_name, version,
-        deploy_config
+        ecs_cluster, deploy_config
     )
     deployment.run()
+    events = ECSEventIterator(
+        ecs_cluster, environment_name, component_name, version, boto_session
+    )
+    monitor = ECSMonitor(events)
+    monitor.wait()
 
 
 def _run_destroy(boto_session, component_name, environment_name, s3_bucket):
