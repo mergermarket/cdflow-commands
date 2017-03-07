@@ -8,6 +8,7 @@ from hypothesis.strategies import text, fixed_dictionaries
 
 from boto3 import Session
 
+from cdflow_commands import ecs_monitor as ecs_monitor_module
 from cdflow_commands.ecs_monitor import (
     ECSEventIterator, ECSMonitor, build_service_name, DoneEvent,
     InProgressEvent, ImageDoesNotMatchError, TimeoutError
@@ -39,7 +40,7 @@ class TestECSMonitor(unittest.TestCase):
             InProgressEvent(1, 0, 2, 1),
             DoneEvent(2, 0, 2, 0)
         ]
-        ECSMonitor._ITERATION_DELAY = 0
+        ecs_monitor_module.INTERVAL = 0
         ecs_monitor = ECSMonitor(ecs_event_iterator)
 
         # When
@@ -61,20 +62,12 @@ class TestECSMonitor(unittest.TestCase):
             InProgressEvent(0, 0, 2, 0),
             InProgressEvent(1, 0, 2, 0),
         ])
-        ECSMonitor._ITERATION_DELAY = 0
-        ECSMonitor._TIMEOUT = 1
+        ecs_monitor_module.INTERVAL = 0
+        ecs_monitor_module.TIMEOUT = 1
         ecs_monitor = ECSMonitor(ecs_event_iterator)
 
-        # When
-        with self.assertLogs('cdflow_commands.logger', level='INFO') as logs:
-            self.assertRaises(TimeoutError, ecs_monitor.wait)
-
         # Then
-        assert logs.output[-1:] == [
-            ('ERROR:cdflow_commands.logger:Deployment timed out - '
-             'didn\'t complete within {} seconds'.format(
-                    ECSMonitor._TIMEOUT))
-        ]
+        self.assertRaises(TimeoutError, ecs_monitor.wait)
 
 
 class TestECSEventIterator(unittest.TestCase):

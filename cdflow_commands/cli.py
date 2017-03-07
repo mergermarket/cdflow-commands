@@ -23,14 +23,14 @@ from cdflow_commands.config import (
     get_role_session_name,
     assume_role,
     get_component_name,
-    get_platform_config_path,
-    UserError
+    get_platform_config_path
 )
 from cdflow_commands.release import Release, ReleaseConfig
 from cdflow_commands.deploy import Deploy, DeployConfig
 from cdflow_commands.destroy import Destroy
 from cdflow_commands.terragrunt import S3BucketFactory, write_terragrunt_config
 from cdflow_commands.ecs_monitor import ECSEventIterator, ECSMonitor
+from cdflow_commands.exceptions import UserError
 
 
 def run(argv):
