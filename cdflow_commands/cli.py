@@ -3,9 +3,9 @@
 Commands for managing the software lifecycle.
 
 Usage:
-    cdflow-commands release [<version>] [options]
-    cdflow-commands deploy <environment> <version> [options]
-    cdflow-commands destroy <environment> [options]
+    cdflow release [<version>] [options]
+    cdflow deploy <environment> <version> [options]
+    cdflow destroy <environment> [options]
 
 Options:
     -c <component_name>, --component <component_name>
