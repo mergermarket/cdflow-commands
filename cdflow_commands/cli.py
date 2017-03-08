@@ -9,8 +9,10 @@ Usage:
 
 Options:
     -c <component_name>, --component <component_name>
+    -v, --verbose
 
 """
+import logging
 import os
 import sys
 
@@ -28,9 +30,10 @@ from cdflow_commands.config import (
 from cdflow_commands.release import Release, ReleaseConfig
 from cdflow_commands.deploy import Deploy, DeployConfig
 from cdflow_commands.destroy import Destroy
-from cdflow_commands.terragrunt import S3BucketFactory, write_terragrunt_config
 from cdflow_commands.ecs_monitor import ECSEventIterator, ECSMonitor
 from cdflow_commands.exceptions import UserError
+from cdflow_commands.logger import logger
+from cdflow_commands.terragrunt import S3BucketFactory, write_terragrunt_config
 
 
 def run(argv):
@@ -42,6 +45,9 @@ def run(argv):
 
 def _run(argv):
     args = docopt(__doc__, argv=argv)
+    if args['--verbose']:
+        logger.setLevel(logging.DEBUG)
+        logger.debug('Debug logging on')
     metadata = load_service_metadata()
     global_config = load_global_config(
         metadata.account_prefix, metadata.aws_region
