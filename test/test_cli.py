@@ -16,6 +16,7 @@ from cdflow_commands import cli
 from cdflow_commands.ecs_monitor import (
     InProgressEvent, DoneEvent
 )
+from cdflow_commands.exceptions import UserError
 
 
 class TestReleaseCLI(unittest.TestCase):
@@ -605,3 +606,30 @@ class TestDestroyCLI(unittest.TestCase):
                 'AWS_SESSION_TOKEN': aws_session_token
             }
         )
+
+
+class TestVerboseLogging(unittest.TestCase):
+
+    @patch('cdflow_commands.cli.load_service_metadata')
+    def test_verbose_flag_in_arguments(self, load_service_metadata):
+        # Given
+        load_service_metadata.side_effect = UserError
+
+        # When
+        with self.assertLogs('cdflow_commands.logger', level='DEBUG') as logs:
+            cli.run(['release', 'version', '--verbose'])
+
+        # Then
+        assert 'DEBUG:cdflow_commands.logger:Debug logging on' in logs.output
+
+    @patch('cdflow_commands.cli.load_service_metadata')
+    def test_short_verbose_flag_in_arguments(self, load_service_metadata):
+        # Given
+        load_service_metadata.side_effect = UserError
+
+        # When
+        with self.assertLogs('cdflow_commands.logger', level='DEBUG') as logs:
+            cli.run(['release', 'version', '-v'])
+
+        # Then
+        assert 'DEBUG:cdflow_commands.logger:Debug logging on' in logs.output
