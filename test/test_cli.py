@@ -610,8 +610,9 @@ class TestDestroyCLI(unittest.TestCase):
 
 class TestVerboseLogging(unittest.TestCase):
 
+    @patch('cdflow_commands.cli.sys')
     @patch('cdflow_commands.cli.load_service_metadata')
-    def test_verbose_flag_in_arguments(self, load_service_metadata):
+    def test_verbose_flag_in_arguments(self, load_service_metadata, _):
         # Given
         load_service_metadata.side_effect = UserError
 
@@ -622,8 +623,9 @@ class TestVerboseLogging(unittest.TestCase):
         # Then
         assert 'DEBUG:cdflow_commands.logger:Debug logging on' in logs.output
 
+    @patch('cdflow_commands.cli.sys')
     @patch('cdflow_commands.cli.load_service_metadata')
-    def test_short_verbose_flag_in_arguments(self, load_service_metadata):
+    def test_short_verbose_flag_in_arguments(self, load_service_metadata, _):
         # Given
         load_service_metadata.side_effect = UserError
 
@@ -633,3 +635,21 @@ class TestVerboseLogging(unittest.TestCase):
 
         # Then
         assert 'DEBUG:cdflow_commands.logger:Debug logging on' in logs.output
+
+
+class TestNonZeroExit(unittest.TestCase):
+
+    @patch('cdflow_commands.cli.sys')
+    @patch('cdflow_commands.cli.load_service_metadata')
+    def test_verbose_flag_in_arguments(self, load_service_metadata, mock_sys):
+        # Given
+        load_service_metadata.side_effect = UserError
+
+        # When
+        with self.assertLogs('cdflow_commands.logger', level='ERROR') as logs:
+            cli.run(['release', 'version'])
+
+        # Then
+        mock_sys.exit.assert_called_once_with(1)
+        expected_message = 'ERROR:cdflow_commands.logger:User error'
+        assert expected_message in logs.output
