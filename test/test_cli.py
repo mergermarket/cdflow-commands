@@ -217,6 +217,7 @@ BotoCreds = namedtuple('BotoCreds', ['access_key', 'secret_key', 'token'])
 
 class TestDeployCLI(unittest.TestCase):
 
+    @patch('cdflow_commands.cli.call')
     @patch('cdflow_commands.cli.ECSEventIterator')
     @patch('cdflow_commands.cli.S3BucketFactory')
     @patch('cdflow_commands.deploy.os')
@@ -231,7 +232,7 @@ class TestDeployCLI(unittest.TestCase):
     def test_deploy_is_configured_and_run(
         self, NamedTemporaryFile, get_secrets, check_output, check_call,
         mock_open, Session_from_config, Session_from_cli, mock_os_cli,
-        mock_os_deploy, _, ECSEventIterator
+        mock_os_deploy, _, ECSEventIterator, mock_call
     ):
         mock_os_cli.environ = {
             'JOB_NAME': 'dummy-job-name'
@@ -376,6 +377,9 @@ class TestDeployCLI(unittest.TestCase):
             'INFO:cdflow_commands.logger:Deployment complete'
         ]
 
+        mock_call.assert_any_call(['rm', '-rf', '.terraform/'])
+        mock_call.assert_any_call(['rm', '-f', '.terragrunt'])
+
 
 class TestSetupForInfrastructure(unittest.TestCase):
 
@@ -495,6 +499,7 @@ class TestSetupForInfrastructure(unittest.TestCase):
 
 class TestDestroyCLI(unittest.TestCase):
 
+    @patch('cdflow_commands.cli.call')
     @patch('cdflow_commands.cli.S3BucketFactory')
     @patch('cdflow_commands.destroy.os')
     @patch('cdflow_commands.cli.os')
@@ -505,7 +510,8 @@ class TestDestroyCLI(unittest.TestCase):
     @patch('cdflow_commands.config.check_output')
     def test_destroy_is_configured_and_run(
         self, check_output, check_call, mock_open,
-        Session_from_config, Session_from_cli, mock_os_cli, mock_os_deploy, _
+        Session_from_config, Session_from_cli, mock_os_cli, mock_os_deploy, _,
+        mock_call
     ):
         # Given
         mock_os_cli.environ = {
@@ -606,6 +612,9 @@ class TestDestroyCLI(unittest.TestCase):
                 'AWS_SESSION_TOKEN': aws_session_token
             }
         )
+
+        mock_call.assert_any_call(['rm', '-rf', '.terraform/'])
+        mock_call.assert_any_call(['rm', '-f', '.terragrunt'])
 
 
 class TestVerboseLogging(unittest.TestCase):

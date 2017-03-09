@@ -15,6 +15,7 @@ Options:
 import logging
 import os
 import sys
+from subprocess import call
 
 from boto3.session import Session
 from docopt import docopt
@@ -105,6 +106,8 @@ def _run_infrastructure_commmand(
         )
     elif args['destroy']:
         _run_destroy(boto_session, component_name, environment_name, s3_bucket)
+    call(['rm', '-rf', '.terraform/'])
+    call(['rm', '-f', '.terragrunt'])
 
 
 def _setup_for_infrastructure(
