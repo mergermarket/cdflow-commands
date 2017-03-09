@@ -41,7 +41,8 @@ def run(argv):
     try:
         _run(argv)
     except UserError as err:
-        print(str(err), file=sys.stderr)
+        logger.error(err)
+        sys.exit(1)
 
 
 def _run(argv):
