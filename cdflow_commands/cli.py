@@ -14,6 +14,8 @@ Options:
 """
 import logging
 import os
+from os import unlink
+from shutil import rmtree
 import sys
 
 from boto3.session import Session
@@ -42,6 +44,15 @@ def run(argv):
     except UserError as err:
         logger.error(err)
         sys.exit(1)
+    finally:
+        try:
+            rmtree('.terraform/')
+        except OSError:
+            logger.debug('No path .terraform/ to remove')
+        try:
+            unlink('.terragrunt')
+        except OSError:
+            logger.debug('No path .terragrunt to remove')
 
 
 def _run(argv):
