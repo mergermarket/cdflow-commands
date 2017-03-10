@@ -19,16 +19,19 @@ from cdflow_commands.ecs_monitor import (
 from cdflow_commands.exceptions import UserError
 
 
+@patch('cdflow_commands.cli.rmtree')
+@patch('cdflow_commands.cli.unlink')
+@patch('cdflow_commands.cli.os')
+@patch('cdflow_commands.cli.Session')
+@patch('cdflow_commands.config.Session')
+@patch('cdflow_commands.config.open', new_callable=mock_open, create=True)
+@patch('cdflow_commands.config.check_output')
+@patch('cdflow_commands.release.check_call')
 class TestReleaseCLI(unittest.TestCase):
 
-    @patch('cdflow_commands.cli.os')
-    @patch('cdflow_commands.cli.Session')
-    @patch('cdflow_commands.config.Session')
-    @patch('cdflow_commands.config.open', new_callable=mock_open, create=True)
-    @patch('cdflow_commands.release.check_call')
     def test_release_is_configured_and_created(
-        self, check_call, mock_open,
-        Session_from_config, Session_from_cli, mock_os
+        self, check_call, _1, mock_open,
+        Session_from_config, Session_from_cli, mock_os, _2, _3
     ):
         mock_metadata_file = MagicMock(spec=TextIOWrapper)
         metadata = {
@@ -113,15 +116,9 @@ class TestReleaseCLI(unittest.TestCase):
         check_call.assert_any_call(['docker', 'build', '-t', image_name, '.'])
         check_call.assert_any_call(['docker', 'push', image_name])
 
-    @patch('cdflow_commands.cli.os')
-    @patch('cdflow_commands.cli.Session')
-    @patch('cdflow_commands.config.Session')
-    @patch('cdflow_commands.config.open', new_callable=mock_open, create=True)
-    @patch('cdflow_commands.config.check_output')
-    @patch('cdflow_commands.release.check_call')
     def test_release_uses_component_name_from_origin(
         self, check_call, check_output, mock_open,
-        Session_from_config, Session_from_cli, mock_os
+        Session_from_config, Session_from_cli, mock_os, _1, _2
     ):
         mock_metadata_file = MagicMock(spec=TextIOWrapper)
         metadata = {
@@ -217,7 +214,8 @@ BotoCreds = namedtuple('BotoCreds', ['access_key', 'secret_key', 'token'])
 
 class TestDeployCLI(unittest.TestCase):
 
-    @patch('cdflow_commands.cli.call')
+    @patch('cdflow_commands.cli.rmtree')
+    @patch('cdflow_commands.cli.unlink')
     @patch('cdflow_commands.cli.ECSEventIterator')
     @patch('cdflow_commands.cli.S3BucketFactory')
     @patch('cdflow_commands.deploy.os')
@@ -232,7 +230,7 @@ class TestDeployCLI(unittest.TestCase):
     def test_deploy_is_configured_and_run(
         self, NamedTemporaryFile, get_secrets, check_output, check_call,
         mock_open, Session_from_config, Session_from_cli, mock_os_cli,
-        mock_os_deploy, _, ECSEventIterator, mock_call
+        mock_os_deploy, _, ECSEventIterator, unlink, rmtree
     ):
         mock_os_cli.environ = {
             'JOB_NAME': 'dummy-job-name'
@@ -377,8 +375,8 @@ class TestDeployCLI(unittest.TestCase):
             'INFO:cdflow_commands.logger:Deployment complete'
         ]
 
-        mock_call.assert_any_call(['rm', '-rf', '.terraform/'])
-        mock_call.assert_any_call(['rm', '-f', '.terragrunt'])
+        rmtree.assert_called_once_with('.terraform/')
+        unlink.assert_called_once_with('.terragrunt')
 
 
 class TestSetupForInfrastructure(unittest.TestCase):
@@ -499,7 +497,8 @@ class TestSetupForInfrastructure(unittest.TestCase):
 
 class TestDestroyCLI(unittest.TestCase):
 
-    @patch('cdflow_commands.cli.call')
+    @patch('cdflow_commands.cli.rmtree')
+    @patch('cdflow_commands.cli.unlink')
     @patch('cdflow_commands.cli.S3BucketFactory')
     @patch('cdflow_commands.destroy.os')
     @patch('cdflow_commands.cli.os')
@@ -511,7 +510,7 @@ class TestDestroyCLI(unittest.TestCase):
     def test_destroy_is_configured_and_run(
         self, check_output, check_call, mock_open,
         Session_from_config, Session_from_cli, mock_os_cli, mock_os_deploy, _,
-        mock_call
+        unlink, rmtree
     ):
         # Given
         mock_os_cli.environ = {
@@ -613,15 +612,19 @@ class TestDestroyCLI(unittest.TestCase):
             }
         )
 
-        mock_call.assert_any_call(['rm', '-rf', '.terraform/'])
-        mock_call.assert_any_call(['rm', '-f', '.terragrunt'])
+        rmtree.assert_called_once_with('.terraform/')
+        unlink.assert_called_once_with('.terragrunt')
 
 
+@patch('cdflow_commands.cli.rmtree')
+@patch('cdflow_commands.cli.unlink')
+@patch('cdflow_commands.cli.sys')
+@patch('cdflow_commands.cli.load_service_metadata')
 class TestVerboseLogging(unittest.TestCase):
 
-    @patch('cdflow_commands.cli.sys')
-    @patch('cdflow_commands.cli.load_service_metadata')
-    def test_verbose_flag_in_arguments(self, load_service_metadata, _):
+    def test_verbose_flag_in_arguments(
+        self, load_service_metadata, _1, _2, _3
+    ):
         # Given
         load_service_metadata.side_effect = UserError
 
@@ -632,9 +635,9 @@ class TestVerboseLogging(unittest.TestCase):
         # Then
         assert 'DEBUG:cdflow_commands.logger:Debug logging on' in logs.output
 
-    @patch('cdflow_commands.cli.sys')
-    @patch('cdflow_commands.cli.load_service_metadata')
-    def test_short_verbose_flag_in_arguments(self, load_service_metadata, _):
+    def test_short_verbose_flag_in_arguments(
+        self, load_service_metadata, _1, _2, _3
+    ):
         # Given
         load_service_metadata.side_effect = UserError
 
@@ -646,11 +649,15 @@ class TestVerboseLogging(unittest.TestCase):
         assert 'DEBUG:cdflow_commands.logger:Debug logging on' in logs.output
 
 
-class TestNonZeroExit(unittest.TestCase):
+@patch('cdflow_commands.cli.rmtree')
+@patch('cdflow_commands.cli.unlink')
+@patch('cdflow_commands.cli.sys')
+@patch('cdflow_commands.cli.load_service_metadata')
+class TestUserErrorThrown(unittest.TestCase):
 
-    @patch('cdflow_commands.cli.sys')
-    @patch('cdflow_commands.cli.load_service_metadata')
-    def test_verbose_flag_in_arguments(self, load_service_metadata, mock_sys):
+    def test_non_zero_exit(
+        self, load_service_metadata, mock_sys, _1, _2
+    ):
         # Given
         load_service_metadata.side_effect = UserError
 
@@ -662,3 +669,31 @@ class TestNonZeroExit(unittest.TestCase):
         mock_sys.exit.assert_called_once_with(1)
         expected_message = 'ERROR:cdflow_commands.logger:User error'
         assert expected_message in logs.output
+
+    def test_files_are_always_attempted_to_be_removed(
+        self, load_service_metadata, mock_sys, unlink, rmtree
+    ):
+        # Given
+        load_service_metadata.side_effect = UserError
+
+        # When
+        cli.run(['release', 'version'])
+
+        # Then
+        rmtree.assert_called_once_with('.terraform/')
+        unlink.assert_called_once_with('.terragrunt')
+
+    def test_missing_files_are_ignored(
+        self, load_service_metadata, mock_sys, unlink, rmtree
+    ):
+        # Given
+        load_service_metadata.side_effect = UserError
+        unlink.side_effect = OSError
+        rmtree.side_effect = OSError
+
+        # When
+        cli.run(['release', 'version'])
+
+        # Then
+        rmtree.assert_called_once_with('.terraform/')
+        unlink.assert_called_once_with('.terragrunt')
