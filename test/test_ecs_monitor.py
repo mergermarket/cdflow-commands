@@ -31,7 +31,7 @@ class TestECSMonitor(unittest.TestCase):
 
         # Then
         assert logs.output == [
-            ('INFO:cdflow_commands.logger:Deploying ECS tasks - desired: 2 '
+            ('INFO:cdflow_commands.logger:ECS service tasks - desired: 2 '
              'pending: 0 running: 2 previous: 0'),
             'INFO:cdflow_commands.logger:Deployment complete'
         ]
@@ -52,11 +52,11 @@ class TestECSMonitor(unittest.TestCase):
 
         # Then
         assert logs.output == [
-            ('INFO:cdflow_commands.logger:Deploying ECS tasks - '
+            ('INFO:cdflow_commands.logger:ECS service tasks - '
              'desired: 2 pending: 1 running: 0 previous: 2'),
-            ('INFO:cdflow_commands.logger:Deploying ECS tasks - '
+            ('INFO:cdflow_commands.logger:ECS service tasks - '
              'desired: 2 pending: 0 running: 1 previous: 1'),
-            ('INFO:cdflow_commands.logger:Deploying ECS tasks - '
+            ('INFO:cdflow_commands.logger:ECS service tasks - '
              'desired: 2 pending: 0 running: 2 previous: 0'),
             'INFO:cdflow_commands.logger:Deployment complete'
         ]
