@@ -14,8 +14,9 @@ Options:
 """
 import logging
 import os
+from os import unlink
+from shutil import rmtree
 import sys
-from subprocess import call
 
 from boto3.session import Session
 from docopt import docopt
@@ -43,6 +44,15 @@ def run(argv):
     except UserError as err:
         logger.error(err)
         sys.exit(1)
+    finally:
+        try:
+            rmtree('.terraform/')
+        except OSError:
+            logger.debug('No path .terraform/ to remove')
+        try:
+            unlink('.terragrunt')
+        except OSError:
+            logger.debug('No path .terragrunt to remove')
 
 
 def _run(argv):
@@ -107,8 +117,6 @@ def _run_infrastructure_commmand(
         )
     elif args['destroy']:
         _run_destroy(boto_session, component_name, environment_name, s3_bucket)
-    call(['rm', '-rf', '.terraform/'])
-    call(['rm', '-f', '.terragrunt'])
 
 
 def _setup_for_infrastructure(
