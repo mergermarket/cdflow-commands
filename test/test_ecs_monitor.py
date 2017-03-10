@@ -1,8 +1,9 @@
 import unittest
 import datetime
+from dateutil.tz import tzlocal
 from itertools import cycle, islice
 
-from mock import MagicMock, Mock
+from mock import MagicMock, Mock, ANY
 from hypothesis import given, settings, example
 from hypothesis.strategies import text, fixed_dictionaries
 
@@ -20,7 +21,7 @@ class TestECSMonitor(unittest.TestCase):
     def test_ecs_monitor_successful_deployment(self):
         # Given
         ecs_event_iterator = [
-            DoneEvent(2, 0, 2, 0)
+            DoneEvent(2, 0, 2, 0, [])
         ]
         ecs_monitor = ECSMonitor(ecs_event_iterator)
 
@@ -38,9 +39,9 @@ class TestECSMonitor(unittest.TestCase):
     def test_ecs_monitor_eventual_successful_deployment(self):
         # Given
         ecs_event_iterator = [
-            InProgressEvent(0, 1, 2, 2),
-            InProgressEvent(1, 0, 2, 1),
-            DoneEvent(2, 0, 2, 0)
+            InProgressEvent(0, 1, 2, 2, []),
+            InProgressEvent(1, 0, 2, 1, []),
+            DoneEvent(2, 0, 2, 0, [])
         ]
         ecs_monitor_module.INTERVAL = 0
         ecs_monitor = ECSMonitor(ecs_event_iterator)
@@ -63,8 +64,8 @@ class TestECSMonitor(unittest.TestCase):
     def test_ecs_monitor_deployment_times_out(self):
         # Given
         ecs_event_iterator = cycle([
-            InProgressEvent(0, 0, 2, 0),
-            InProgressEvent(1, 0, 2, 0),
+            InProgressEvent(0, 0, 2, 0, []),
+            InProgressEvent(1, 0, 2, 0, []),
         ])
         ecs_monitor_module.INTERVAL = 0
         ecs_monitor_module.TIMEOUT = 1
@@ -119,6 +120,29 @@ class TestECSEventIterator(unittest.TestCase):
                         }
                     ],
                     'desiredCount': 2,
+                    'events': [
+                        {
+                            'createdAt': datetime.datetime(
+                                2017, 3, 10, 10, 27, 40, 1
+                            ),
+                            'id': '71e1ea54-61bd-4d5f-b6ae-ba0ba4a3c270',
+                            'message': 'has reached a steady state.'
+                        },
+                        {
+                            'createdAt': datetime.datetime(
+                                2017, 3, 9, 16, 26, 49, 794
+                            ),
+                            'id': '851fd578-579d-4a23-8764-107f0cf1120c',
+                            'message': 'registered 1 targets'
+                        },
+                        {
+                            'createdAt': datetime.datetime(
+                                2017, 3, 9, 16, 26, 37, 48000
+                            ),
+                            'id': '39e46d75-018e-4db4-a62d-1d76b4564132',
+                            'message': 'has started 1 tasks'
+                        }
+                    ],
                     'loadBalancers': [
                         {
                             'containerName': 'app',
@@ -174,9 +198,15 @@ class TestECSEventIterator(unittest.TestCase):
 
         event_list = [e for e in events]
 
+        # Then
         assert len(event_list) == 1
         assert event_list[0].done
         assert event_list[0].previous_running == 0
+        assert event_list[0].messages == [
+            'has started 1 tasks',
+            'registered 1 targets',
+            'has reached a steady state.'
+        ]
 
     def test_deployment_completed_after_reaching_desired_running_count(self):
         environment = 'dummy-environment'
@@ -198,6 +228,9 @@ class TestECSEventIterator(unittest.TestCase):
                             'deployments': [
                                 {
                                     'desiredCount': final_running_count,
+                                    'createdAt': datetime.datetime(
+                                        2017, 3, 8, 12, 15, 9, 13000
+                                    ),
                                     'id': 'ecs-svc/9223370553143707624',
                                     'runningCount': running_count,
                                     'pendingCount': pending_count,
@@ -206,6 +239,9 @@ class TestECSEventIterator(unittest.TestCase):
                                 },
                                 {
                                     'desiredCount': final_running_count,
+                                    'createdAt': datetime.datetime(
+                                        2017, 3, 8, 12, 15, 9, 13000
+                                    ),
                                     'id': 'ecs-svc/9223370553143707624',
                                     'pendingCount': 0,
                                     'runningCount': 0,
@@ -303,6 +339,9 @@ class TestECSEventIterator(unittest.TestCase):
                             'deployments': [
                                 {
                                     'desiredCount': initial_running_count,
+                                    'createdAt': datetime.datetime(
+                                        2017, 1, 6, 10, 58, 9
+                                    ),
                                     'id': 'ecs-svc/9223370553143707624',
                                     'runningCount': initial_running_count,
                                     'pendingCount': 0,
@@ -311,6 +350,9 @@ class TestECSEventIterator(unittest.TestCase):
                                 },
                                 {
                                     'desiredCount': initial_running_count,
+                                    'createdAt': datetime.datetime(
+                                        2017, 1, 6, 10, 58, 9
+                                    ),
                                     'id': 'ecs-svc/9223370553143707624',
                                     'pendingCount': 0,
                                     'runningCount': running_count,
@@ -409,6 +451,9 @@ class TestECSEventIterator(unittest.TestCase):
                     'deployments': [
                         {
                             'desiredCount': 2,
+                            'createdAt': datetime.datetime(
+                                2017, 1, 6, 10, 58, 9
+                            ),
                             'id': 'ecs-svc/9223370553143707624',
                             'runningCount': 1,
                             'pendingCount': 1,
@@ -465,6 +510,9 @@ class TestECSEventIterator(unittest.TestCase):
                     'deployments': [
                         {
                             'desiredCount': 2,
+                            u'createdAt': datetime.datetime(
+                                2017, 3, 8, 12, 15, 9, 13000, tzinfo=tzlocal()
+                            ),
                             'id': 'ecs-svc/9223370553143707624',
                             'runningCount': 1,
                             'pendingCount': 1,
@@ -573,6 +621,75 @@ class TestECSEventIterator(unittest.TestCase):
         )
 
         self.assertRaises(ImageDoesNotMatchError, lambda: [e for e in events])
+
+    def test_get_ecs_service_events(self):
+        # Given
+        since = datetime.datetime(
+            2017, 3, 8, 12, 15, 0, 0, tzinfo=tzlocal()
+        )
+        ecs_service_events_1 = [
+            {
+                u'createdAt': datetime.datetime(
+                    2017, 3, 8, 12, 15, 9, 13000, tzinfo=tzlocal()
+                ),
+                u'id': u'efbfce1c-c7d0-43be-a9a8-d18ad70e9d8b',
+                u'message': u'(service aslive-grahamlyons-test) has started 2'
+            },
+            # the event blow should *not* be returned (it's before since)
+            {
+                u'createdAt': datetime.datetime(
+                    2017, 3, 8, 12, 14, 30, 0, tzinfo=tzlocal()
+                ),
+                u'id': u'efbfce1c-c7d0-43be-a9a8-d18ad70e9d8b',
+                u'message': u'old event'
+            }
+        ]
+        ecs_service_events_2 = [
+            {
+                u'createdAt': datetime.datetime(
+                    2017, 3, 8, 12, 15, 46, 32000, tzinfo=tzlocal()
+                ),
+                u'id': u'03c1bf6b-4054-4828-adc0-edce84d96c99',
+                u'message': u'(service aslive-grahamlyons-test) has reached a'
+            },
+            {
+                u'createdAt': datetime.datetime(
+                    2017, 3, 8, 12, 15, 21, 649000, tzinfo=tzlocal()
+                ),
+                u'id': u'66364f80-7713-4260-a8d7-39ec8207f4a9',
+                u'message': u'(service aslive-grahamlyons-test) registered 2 '
+            }
+        ]
+
+        ecs_event_iterator = ECSEventIterator(ANY, ANY, ANY, ANY, ANY)
+
+        # When
+        events_1 = ecs_event_iterator._get_new_ecs_service_events(
+            {
+                'services': [
+                    {
+                        'events': ecs_service_events_1[:1]
+                    }
+                ]
+            }, since
+        )
+        events_2 = ecs_event_iterator._get_new_ecs_service_events(
+            {
+                'services': [
+                    {
+                        'events': ecs_service_events_1[:1]
+                        + ecs_service_events_2
+                    }
+                ]
+            }, since
+        )
+
+        # Then
+        assert events_1 == ecs_service_events_1[:1]
+        assert events_2 == list(reversed(ecs_service_events_2))
+
+        assert events_1 + events_2 == \
+            ecs_service_events_1[:1] + list(reversed(ecs_service_events_2))
 
 
 class TestBuildServiceName(unittest.TestCase):
