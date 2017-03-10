@@ -12,7 +12,7 @@ from boto3 import Session
 from cdflow_commands import ecs_monitor as ecs_monitor_module
 from cdflow_commands.ecs_monitor import (
     ECSEventIterator, ECSMonitor, build_service_name, DoneEvent,
-    InProgressEvent, ImageDoesNotMatchError, TimeoutError
+    InProgressEvent, ImageDoesNotMatchError, TimeoutError, FailedTasksError
 )
 
 
@@ -73,6 +73,33 @@ class TestECSMonitor(unittest.TestCase):
 
         # Then
         self.assertRaises(TimeoutError, ecs_monitor.wait)
+
+    def test_ecs_monitor_failed_tasks_error(self):
+        # Given
+        ecs_event_iterator = [
+            InProgressEvent(0, 1, 2, 2, []),
+            InProgressEvent(1, 1, 2, 2, []),
+            InProgressEvent(2, 0, 2, 2, []),
+            InProgressEvent(1, 0, 2, 2, [])
+        ]
+        ecs_monitor_module.INTERVAL = 0
+        ecs_monitor = ECSMonitor(ecs_event_iterator)
+
+        # When
+        with self.assertLogs('cdflow_commands.logger', level='INFO') as logs:
+            self.assertRaises(FailedTasksError, ecs_monitor.wait)
+
+        # Then
+        assert logs.output == [
+            ('INFO:cdflow_commands.logger:ECS service tasks - '
+             'desired: 2 pending: 1 running: 0 previous: 2'),
+            ('INFO:cdflow_commands.logger:ECS service tasks - '
+             'desired: 2 pending: 1 running: 1 previous: 2'),
+            ('INFO:cdflow_commands.logger:ECS service tasks - '
+             'desired: 2 pending: 0 running: 2 previous: 2'),
+            ('INFO:cdflow_commands.logger:ECS service tasks - '
+             'desired: 2 pending: 0 running: 1 previous: 2')
+        ]
 
 
 class TestECSEventIterator(unittest.TestCase):

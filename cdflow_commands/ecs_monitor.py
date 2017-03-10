@@ -24,14 +24,17 @@ class ECSMonitor():
 
     def __init__(self, ecs_event_iterator):
         self._ecs_event_iterator = ecs_event_iterator
+        self._previous_running_count = 0
 
     def wait(self):
         start = time()
+
         for event in self._ecs_event_iterator:
             if time() - start > TIMEOUT:
                 raise TimeoutError
 
             self._show_deployment_progress(event)
+            self._check_for_failed_tasks(event)
 
             if event.done:
                 logger.info('Deployment complete')
@@ -50,6 +53,12 @@ class ECSMonitor():
                 event.running, event.previous_running
             )
         )
+
+    def _check_for_failed_tasks(self, event):
+        if event.running < self._previous_running_count:
+            raise FailedTasksError
+
+        self._previous_running_count = event.running
 
 
 class ECSEventIterator():
@@ -184,6 +193,13 @@ class TimeoutError(UserError):
         'Deployment timed out - didn\'t complete within {} seconds'.format(
             TIMEOUT
         )
+    )
+
+
+class FailedTasksError(UserError):
+    _message = (
+        ('Deployment failed - tasks (containers) are '
+         'failing to pass healthcheck')
     )
 
 
