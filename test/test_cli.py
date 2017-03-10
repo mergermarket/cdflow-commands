@@ -692,8 +692,13 @@ class TestUserErrorThrown(unittest.TestCase):
         rmtree.side_effect = OSError
 
         # When
-        cli.run(['release', 'version'])
+        with self.assertLogs('cdflow_commands.logger', level='DEBUG') as logs:
+            cli.run(['release', 'version'])
 
         # Then
         rmtree.assert_called_once_with('.terraform/')
         unlink.assert_called_once_with('.terragrunt')
+
+        message_template = 'DEBUG:cdflow_commands.logger:No path {} to remove'
+        assert message_template.format('.terraform/') in logs.output
+        assert message_template.format('.terragrunt') in logs.output
