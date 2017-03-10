@@ -62,7 +62,12 @@ class ECSEventIterator():
         if self._done:
             raise StopIteration
 
-        deployments = self._get_deployments()
+        ecs_service_data = self._ecs.describe_services(
+            cluster=self._cluster,
+            services=[self.service_name]
+        )
+
+        deployments = self._get_deployments(ecs_service_data)
         primary_deployment = self._get_primary_deployment(deployments)
         release_image = self._get_release_image(
             primary_deployment['taskDefinition']
@@ -121,14 +126,10 @@ class ECSEventIterator():
 
         return task_def['image'].split('/', 1)[1]
 
-    def _get_deployments(self):
-        services = self._ecs.describe_services(
-            cluster=self._cluster,
-            services=[self.service_name]
-        )
+    def _get_deployments(self, ecs_service_data):
         return [
             deployment
-            for deployment in services['services'][0]['deployments']
+            for deployment in ecs_service_data['services'][0]['deployments']
         ]
 
     def _get_primary_deployment(self, deployments):
