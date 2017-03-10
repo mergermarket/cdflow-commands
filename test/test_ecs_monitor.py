@@ -704,8 +704,8 @@ class TestECSEventIterator(unittest.TestCase):
             {
                 'services': [
                     {
-                        'events': ecs_service_events_1[:1]
-                        + ecs_service_events_2
+                        'events': ecs_service_events_1[:1] +
+                        ecs_service_events_2
                     }
                 ]
             }, since
