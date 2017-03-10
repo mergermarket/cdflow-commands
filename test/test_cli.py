@@ -299,9 +299,9 @@ class TestDeployCLI(unittest.TestCase):
         get_secrets.return_value = {}
 
         ECSEventIterator.return_value = [
-            InProgressEvent(0, 0, 2, 0),
-            InProgressEvent(1, 0, 2, 0),
-            DoneEvent(2, 0, 2, 0)
+            InProgressEvent(0, 0, 2, 0, []),
+            InProgressEvent(1, 0, 2, 0, []),
+            DoneEvent(2, 0, 2, 0, [])
         ]
         ecs_monitor_module.INTERVAL = 0
 

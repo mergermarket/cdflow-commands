@@ -53,6 +53,7 @@ class ECSEventIterator():
         self._version = version
         self._boto_session = boto_session
         self._done = False
+        self._seen_ecs_service_events = set()
 
     def __iter__(self):
         return self
@@ -73,12 +74,35 @@ class ECSEventIterator():
         running = primary_deployment['runningCount']
         pending = primary_deployment['pendingCount']
         desired = primary_deployment['desiredCount']
+        messages = [
+            event['message']
+            for event in self._get_new_ecs_service_events(
+                ecs_service_data, primary_deployment['createdAt']
+            )
+        ]
         previous_running = self._get_previous_running_count(deployments)
         if running != desired or previous_running:
-            return InProgressEvent(running, pending, desired, previous_running)
+            return InProgressEvent(
+                running, pending, desired, previous_running, messages
+            )
 
         self._done = True
-        return DoneEvent(running, pending, desired, previous_running)
+        return DoneEvent(
+            running, pending, desired, previous_running, messages
+        )
+
+    def _get_new_ecs_service_events(self, ecs_service_data, since):
+        filtered_ecs_events = [
+            event
+            for event in ecs_service_data['services'][0].get('events', [])
+            if event['id'] not in self._seen_ecs_service_events and
+            event['createdAt'] > since
+        ]
+
+        for event in filtered_ecs_events:
+            self._seen_ecs_service_events.add(event['id'])
+
+        return list(reversed(filtered_ecs_events))
 
     @property
     def service_name(self):
@@ -124,11 +148,12 @@ class ECSEventIterator():
 
 class Event():
 
-    def __init__(self, running, pending, desired, previous_running):
+    def __init__(self, running, pending, desired, previous_running, messages):
         self.running = running
         self.pending = pending
         self.desired = desired
         self.previous_running = previous_running
+        self.messages = messages
 
 
 class DoneEvent(Event):
