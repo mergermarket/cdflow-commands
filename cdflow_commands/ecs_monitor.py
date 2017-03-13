@@ -105,14 +105,14 @@ class ECSEventIterator():
         running = primary_deployment['runningCount']
         pending = primary_deployment['pendingCount']
         desired = primary_deployment['desiredCount']
-        messages = [
-            event['message']
-            for event in self._get_new_ecs_service_events(
-                ecs_service_data, primary_deployment['createdAt']
-            )
-        ]
         previous_running = self._get_previous_running_count(deployments)
-        if running != desired or previous_running:
+
+        messages = self._get_task_event_messages(
+            ecs_service_data,
+            primary_deployment
+        )
+
+        if self._deploy_in_progres(running, desired, previous_running):
             return InProgressEvent(
                 running, pending, desired, previous_running, messages
             )
@@ -122,18 +122,19 @@ class ECSEventIterator():
             running, pending, desired, previous_running, messages
         )
 
-    def _get_new_ecs_service_events(self, ecs_service_data, since):
-        filtered_ecs_events = [
-            event
-            for event in ecs_service_data['services'][0].get('events', [])
-            if event['id'] not in self._seen_ecs_service_events and
-            event['createdAt'] > since
-        ]
+    def _deploy_in_progres(self, running, desired, previous_running):
+        if (
+            running != desired or
+            previous_running
+        ):
+            return True
+        elif (running == desired and self._new_service_deployment and
+                self._new_service_deployment_grace_period_count <
+                NEW_SERVICE_DEPLOYMENT_GRACE_PERIOD_LIMIT):
+            self._new_service_deployment_grace_period_count += 1
+            return True
 
-        for event in filtered_ecs_events:
-            self._seen_ecs_service_events.add(event['id'])
-
-        return list(reversed(filtered_ecs_events))
+        return False
 
     @property
     def service_name(self):
@@ -163,6 +164,28 @@ class ECSEventIterator():
                     requested_image, release_image
                 )
             )
+
+    def _get_new_ecs_service_events(self, ecs_service_data, since):
+        filtered_ecs_events = [
+            event
+            for event in ecs_service_data['services'][0].get('events', [])
+            if event['id'] not in self._seen_ecs_service_events and
+            event['createdAt'] > since
+        ]
+
+        for event in filtered_ecs_events:
+            self._seen_ecs_service_events.add(event['id'])
+
+        return list(reversed(filtered_ecs_events))
+
+    def _get_task_event_messages(self, ecs_service_data, primary_deployment):
+        return [
+            event['message']
+            for event in self._get_new_ecs_service_events(
+                ecs_service_data, primary_deployment['createdAt']
+            )
+        ]
+
     def _get_deployments(self, ecs_service_data):
         return [
             deployment
