@@ -649,6 +649,12 @@ class TestECSEventIterator(unittest.TestCase):
 
         self.assertRaises(ImageDoesNotMatchError, lambda: [e for e in events])
 
+        try:
+            next(iter(events))
+        except ImageDoesNotMatchError as e:
+            assert 'none' in str(e)
+            assert '{}:{}'.format(component, version) in str(e)
+
     def test_get_ecs_service_events(self):
         # Given
         since = datetime.datetime(
