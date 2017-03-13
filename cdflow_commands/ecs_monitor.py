@@ -3,7 +3,9 @@ from functools import lru_cache
 from time import sleep, time
 
 from cdflow_commands.logger import logger
-from cdflow_commands.exceptions import UserError
+from cdflow_commands.exceptions import (
+    UserFacingError, UserFacingFixedMessageError
+)
 
 
 TIMEOUT = 600
@@ -90,8 +92,14 @@ class ECSEventIterator():
             primary_deployment['taskDefinition']
         )
 
-        if release_image != '{}:{}'.format(self._component, self._version):
-            raise ImageDoesNotMatchError
+        requested_image = '{}:{}'.format(self._component, self._version)
+        if release_image != requested_image:
+            raise ImageDoesNotMatchError(
+                'Requested image {} does not match image '
+                'found in deployment {}'.format(
+                    requested_image, release_image
+                )
+            )
 
         running = primary_deployment['runningCount']
         pending = primary_deployment['pendingCount']
@@ -188,7 +196,7 @@ class InProgressEvent(Event):
         return False
 
 
-class TimeoutError(UserError):
+class TimeoutError(UserFacingFixedMessageError):
     _message = (
         'Deployment timed out - didn\'t complete within {} seconds'.format(
             TIMEOUT
@@ -196,14 +204,11 @@ class TimeoutError(UserError):
     )
 
 
-class FailedTasksError(UserError):
+class FailedTasksError(UserFacingFixedMessageError):
     _message = (
         'Deployment failed - number of running tasks has decreased'
     )
 
 
-class ImageDoesNotMatchError(UserError):
-    _message = (
-        'Image for the PRIMARY deployment has changed (most likely due to '
-        'another deploy running'
-    )
+class ImageDoesNotMatchError(UserFacingError):
+    pass
