@@ -152,8 +152,8 @@ class ECSEventIterator():
 
     def _assert_correct_image_being_deployed(self, task_definition):
         release_image = self._get_release_image(task_definition)
-
         requested_image = '{}:{}'.format(self._component, self._version)
+
         if release_image != requested_image:
             raise ImageDoesNotMatchError(
                 'Requested image {} does not match image '
