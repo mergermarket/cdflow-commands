@@ -24,24 +24,41 @@ class ECSMonitor():
 
     def __init__(self, ecs_event_iterator):
         self._ecs_event_iterator = ecs_event_iterator
+        self._previous_running_count = 0
 
     def wait(self):
         start = time()
+
         for event in self._ecs_event_iterator:
             if time() - start > TIMEOUT:
                 raise TimeoutError
-            logger.info(
-                'Deploying ECS tasks - '
-                'desired: {} pending: {} running: {} previous: {}'.format(
-                    event.desired, event.pending,
-                    event.running, event.previous_running
-                )
-            )
+
+            self._show_deployment_progress(event)
+            self._check_for_failed_tasks(event)
+
             if event.done:
                 logger.info('Deployment complete')
                 return True
 
             sleep(INTERVAL)
+
+    def _show_deployment_progress(self, event):
+        for message in event.messages:
+            logger.info("ECS service event - {}".format(message))
+
+        logger.info(
+            'ECS service tasks - '
+            'desired: {} pending: {} running: {} previous: {}'.format(
+                event.desired, event.pending,
+                event.running, event.previous_running
+            )
+        )
+
+    def _check_for_failed_tasks(self, event):
+        if event.running < self._previous_running_count:
+            raise FailedTasksError
+
+        self._previous_running_count = event.running
 
 
 class ECSEventIterator():
@@ -53,6 +70,7 @@ class ECSEventIterator():
         self._version = version
         self._boto_session = boto_session
         self._done = False
+        self._seen_ecs_service_events = set()
 
     def __iter__(self):
         return self
@@ -61,7 +79,12 @@ class ECSEventIterator():
         if self._done:
             raise StopIteration
 
-        deployments = self._get_deployments()
+        ecs_service_data = self._ecs.describe_services(
+            cluster=self._cluster,
+            services=[self.service_name]
+        )
+
+        deployments = self._get_deployments(ecs_service_data)
         primary_deployment = self._get_primary_deployment(deployments)
         release_image = self._get_release_image(
             primary_deployment['taskDefinition']
@@ -73,12 +96,35 @@ class ECSEventIterator():
         running = primary_deployment['runningCount']
         pending = primary_deployment['pendingCount']
         desired = primary_deployment['desiredCount']
+        messages = [
+            event['message']
+            for event in self._get_new_ecs_service_events(
+                ecs_service_data, primary_deployment['createdAt']
+            )
+        ]
         previous_running = self._get_previous_running_count(deployments)
         if running != desired or previous_running:
-            return InProgressEvent(running, pending, desired, previous_running)
+            return InProgressEvent(
+                running, pending, desired, previous_running, messages
+            )
 
         self._done = True
-        return DoneEvent(running, pending, desired, previous_running)
+        return DoneEvent(
+            running, pending, desired, previous_running, messages
+        )
+
+    def _get_new_ecs_service_events(self, ecs_service_data, since):
+        filtered_ecs_events = [
+            event
+            for event in ecs_service_data['services'][0].get('events', [])
+            if event['id'] not in self._seen_ecs_service_events and
+            event['createdAt'] > since
+        ]
+
+        for event in filtered_ecs_events:
+            self._seen_ecs_service_events.add(event['id'])
+
+        return list(reversed(filtered_ecs_events))
 
     @property
     def service_name(self):
@@ -97,14 +143,10 @@ class ECSEventIterator():
 
         return task_def['image'].split('/', 1)[1]
 
-    def _get_deployments(self):
-        services = self._ecs.describe_services(
-            cluster=self._cluster,
-            services=[self.service_name]
-        )
+    def _get_deployments(self, ecs_service_data):
         return [
             deployment
-            for deployment in services['services'][0]['deployments']
+            for deployment in ecs_service_data['services'][0]['deployments']
         ]
 
     def _get_primary_deployment(self, deployments):
@@ -124,11 +166,12 @@ class ECSEventIterator():
 
 class Event():
 
-    def __init__(self, running, pending, desired, previous_running):
+    def __init__(self, running, pending, desired, previous_running, messages):
         self.running = running
         self.pending = pending
         self.desired = desired
         self.previous_running = previous_running
+        self.messages = messages
 
 
 class DoneEvent(Event):
@@ -150,6 +193,12 @@ class TimeoutError(UserError):
         'Deployment timed out - didn\'t complete within {} seconds'.format(
             TIMEOUT
         )
+    )
+
+
+class FailedTasksError(UserError):
+    _message = (
+        'Deployment failed - number of running tasks has decreased'
     )
 
 

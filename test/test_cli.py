@@ -299,9 +299,9 @@ class TestDeployCLI(unittest.TestCase):
         get_secrets.return_value = {}
 
         ECSEventIterator.return_value = [
-            InProgressEvent(0, 0, 2, 0),
-            InProgressEvent(1, 0, 2, 0),
-            DoneEvent(2, 0, 2, 0)
+            InProgressEvent(0, 0, 2, 0, []),
+            InProgressEvent(1, 0, 2, 0, []),
+            DoneEvent(2, 0, 2, 0, [])
         ]
         ecs_monitor_module.INTERVAL = 0
 
@@ -360,11 +360,11 @@ class TestDeployCLI(unittest.TestCase):
         )
 
         assert logs.output == [
-            ('INFO:cdflow_commands.logger:Deploying ECS tasks - '
+            ('INFO:cdflow_commands.logger:ECS service tasks - '
              'desired: 2 pending: 0 running: 0 previous: 0'),
-            ('INFO:cdflow_commands.logger:Deploying ECS tasks - '
+            ('INFO:cdflow_commands.logger:ECS service tasks - '
              'desired: 2 pending: 0 running: 1 previous: 0'),
-            ('INFO:cdflow_commands.logger:Deploying ECS tasks - '
+            ('INFO:cdflow_commands.logger:ECS service tasks - '
              'desired: 2 pending: 0 running: 2 previous: 0'),
             'INFO:cdflow_commands.logger:Deployment complete'
         ]
