@@ -5,25 +5,27 @@ from subprocess import check_output, CalledProcessError
 
 from boto3.session import Session
 
-from cdflow_commands.exceptions import UserError
+from cdflow_commands.exceptions import (
+    UserFacingError, UserFacingFixedMessageError
+)
 
 
 PLATFORM_CONFIG_PATH_TEMPLATE = 'infra/platform-config/{}/{}/{}.json'
 
 
-class JobNameTooShortError(UserError):
-    _message = 'JOB_NAME must be at least 6 characters'
+class JobNameTooShortError(UserFacingError):
+    pass
 
 
-class InvalidEmailError(UserError):
-    _message = 'EMAIL does not contain a valid email address'
+class InvalidEmailError(UserFacingError):
+    pass
 
 
-class NoJobNameOrEmailError(UserError):
+class NoJobNameOrEmailError(UserFacingFixedMessageError):
     _message = 'JOB_NAME or EMAIL must be set'
 
 
-class NoGitRemoteError(UserError):
+class NoGitRemoteError(UserFacingFixedMessageError):
     _message = 'No git remote configured - cannot infer component name'
 
 
@@ -84,12 +86,16 @@ def assume_role(root_session, acccount_id, session_name):
 
 def _validate_job_name(job_name):
     if len(job_name) < 6:
-        raise JobNameTooShortError()
+        raise JobNameTooShortError(
+            'JOB_NAME must be at least 6 characters', job_name
+        )
 
 
 def _validate_email(email):
     if not match(r'.+@([\w-]+\.)+\w+$', email, DOTALL):
-        raise InvalidEmailError()
+        raise InvalidEmailError(
+            'EMAIL does not contain a valid email address', email
+        )
 
 
 def get_role_session_name(env):
