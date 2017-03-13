@@ -198,8 +198,7 @@ class TimeoutError(UserError):
 
 class FailedTasksError(UserError):
     _message = (
-        ('Deployment failed - tasks (containers) are '
-         'failing to pass healthcheck')
+        'Deployment failed - number of running tasks has decreased'
     )
 
 
