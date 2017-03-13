@@ -112,7 +112,7 @@ class ECSEventIterator():
             primary_deployment
         )
 
-        if self._deploy_in_progres(running, desired, previous_running):
+        if self._deploy_in_progress(running, desired, previous_running):
             return InProgressEvent(
                 running, pending, desired, previous_running, messages
             )
