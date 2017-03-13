@@ -737,7 +737,6 @@ class TestECSEventIterator(unittest.TestCase):
         events = ECSEventIterator(
             cluster, environment, component, version, boto_session
         )
-
         event_list = [e for e in events]
 
         assert len(event_list) == 8
