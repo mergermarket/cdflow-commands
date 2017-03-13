@@ -91,7 +91,8 @@ class ECSEventIterator():
 
         deployments = self._get_deployments(ecs_service_data)
         primary_deployment = self._get_primary_deployment(deployments)
-        release_image = self._get_release_image(
+
+        self._assert_correct_image_being_deployed(
             primary_deployment['taskDefinition']
         )
 
@@ -151,6 +152,17 @@ class ECSEventIterator():
 
         return task_def['image'].split('/', 1)[1]
 
+    def _assert_correct_image_being_deployed(self, task_definition):
+        release_image = self._get_release_image(task_definition)
+
+        requested_image = '{}:{}'.format(self._component, self._version)
+        if release_image != requested_image:
+            raise ImageDoesNotMatchError(
+                'Requested image {} does not match image '
+                'found in deployment {}'.format(
+                    requested_image, release_image
+                )
+            )
     def _get_deployments(self, ecs_service_data):
         return [
             deployment
