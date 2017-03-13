@@ -10,6 +10,7 @@ from cdflow_commands.exceptions import (
 
 TIMEOUT = 600
 INTERVAL = 15
+NEW_SERVICE_DEPLOYMENT_GRACE_PERIOD_LIMIT = 4
 
 
 def build_service_name(environment, component):
@@ -73,6 +74,8 @@ class ECSEventIterator():
         self._boto_session = boto_session
         self._done = False
         self._seen_ecs_service_events = set()
+        self._new_service_deployment = None
+        self._new_service_deployment_grace_period_count = 0
 
     def __iter__(self):
         return self
@@ -92,14 +95,11 @@ class ECSEventIterator():
             primary_deployment['taskDefinition']
         )
 
-        requested_image = '{}:{}'.format(self._component, self._version)
-        if release_image != requested_image:
-            raise ImageDoesNotMatchError(
-                'Requested image {} does not match image '
-                'found in deployment {}'.format(
-                    requested_image, release_image
-                )
-            )
+        # establish whether we're deploying a brand new service, or updating
+        # existing one
+        if self._new_service_deployment is None:
+            self._new_service_deployment = \
+                self._get_previous_running_count(deployments) == 0
 
         running = primary_deployment['runningCount']
         pending = primary_deployment['pendingCount']

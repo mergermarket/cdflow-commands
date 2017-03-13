@@ -226,14 +226,14 @@ class TestECSEventIterator(unittest.TestCase):
         event_list = [e for e in events]
 
         # Then
-        assert len(event_list) == 1
-        assert event_list[0].done
-        assert event_list[0].previous_running == 0
+        assert len(event_list) == 5
         assert event_list[0].messages == [
             'has started 1 tasks',
             'registered 1 targets',
             'has reached a steady state.'
         ]
+        assert event_list[4].done
+        assert event_list[4].previous_running == 0
 
     def test_deployment_completed_after_reaching_desired_running_count(self):
         environment = 'dummy-environment'
@@ -245,16 +245,16 @@ class TestECSEventIterator(unittest.TestCase):
         task_definition_arn = ('arn:aws:ecs:eu-west-3:111111111111:'
                                'task-definition/{}:1'.format(component)),
 
-        def describe_services_generator(final_running_count):
-            for running_count in range(final_running_count + 1):
-                pending_count = final_running_count - running_count
+        def describe_services_generator(running_counts):
+            for running_count in running_counts:
+                pending_count = 2 - running_count
                 yield {
                     'services': [
                         {
                             'clusterArn': 'arn:aws:ecs:eu-1:7:cstr/non-prod',
                             'deployments': [
                                 {
-                                    'desiredCount': final_running_count,
+                                    'desiredCount': 2,
                                     'createdAt': datetime.datetime(
                                         2017, 3, 8, 12, 15, 9, 13000
                                     ),
@@ -265,7 +265,7 @@ class TestECSEventIterator(unittest.TestCase):
                                     'taskDefinition': task_definition_arn,
                                 },
                                 {
-                                    'desiredCount': final_running_count,
+                                    'desiredCount': 2,
                                     'createdAt': datetime.datetime(
                                         2017, 3, 8, 12, 15, 9, 13000
                                     ),
@@ -290,7 +290,7 @@ class TestECSEventIterator(unittest.TestCase):
                 }
 
         mock_ecs_client.describe_services.side_effect = \
-            describe_services_generator(2)
+            describe_services_generator([0, 1, 2, 2, 2, 2, 2])
 
         mock_ecs_client.describe_task_definition.return_value = {
             'taskDefinition': {
@@ -330,22 +330,17 @@ class TestECSEventIterator(unittest.TestCase):
 
         event_list = [e for e in events]
 
-        assert len(event_list) == 3
+        assert len(event_list) == 7
 
         assert not event_list[0].done
         assert event_list[0].running == 0
         assert event_list[0].desired == 2
         assert event_list[0].pending == 2
 
-        assert not event_list[1].done
-        assert event_list[1].running == 1
-        assert event_list[1].desired == 2
-        assert event_list[1].pending == 1
-
-        assert event_list[2].done
-        assert event_list[2].running == 2
-        assert event_list[2].desired == 2
-        assert event_list[2].pending == 0
+        assert event_list[6].done
+        assert event_list[6].running == 2
+        assert event_list[6].desired == 2
+        assert event_list[6].pending == 0
 
     def test_deployment_completed_after_previous_instances_stopped(self):
         environment = 'dummy-environment'
@@ -654,6 +649,100 @@ class TestECSEventIterator(unittest.TestCase):
         except ImageDoesNotMatchError as e:
             assert 'none' in str(e)
             assert '{}:{}'.format(component, version) in str(e)
+
+    def test_deployment_completed_for_new_service(self):
+        environment = 'dummy-environment'
+        component = 'dummy-component'
+        version = 'dummy-version'
+        cluster = 'dummy-cluster'
+        boto_session = MagicMock(spec=Session)
+        mock_ecs_client = Mock()
+        task_definition_arn = ('arn:aws:ecs:eu-west-3:111111111111:'
+                               'task-definition/{}:1'.format(component)),
+
+        def describe_services_generator(running_counts):
+            for running_count in running_counts:
+                pending_count = 0
+                yield {
+                    'services': [
+                        {
+                            'clusterArn': 'arn:aws:ecs:eu-1:7:cstr/non-prod',
+                            'deployments': [
+                                {
+                                    'desiredCount': 2,
+                                    'createdAt': datetime.datetime(
+                                        2017, 3, 8, 12, 15, 9, 13000
+                                    ),
+                                    'id': 'ecs-svc/9223370553143707624',
+                                    'runningCount': running_count,
+                                    'pendingCount': pending_count,
+                                    'status': 'PRIMARY',
+                                    'taskDefinition': task_definition_arn,
+                                }
+                            ],
+                            'loadBalancers': [
+                                {
+                                    'containerName': 'app',
+                                    'containerPort': 8000,
+                                    'targetGroupArn': 'd035fe071cf0069f'
+                                }
+                            ],
+                            'status': 'ACTIVE',
+                            'taskDefinition': task_definition_arn
+                        }
+                    ]
+                }
+
+        mock_ecs_client.describe_services.side_effect = \
+            describe_services_generator([0, 0, 1, 2, 2, 2, 2, 2])
+
+        mock_ecs_client.describe_task_definition.return_value = {
+            'taskDefinition': {
+                'containerDefinitions': [{
+                    'cpu': 64,
+                    'dockerLabels': {
+                        'component': component,
+                        'env': 'ci',
+                        'team': 'platform',
+                        'version': '123'
+                    },
+                    'environment': [
+                        {
+                            'name': 'VERSION',
+                            'value': version
+                        },
+                        {
+                            'name': 'COMPONENT',
+                            'value': component
+                        },
+                    ],
+                    'essential': True,
+                    'image': ('111111111111.dkr.ecr.eu-west-1.amazonaws.com/'
+                              '{}:{}'.format(component, version)),
+                    'volumesFrom': []
+                }],
+                'status': 'ACTIVE',
+                'taskDefinitionArn': task_definition_arn,
+                'taskRoleArn': 'arn:aws:iam::7:role/role',
+                'volumes': []
+            }
+        }
+        boto_session.client.return_value = mock_ecs_client
+        events = ECSEventIterator(
+            cluster, environment, component, version, boto_session
+        )
+
+        event_list = [e for e in events]
+
+        assert len(event_list) == 8
+
+        assert not event_list[0].done
+        assert event_list[0].running == 0
+        assert event_list[0].desired == 2
+
+        assert event_list[7].done
+        assert event_list[7].running == 2
+        assert event_list[7].desired == 2
 
     def test_get_ecs_service_events(self):
         # Given
