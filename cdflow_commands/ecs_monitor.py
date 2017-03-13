@@ -10,7 +10,6 @@ from cdflow_commands.exceptions import (
 
 TIMEOUT = 600
 INTERVAL = 15
-NEW_SERVICE_DEPLOYMENT_GRACE_PERIOD_LIMIT = 4
 
 
 def build_service_name(environment, component):
@@ -75,7 +74,7 @@ class ECSEventIterator():
         self._done = False
         self._seen_ecs_service_events = set()
         self._new_service_deployment = None
-        self._new_service_deployment_grace_period_count = 0
+        self._new_service_grace_period = 60
 
     def __iter__(self):
         return self
@@ -126,9 +125,8 @@ class ECSEventIterator():
         if running != desired or previous_running:
             return True
         elif (running == desired and self._new_service_deployment and
-                self._new_service_deployment_grace_period_count <
-                NEW_SERVICE_DEPLOYMENT_GRACE_PERIOD_LIMIT):
-            self._new_service_deployment_grace_period_count += 1
+                self._new_service_grace_period > 0):
+            self._new_service_grace_period -= INTERVAL
             return True
 
         return False
