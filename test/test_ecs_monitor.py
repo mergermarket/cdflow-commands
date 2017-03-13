@@ -144,7 +144,7 @@ class TestECSEventIterator(unittest.TestCase):
                             'status': 'PRIMARY',
                             'taskDefinition': task_definition_arn,
                             'updatedAt': datetime.datetime(2017, 1, 6, 13, 57)
-                        }
+                        },
                     ],
                     'desiredCount': 2,
                     'events': [
