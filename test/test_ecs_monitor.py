@@ -65,7 +65,7 @@ class TestECSMonitor(unittest.TestCase):
         # Given
         ecs_event_iterator = cycle([
             InProgressEvent(0, 0, 2, 0, []),
-            InProgressEvent(1, 0, 2, 0, []),
+            InProgressEvent(0, 0, 2, 0, []),
         ])
         ecs_monitor_module.INTERVAL = 0
         ecs_monitor_module.TIMEOUT = 1
