@@ -122,11 +122,8 @@ class ECSEventIterator():
             running, pending, desired, previous_running, messages
         )
 
-    def _deploy_in_progres(self, running, desired, previous_running):
-        if (
-            running != desired or
-            previous_running
-        ):
+    def _deploy_in_progress(self, running, desired, previous_running):
+        if running != desired or previous_running:
             return True
         elif (running == desired and self._new_service_deployment and
                 self._new_service_deployment_grace_period_count <
