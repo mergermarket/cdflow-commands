@@ -90,26 +90,20 @@ class ECSEventIterator():
 
         deployments = self._get_deployments(ecs_service_data)
         primary_deployment = self._get_primary_deployment(deployments)
+        running = primary_deployment['runningCount']
+        pending = primary_deployment['pendingCount']
+        desired = primary_deployment['desiredCount']
+        previous_running = self._get_previous_running_count(deployments)
+        messages = self._get_task_event_messages(
+            ecs_service_data, primary_deployment
+        )
 
         self._assert_correct_image_being_deployed(
             primary_deployment['taskDefinition']
         )
 
-        # establish whether we're deploying a brand new service, or updating
-        # existing one
         if self._new_service_deployment is None:
-            self._new_service_deployment = \
-                self._get_previous_running_count(deployments) == 0
-
-        running = primary_deployment['runningCount']
-        pending = primary_deployment['pendingCount']
-        desired = primary_deployment['desiredCount']
-        previous_running = self._get_previous_running_count(deployments)
-
-        messages = self._get_task_event_messages(
-            ecs_service_data,
-            primary_deployment
-        )
+            self._new_service_deployment = previous_running == 0
 
         if self._deploy_in_progress(running, desired, previous_running):
             return InProgressEvent(

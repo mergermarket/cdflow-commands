@@ -611,7 +611,8 @@ class TestECSEventIterator(unittest.TestCase):
                             'runningCount': 2,
                             'status': 'PRIMARY',
                             'taskDefinition': task_definition_arn,
-                            'updatedAt': datetime.datetime(2017, 1, 6, 13, 57)
+                            'updatedAt': datetime.datetime(2017, 1, 6, 13, 57),
+                            'createdAt': datetime.datetime(2017, 1, 6, 13, 57)
                         }
                     ],
                     'status': 'ACTIVE',
