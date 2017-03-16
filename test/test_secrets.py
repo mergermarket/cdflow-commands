@@ -11,7 +11,7 @@ from botocore.exceptions import ClientError
 from cdflow_commands.secrets import get_secrets
 
 CALL_KWARGS = 2
-IDENTIFIERS = ascii_letters + digits + '-._'
+IDENTIFIERS = ascii_letters + digits + '-_'
 
 
 class TestGetBuildSecretsFromCredstash(unittest.TestCase):
