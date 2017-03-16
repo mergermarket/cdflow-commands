@@ -8,10 +8,6 @@ from cdflow_commands.exceptions import (
 )
 
 
-TIMEOUT = 600
-INTERVAL = 15
-
-
 def build_service_name(environment, component):
     service_name = '{}-{}'.format(environment, component)
     if len(service_name) > 32:
@@ -24,6 +20,9 @@ def build_service_name(environment, component):
 
 class ECSMonitor():
 
+    _TIMEOUT = 600
+    _INTERVAL = 15
+
     def __init__(self, ecs_event_iterator):
         self._ecs_event_iterator = ecs_event_iterator
         self._previous_running_count = 0
@@ -32,8 +31,11 @@ class ECSMonitor():
         start = time()
 
         for event in self._ecs_event_iterator:
-            if time() - start > TIMEOUT:
-                raise TimeoutError
+            if time() - start > self._TIMEOUT:
+                raise TimeoutError(
+                    'Deployment timed out - didn\'t complete '
+                    'within {} seconds'.format(self._TIMEOUT)
+                )
 
             self._show_deployment_progress(event)
             self._check_for_failed_tasks(event)
@@ -42,7 +44,7 @@ class ECSMonitor():
                 logger.info('Deployment complete')
                 return True
 
-            sleep(INTERVAL)
+            sleep(self._INTERVAL)
 
     def _show_deployment_progress(self, event):
         for message in event.messages:
@@ -65,6 +67,9 @@ class ECSMonitor():
 
 class ECSEventIterator():
 
+    _INTERVAL = 15
+    _NEW_SERVICE_GRACE_PERIOD = 60
+
     def __init__(self, cluster, environment, component, version, boto_session):
         self._cluster = cluster
         self._environment = environment
@@ -74,7 +79,7 @@ class ECSEventIterator():
         self._done = False
         self._seen_ecs_service_events = set()
         self._new_service_deployment = None
-        self._new_service_grace_period = 60
+        self._new_service_grace_period = self._NEW_SERVICE_GRACE_PERIOD
 
     def __iter__(self):
         return self
@@ -120,7 +125,7 @@ class ECSEventIterator():
             return True
         elif (running == desired and self._new_service_deployment and
                 self._new_service_grace_period > 0):
-            self._new_service_grace_period -= INTERVAL
+            self._new_service_grace_period -= self._INTERVAL
             return True
 
         return False
@@ -220,19 +225,15 @@ class InProgressEvent(Event):
         return False
 
 
-class TimeoutError(UserFacingFixedMessageError):
-    _message = (
-        'Deployment timed out - didn\'t complete within {} seconds'.format(
-            TIMEOUT
-        )
-    )
+class TimeoutError(UserFacingError):
+    pass
+
+
+class ImageDoesNotMatchError(UserFacingError):
+    pass
 
 
 class FailedTasksError(UserFacingFixedMessageError):
     _message = (
         'Deployment failed - number of running tasks has decreased'
     )
-
-
-class ImageDoesNotMatchError(UserFacingError):
-    pass

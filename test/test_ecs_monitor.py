@@ -9,7 +9,6 @@ from hypothesis.strategies import text, fixed_dictionaries
 
 from boto3 import Session
 
-from cdflow_commands import ecs_monitor as ecs_monitor_module
 from cdflow_commands.ecs_monitor import (
     ECSEventIterator, ECSMonitor, build_service_name, DoneEvent,
     InProgressEvent, ImageDoesNotMatchError, TimeoutError, FailedTasksError
@@ -43,8 +42,8 @@ class TestECSMonitor(unittest.TestCase):
             InProgressEvent(1, 0, 2, 1, []),
             DoneEvent(2, 0, 2, 0, [])
         ]
-        ecs_monitor_module.INTERVAL = 0
         ecs_monitor = ECSMonitor(ecs_event_iterator)
+        ecs_monitor._INTERVAL = 0
 
         # When
         with self.assertLogs('cdflow_commands.logger', level='INFO') as logs:
@@ -67,9 +66,9 @@ class TestECSMonitor(unittest.TestCase):
             InProgressEvent(0, 0, 2, 0, []),
             InProgressEvent(0, 0, 2, 0, []),
         ])
-        ecs_monitor_module.INTERVAL = 0
-        ecs_monitor_module.TIMEOUT = 1
         ecs_monitor = ECSMonitor(ecs_event_iterator)
+        ecs_monitor._INTERVAL = 0.1
+        ecs_monitor._TIMEOUT = 0.1
 
         # Then
         self.assertRaises(TimeoutError, ecs_monitor.wait)
@@ -82,8 +81,8 @@ class TestECSMonitor(unittest.TestCase):
             InProgressEvent(2, 0, 2, 2, []),
             InProgressEvent(1, 0, 2, 2, [])
         ]
-        ecs_monitor_module.INTERVAL = 0
         ecs_monitor = ECSMonitor(ecs_event_iterator)
+        ecs_monitor._INTERVAL = 0
 
         # When
         with self.assertLogs('cdflow_commands.logger', level='INFO') as logs:
