@@ -58,9 +58,9 @@ def run(argv):
 
 def _run(argv):
     args = docopt(__doc__, argv=argv)
-    if args['--verbose']:
-        logger.setLevel(logging.DEBUG)
-        logger.debug('Debug logging on')
+
+    conditionally_set_debug(args['--verbose'])
+
     metadata = load_service_metadata()
     global_config = load_global_config(
         metadata.account_prefix, metadata.aws_region
@@ -71,6 +71,29 @@ def _run(argv):
     version = args['<version>']
     environment_name = args['<environment>']
 
+    ecs_plugin = build_ecs_plugin(
+        environment_name, component_name, version,
+        metadata, global_config, root_session
+    )
+
+    if args['release']:
+        ecs_plugin.release()
+    elif args['deploy']:
+        ecs_plugin.deploy()
+    elif args['destroy']:
+        ecs_plugin.destroy()
+
+
+def conditionally_set_debug(verbose):
+    if verbose:
+        logger.setLevel(logging.DEBUG)
+        logger.debug('Debug logging on')
+
+
+def build_ecs_plugin(
+    environment_name, component_name, version,
+    metadata, global_config, root_session
+):
     release_factory = build_release_factory(
         component_name, version, metadata, global_config, root_session
     )
@@ -89,19 +112,12 @@ def _run(argv):
         root_session
     )
 
-    ecs_plugin = ECSPlugin(
+    return ECSPlugin(
         release_factory,
         deploy_factory,
         destroy_factory,
         deploy_monitor_factory
     )
-
-    if args['release']:
-        ecs_plugin.release()
-    elif args['deploy']:
-        ecs_plugin.deploy()
-    elif args['destroy']:
-        ecs_plugin.destroy()
 
 
 def build_release_factory(
