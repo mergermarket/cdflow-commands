@@ -4,12 +4,8 @@ import json
 from io import TextIOWrapper
 from datetime import datetime
 from collections import namedtuple
-from string import printable
 
 from mock import patch, Mock, mock_open, MagicMock, ANY
-
-from hypothesis import given, assume
-from hypothesis.strategies import text
 
 from cdflow_commands.ecs_monitor import ECSMonitor
 from cdflow_commands import cli
@@ -214,31 +210,47 @@ class TestDeployCLI(unittest.TestCase):
         self._original_interval = ECSMonitor._INTERVAL
         ECSMonitor._INTERVAL = 0.1
 
-    def tearDown(self):
-        ECSMonitor._INTERVAL = self._original_interval
+        self.rmtree_patcher = patch('cdflow_commands.cli.rmtree')
+        self.unlink_patcher = patch('cdflow_commands.cli.unlink')
+        self.ECSEventIterator_patcher = patch(
+            'cdflow_commands.cli.ECSEventIterator'
+        )
+        self.S3BucketFactory_patcher = patch(
+            'cdflow_commands.cli.S3BucketFactory'
+        )
+        self.mock_os_deploy_patcher = patch('cdflow_commands.deploy.os')
+        self.mock_os_cli_patcher = patch('cdflow_commands.cli.os')
+        self.Session_from_cli_patcher = patch('cdflow_commands.cli.Session')
+        self.Session_from_config_patcher = patch(
+            'cdflow_commands.config.Session'
+        )
+        self.mock_open_patcher = patch('cdflow_commands.config.open')
+        self.check_call_patcher = patch('cdflow_commands.deploy.check_call')
+        self.check_output_patcher = patch(
+            'cdflow_commands.config.check_output'
+        )
+        self.get_secrets_patcher = patch('cdflow_commands.deploy.get_secrets')
+        self.NamedTemporaryFile_patcher = patch(
+            'cdflow_commands.deploy.NamedTemporaryFile'
+        )
+        self.rmtree = self.rmtree_patcher.start()
+        self.unlink = self.unlink_patcher.start()
+        self.ECSEventIterator = self.ECSEventIterator_patcher.start()
+        self.S3BucketFactory = self.S3BucketFactory_patcher.start()
+        self.mock_os_deploy = self.mock_os_deploy_patcher.start()
+        self.mock_os_cli = self.mock_os_cli_patcher.start()
+        self.Session_from_cli = self.Session_from_cli_patcher.start()
+        self.Session_from_config = self.Session_from_config_patcher.start()
+        self.mock_open = self.mock_open_patcher.start()
+        self.check_call = self.check_call_patcher.start()
+        self.check_output = self.check_output_patcher.start()
+        self.get_secrets = self.get_secrets_patcher.start()
+        self.NamedTemporaryFile = self.NamedTemporaryFile_patcher.start()
 
-    @patch('cdflow_commands.cli.rmtree')
-    @patch('cdflow_commands.cli.unlink')
-    @patch('cdflow_commands.cli.ECSEventIterator')
-    @patch('cdflow_commands.cli.S3BucketFactory')
-    @patch('cdflow_commands.deploy.os')
-    @patch('cdflow_commands.cli.os')
-    @patch('cdflow_commands.cli.Session')
-    @patch('cdflow_commands.config.Session')
-    @patch('cdflow_commands.config.open', new_callable=mock_open, create=True)
-    @patch('cdflow_commands.deploy.check_call')
-    @patch('cdflow_commands.config.check_output')
-    @patch('cdflow_commands.deploy.get_secrets')
-    @patch('cdflow_commands.deploy.NamedTemporaryFile')
-    def test_deploy_is_configured_and_run(
-        self, NamedTemporaryFile, get_secrets, check_output, check_call,
-        mock_open, Session_from_config, Session_from_cli, mock_os_cli,
-        mock_os_deploy, _, ECSEventIterator, unlink, rmtree
-    ):
-        mock_os_cli.environ = {
+        self.mock_os_cli.environ = {
             'JOB_NAME': 'dummy-job-name'
         }
-        mock_os_deploy.environ = {}
+        self.mock_os_deploy.environ = {}
 
         mock_metadata_file = MagicMock(spec=TextIOWrapper)
         metadata = {
@@ -265,12 +277,12 @@ class TestDeployCLI(unittest.TestCase):
         }
         mock_prod_file.read.return_value = json.dumps(prod_config)
 
-        mock_open.return_value.__enter__.side_effect = (
+        self.mock_open.return_value.__enter__.side_effect = (
             f for f in (mock_metadata_file, mock_dev_file, mock_prod_file)
         )
 
-        mock_sts_client = Mock()
-        mock_sts_client.assume_role.return_value = {
+        self.mock_sts_client = Mock()
+        self.mock_sts_client.assume_role.return_value = {
             'Credentials': {
                 'AccessKeyId': 'dummy-access-key',
                 'SecretAccessKey': 'dummy-secret-key',
@@ -279,51 +291,69 @@ class TestDeployCLI(unittest.TestCase):
         }
 
         mock_root_session = Mock()
-        mock_root_session.client.return_value = mock_sts_client
+        mock_root_session.client.return_value = self.mock_sts_client
         mock_root_session.region_name = 'eu-west-12'
-        Session_from_cli.return_value = mock_root_session
+        self.Session_from_cli.return_value = mock_root_session
 
-        aws_access_key_id = 'dummy-access-key-id'
-        aws_secret_access_key = 'dummy-secret-access-key'
-        aws_session_token = 'dummy-session-token'
+        self.aws_access_key_id = 'dummy-access-key-id'
+        self.aws_secret_access_key = 'dummy-secret-access-key'
+        self.aws_session_token = 'dummy-session-token'
+
         mock_assumed_session = Mock()
         mock_assumed_session.region_name = 'eu-west-12'
         mock_assumed_session.get_credentials.return_value = BotoCreds(
-            aws_access_key_id,
-            aws_secret_access_key,
-            aws_session_token
+            self.aws_access_key_id,
+            self.aws_secret_access_key,
+            self.aws_session_token
         )
 
-        Session_from_config.return_value = mock_assumed_session
+        self.Session_from_config.return_value = mock_assumed_session
 
         component_name = 'dummy-component'
 
-        check_output.return_value = 'git@github.com:org/{}.git'.format(
+        self.check_output.return_value = 'git@github.com:org/{}.git'.format(
             component_name
         ).encode('utf-8')
 
-        NamedTemporaryFile.return_value.__enter__.return_value.name = ANY
-        get_secrets.return_value = {}
+        self.NamedTemporaryFile.return_value.__enter__.return_value.name = ANY
+        self.get_secrets.return_value = {}
 
-        ECSEventIterator.return_value = [
+        self.ECSEventIterator.return_value = [
             InProgressEvent(0, 0, 2, 0, []),
             InProgressEvent(1, 0, 2, 0, []),
             DoneEvent(2, 0, 2, 0, [])
         ]
 
+    def tearDown(self):
+        ECSMonitor._INTERVAL = self._original_interval
+        self.rmtree_patcher.stop()
+        self.unlink_patcher.stop()
+        self.ECSEventIterator_patcher.stop()
+        self.S3BucketFactory_patcher.stop()
+        self.mock_os_deploy_patcher.stop()
+        self.mock_os_cli_patcher.stop()
+        self.Session_from_cli_patcher.stop()
+        self.Session_from_config_patcher.stop()
+        self.mock_open_patcher.stop()
+        self.check_call_patcher.stop()
+        self.check_output_patcher.stop()
+        self.get_secrets_patcher.stop()
+        self.NamedTemporaryFile_patcher.stop()
+
+    def test_deploy_is_configured_and_run(self):
         # When
         with self.assertLogs('cdflow_commands.logger', level='INFO') as logs:
             cli.run(['deploy', 'aslive', '1.2.3'])
 
         # Then
-        check_call.assert_any_call(['terragrunt', 'get', 'infra'])
+        self.check_call.assert_any_call(['terragrunt', 'get', 'infra'])
 
         image_name = (
             '123456789.dkr.ecr.eu-west-12.amazonaws.com/'
             'dummy-component:1.2.3'
         )
 
-        check_call.assert_any_call(
+        self.check_call.assert_any_call(
             [
                 'terragrunt', 'plan',
                 '-var', 'component=dummy-component',
@@ -338,13 +368,13 @@ class TestDeployCLI(unittest.TestCase):
                 'infra'
             ],
             env={
-                'AWS_ACCESS_KEY_ID': aws_access_key_id,
-                'AWS_SECRET_ACCESS_KEY': aws_secret_access_key,
-                'AWS_SESSION_TOKEN': aws_session_token
+                'AWS_ACCESS_KEY_ID': self.aws_access_key_id,
+                'AWS_SECRET_ACCESS_KEY': self.aws_secret_access_key,
+                'AWS_SESSION_TOKEN': self.aws_session_token
             }
         )
 
-        check_call.assert_any_call(
+        self.check_call.assert_any_call(
             [
                 'terragrunt', 'apply',
                 '-var', 'component=dummy-component',
@@ -359,9 +389,9 @@ class TestDeployCLI(unittest.TestCase):
                 'infra'
             ],
             env={
-                'AWS_ACCESS_KEY_ID': aws_access_key_id,
-                'AWS_SECRET_ACCESS_KEY': aws_secret_access_key,
-                'AWS_SESSION_TOKEN': aws_session_token
+                'AWS_ACCESS_KEY_ID': self.aws_access_key_id,
+                'AWS_SECRET_ACCESS_KEY': self.aws_secret_access_key,
+                'AWS_SESSION_TOKEN': self.aws_session_token
             }
         )
 
@@ -375,121 +405,41 @@ class TestDeployCLI(unittest.TestCase):
             'INFO:cdflow_commands.logger:Deployment complete'
         ]
 
-        rmtree.assert_called_once_with('.terraform/')
-        unlink.assert_called_once_with('.terragrunt')
+        self.rmtree.assert_called_once_with('.terraform/')
+        self.unlink.assert_called_once_with('.terragrunt')
 
-
-class TestSetupForInfrastructure(unittest.TestCase):
-
-    @given(text(alphabet=printable))
-    def test_dev_session_passed_to_non_live_deployments(
-        self, environment_name
-    ):
+    def test_dev_session_passed_to_non_live_deployments(self):
         # Given
-        assume(environment_name != 'live')
-        metadata = Mock()
-        global_config = Mock()
-        global_config.dev_account_id = 123456789
-        global_config.prod_account_id = 987654321
-        root_session = Mock()
-        sts_client = Mock()
-        sts_client.assume_role.return_value = {'Credentials': {
-            'AccessKeyId': 'dummy-access-key-id',
-            'SecretAccessKey': 'dummy-secret-access-key',
-            'SessionToken': 'dummy-session-token',
-        }}
-        root_session.client.return_value = sts_client
-
-        with patch(
-            'cdflow_commands.cli.os'
-        ) as mock_os, patch(
-            'cdflow_commands.cli.S3BucketFactory'
-        ):
-            mock_os.environ = {'JOB_NAME': 'dummy-job'}
-
-            # When
-            cli._setup_for_infrastructure(
-                environment_name, 'dummy-component-name',
-                metadata, global_config, root_session
-            )
-
-            # Then
-            sts_client.assume_role.assert_called_once_with(
-                RoleArn='arn:aws:iam::123456789:role/admin',
-                RoleSessionName='dummy-job',
-            )
-
-    @patch('cdflow_commands.cli.os')
-    @patch('cdflow_commands.cli.S3BucketFactory')
-    def test_prod_session_passed_to_live_deployments(
-        self, S3BucketFactory, mock_os
-    ):
-        # Given
-        metadata = Mock()
-        global_config = Mock()
-        global_config.dev_account_id = 123456789
-        global_config.prod_account_id = 987654321
-        root_session = Mock()
-        sts_client = Mock()
-        sts_client.assume_role.return_value = {'Credentials': {
-            'AccessKeyId': 'dummy-access-key-id',
-            'SecretAccessKey': 'dummy-secret-access-key',
-            'SessionToken': 'dummy-session-token',
-        }}
-        root_session.client.return_value = sts_client
-
-        mock_os.environ = {'JOB_NAME': 'dummy-job'}
+        environment_name = 'aslive'
 
         # When
-        cli._setup_for_infrastructure(
-            'live', 'dummy-component-name',
-            metadata, global_config, root_session
-        )
+        cli.run(['deploy', environment_name, '1.2.3'])
 
         # Then
-        sts_client.assume_role.assert_called_once_with(
-            RoleArn='arn:aws:iam::987654321:role/admin',
-            RoleSessionName='dummy-job',
+        self.mock_sts_client.assume_role.assert_called_with(
+            RoleArn='arn:aws:iam::123456789:role/admin',
+            RoleSessionName=self.mock_os_cli.environ['JOB_NAME']
         )
 
-    @patch('cdflow_commands.cli.os')
-    @patch('cdflow_commands.cli.Deploy')
-    @patch(
-        'cdflow_commands.terragrunt.open', new_callable=mock_open, create=True
-    )
-    @patch('cdflow_commands.config.Session')
-    def test_tfstate_bucket_set_up_in_dev_account_for_aslive_deployment(
-        self, Session, mock_open, _, mock_os
-    ):
+    def test_prod_session_passed_to_live_deployments(self):
         # Given
-        metadata = Mock()
-        global_config = Mock()
-        global_config.dev_account_id = 123456789
-        global_config.prod_account_id = 987654321
-        root_session = Mock()
-        sts_client = Mock()
-        sts_client.assume_role.return_value = {'Credentials': {
-            'AccessKeyId': 'dummy-access-key-id',
-            'SecretAccessKey': 'dummy-secret-access-key',
-            'SessionToken': 'dummy-session-token',
-        }}
-        root_session.client.return_value = sts_client
-
-        mock_s3_client = Mock()
-        mock_s3_client.list_buckets = MagicMock(spec=dict)
-
-        mock_assumed_session = Mock()
-        mock_assumed_session.region_name = 'eu-west-4'
-        mock_assumed_session.client.return_value = mock_s3_client
-        Session.return_value = mock_assumed_session
-
-        mock_os.environ = {'JOB_NAME': 'dummy-job'}
+        environment_name = 'live'
 
         # When
-        cli._setup_for_infrastructure(
-            'aslive', 'dummy-component-name',
-            metadata, global_config, root_session
+        cli.run(['deploy', environment_name, '1.2.3'])
+
+        # Then
+        self.mock_sts_client.assume_role.assert_called_with(
+            RoleArn='arn:aws:iam::987654321:role/admin',
+            RoleSessionName=self.mock_os_cli.environ['JOB_NAME']
         )
+
+    @patch('cdflow_commands.terragrunt.open')
+    def test_tfstate_bucket_set_up_in_dev_account_for_aslive_deployment(
+        self, mock_open
+    ):
+        # When
+        cli.run(['deploy', 'live', '1.2.3'])
 
         # Then
         mock_open.assert_called_once_with('.terragrunt', 'w')
