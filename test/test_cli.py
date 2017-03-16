@@ -11,7 +11,7 @@ from mock import patch, Mock, mock_open, MagicMock, ANY
 from hypothesis import given, assume
 from hypothesis.strategies import text
 
-from cdflow_commands import ecs_monitor as ecs_monitor_module
+from cdflow_commands.ecs_monitor import ECSMonitor
 from cdflow_commands import cli
 from cdflow_commands.ecs_monitor import (
     InProgressEvent, DoneEvent
@@ -210,6 +210,13 @@ BotoCreds = namedtuple('BotoCreds', ['access_key', 'secret_key', 'token'])
 
 class TestDeployCLI(unittest.TestCase):
 
+    def setUp(self):
+        self._original_interval = ECSMonitor._INTERVAL
+        ECSMonitor._INTERVAL = 0.1
+
+    def tearDown(self):
+        ECSMonitor._INTERVAL = self._original_interval
+
     @patch('cdflow_commands.cli.rmtree')
     @patch('cdflow_commands.cli.unlink')
     @patch('cdflow_commands.cli.ECSEventIterator')
@@ -303,7 +310,6 @@ class TestDeployCLI(unittest.TestCase):
             InProgressEvent(1, 0, 2, 0, []),
             DoneEvent(2, 0, 2, 0, [])
         ]
-        ecs_monitor_module.INTERVAL = 0
 
         # When
         with self.assertLogs('cdflow_commands.logger', level='INFO') as logs:
