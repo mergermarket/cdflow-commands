@@ -453,12 +453,12 @@ class TestDestroyCLI(unittest.TestCase):
     @patch('cdflow_commands.cli.rmtree')
     @patch('cdflow_commands.cli.unlink')
     @patch('cdflow_commands.cli.S3BucketFactory')
-    @patch('cdflow_commands.plugins.ecs.os')
+    @patch('cdflow_commands.plugins.base.os')
     @patch('cdflow_commands.cli.os')
     @patch('cdflow_commands.cli.Session')
     @patch('cdflow_commands.config.Session')
     @patch('cdflow_commands.config.open', new_callable=mock_open, create=True)
-    @patch('cdflow_commands.plugins.ecs.check_call')
+    @patch('cdflow_commands.plugins.base.check_call')
     @patch('cdflow_commands.config.check_output')
     def test_destroy_is_configured_and_run(
         self, check_output, check_call, mock_open,
