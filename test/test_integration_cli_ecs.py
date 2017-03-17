@@ -7,10 +7,9 @@ from collections import namedtuple
 
 from mock import patch, Mock, mock_open, MagicMock, ANY
 
-from cdflow_commands.ecs_monitor import ECSMonitor
 from cdflow_commands import cli
-from cdflow_commands.ecs_monitor import (
-    InProgressEvent, DoneEvent
+from cdflow_commands.plugins.ecs import (
+    ECSMonitor, InProgressEvent, DoneEvent
 )
 from cdflow_commands.exceptions import UserFacingError
 
@@ -22,7 +21,7 @@ from cdflow_commands.exceptions import UserFacingError
 @patch('cdflow_commands.config.Session')
 @patch('cdflow_commands.config.open', new_callable=mock_open, create=True)
 @patch('cdflow_commands.config.check_output')
-@patch('cdflow_commands.release.check_call')
+@patch('cdflow_commands.plugins.ecs.check_call')
 class TestReleaseCLI(unittest.TestCase):
 
     def test_release_is_configured_and_created(
@@ -218,20 +217,24 @@ class TestDeployCLI(unittest.TestCase):
         self.S3BucketFactory_patcher = patch(
             'cdflow_commands.cli.S3BucketFactory'
         )
-        self.mock_os_deploy_patcher = patch('cdflow_commands.deploy.os')
+        self.mock_os_deploy_patcher = patch('cdflow_commands.plugins.ecs.os')
         self.mock_os_cli_patcher = patch('cdflow_commands.cli.os')
         self.Session_from_cli_patcher = patch('cdflow_commands.cli.Session')
         self.Session_from_config_patcher = patch(
             'cdflow_commands.config.Session'
         )
         self.mock_open_patcher = patch('cdflow_commands.config.open')
-        self.check_call_patcher = patch('cdflow_commands.deploy.check_call')
+        self.check_call_patcher = patch(
+            'cdflow_commands.plugins.ecs.check_call'
+        )
         self.check_output_patcher = patch(
             'cdflow_commands.config.check_output'
         )
-        self.get_secrets_patcher = patch('cdflow_commands.deploy.get_secrets')
+        self.get_secrets_patcher = patch(
+            'cdflow_commands.plugins.ecs.get_secrets'
+        )
         self.NamedTemporaryFile_patcher = patch(
-            'cdflow_commands.deploy.NamedTemporaryFile'
+            'cdflow_commands.plugins.ecs.NamedTemporaryFile'
         )
         self.rmtree = self.rmtree_patcher.start()
         self.unlink = self.unlink_patcher.start()
@@ -450,12 +453,12 @@ class TestDestroyCLI(unittest.TestCase):
     @patch('cdflow_commands.cli.rmtree')
     @patch('cdflow_commands.cli.unlink')
     @patch('cdflow_commands.cli.S3BucketFactory')
-    @patch('cdflow_commands.destroy.os')
+    @patch('cdflow_commands.plugins.ecs.os')
     @patch('cdflow_commands.cli.os')
     @patch('cdflow_commands.cli.Session')
     @patch('cdflow_commands.config.Session')
     @patch('cdflow_commands.config.open', new_callable=mock_open, create=True)
-    @patch('cdflow_commands.destroy.check_call')
+    @patch('cdflow_commands.plugins.ecs.check_call')
     @patch('cdflow_commands.config.check_output')
     def test_destroy_is_configured_and_run(
         self, check_output, check_call, mock_open,

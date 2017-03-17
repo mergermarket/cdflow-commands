@@ -9,7 +9,7 @@ from hypothesis.strategies import text, fixed_dictionaries
 
 from boto3 import Session
 
-from cdflow_commands.ecs_monitor import (
+from cdflow_commands.plugins.ecs import (
     ECSEventIterator, ECSMonitor, build_service_name, DoneEvent,
     InProgressEvent, ImageDoesNotMatchError, TimeoutError, FailedTasksError
 )
