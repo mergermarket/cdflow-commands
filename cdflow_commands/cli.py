@@ -4,7 +4,7 @@ Commands for managing the software lifecycle.
 
 Usage:
     cdflow release [<version>] [options]
-    cdflow deploy <environment> <version> [options]
+    cdflow deploy <environment>  [(--var <key=value>)...] [<version>] [options]
     cdflow destroy <environment> [options]
 
 Options:
@@ -25,6 +25,7 @@ from cdflow_commands.config import (
 from cdflow_commands.exceptions import UserFacingError
 from cdflow_commands.logger import logger
 from cdflow_commands.plugins.ecs import build_ecs_plugin
+from cdflow_commands.plugins.infrastructure import build_infrastructure_plugin
 from docopt import docopt
 
 
@@ -56,21 +57,45 @@ def _run(argv):
     )
     root_session = Session(region_name=metadata.aws_region)
 
-    component_name = get_component_name(args['--component'])
-    version = args['<version>']
-    environment_name = args['<environment>']
-
-    ecs_plugin = build_ecs_plugin(
-        environment_name, component_name, version,
-        metadata, global_config, root_session
+    plugin = build_plugin(
+        metadata.type,
+        component_name=get_component_name(args['--component']),
+        version=args['<version>'],
+        environment_name=args['<environment>'],
+        additional_variables=args['<key=value>'],
+        metadata=metadata,
+        global_config=global_config,
+        root_session=root_session,
     )
 
     if args['release']:
-        ecs_plugin.release()
+        plugin.release()
     elif args['deploy']:
-        ecs_plugin.deploy()
+        plugin.deploy()
     elif args['destroy']:
-        ecs_plugin.destroy()
+        plugin.destroy()
+
+
+def build_plugin(project_type, **kwargs):
+    if project_type == 'docker':
+        plugin = build_ecs_plugin(
+            kwargs['environment_name'],
+            kwargs['component_name'],
+            kwargs['version'],
+            kwargs['metadata'],
+            kwargs['global_config'],
+            kwargs['root_session'],
+        )
+    elif project_type == 'infrastructure':
+        plugin = build_infrastructure_plugin(
+            kwargs['environment_name'],
+            kwargs['component_name'],
+            kwargs['additional_variables'],
+            kwargs['metadata'],
+            kwargs['global_config'],
+            kwargs['root_session'],
+        )
+    return plugin
 
 
 def conditionally_set_debug(verbose):
