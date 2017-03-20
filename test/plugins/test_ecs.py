@@ -1,8 +1,7 @@
 import unittest
 
-from mock import Mock, ANY
-
 from cdflow_commands.plugins.ecs import ECSPlugin
+from mock import ANY, Mock
 
 
 class TestECSPlugin(unittest.TestCase):

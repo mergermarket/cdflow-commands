@@ -1,16 +1,12 @@
-import unittest
-
 import json
-from io import TextIOWrapper
-from datetime import datetime
+import unittest
 from collections import namedtuple
-
-from mock import patch, Mock, mock_open, MagicMock, ANY
+from datetime import datetime
+from io import TextIOWrapper
 
 from cdflow_commands import cli
-from cdflow_commands.plugins.ecs import (
-    ECSMonitor, InProgressEvent, DoneEvent
-)
+from cdflow_commands.plugins.ecs import DoneEvent, ECSMonitor, InProgressEvent
+from mock import ANY, MagicMock, Mock, mock_open, patch
 
 
 @patch('cdflow_commands.cli.rmtree')

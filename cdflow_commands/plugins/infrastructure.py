@@ -14,7 +14,6 @@ from cdflow_commands.plugins.base import Destroy
 from cdflow_commands.secrets import get_secrets
 from cdflow_commands.terragrunt import S3BucketFactory, write_terragrunt_config
 
-
 DeployConfig = namedtuple('DeployConfig', [
     'team',
     'platform_config_file',

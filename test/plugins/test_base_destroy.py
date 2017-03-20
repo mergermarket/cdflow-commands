@@ -1,13 +1,11 @@
 import unittest
-
-from string import printable
 from collections import namedtuple
-
-from mock import patch, ANY, Mock
-from hypothesis import given
-from hypothesis.strategies import text, dictionaries, fixed_dictionaries
+from string import printable
 
 from cdflow_commands.plugins.base import Destroy
+from hypothesis import given
+from hypothesis.strategies import dictionaries, fixed_dictionaries, text
+from mock import ANY, Mock, patch
 
 BotoCreds = namedtuple('BotoCreds', ['access_key', 'secret_key', 'token'])
 

@@ -4,8 +4,7 @@ from collections import namedtuple
 from io import TextIOWrapper
 
 from cdflow_commands import cli
-from mock import ANY, MagicMock, Mock, patch, mock_open
-
+from mock import ANY, MagicMock, Mock, mock_open, patch
 
 BotoCreds = namedtuple('BotoCreds', ['access_key', 'secret_key', 'token'])
 
