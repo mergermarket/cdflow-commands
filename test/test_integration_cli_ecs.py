@@ -11,12 +11,11 @@ from cdflow_commands import cli
 from cdflow_commands.plugins.ecs import (
     ECSMonitor, InProgressEvent, DoneEvent
 )
-from cdflow_commands.exceptions import UserFacingError
 
 
 @patch('cdflow_commands.cli.rmtree')
 @patch('cdflow_commands.cli.unlink')
-@patch('cdflow_commands.cli.os')
+@patch('cdflow_commands.plugins.ecs.os')
 @patch('cdflow_commands.cli.Session')
 @patch('cdflow_commands.config.Session')
 @patch('cdflow_commands.config.open', new_callable=mock_open, create=True)
@@ -212,13 +211,12 @@ class TestDeployCLI(unittest.TestCase):
         self.rmtree_patcher = patch('cdflow_commands.cli.rmtree')
         self.unlink_patcher = patch('cdflow_commands.cli.unlink')
         self.ECSEventIterator_patcher = patch(
-            'cdflow_commands.cli.ECSEventIterator'
+            'cdflow_commands.plugins.ecs.ECSEventIterator'
         )
         self.S3BucketFactory_patcher = patch(
-            'cdflow_commands.cli.S3BucketFactory'
+            'cdflow_commands.plugins.ecs.S3BucketFactory'
         )
         self.mock_os_deploy_patcher = patch('cdflow_commands.plugins.ecs.os')
-        self.mock_os_cli_patcher = patch('cdflow_commands.cli.os')
         self.Session_from_cli_patcher = patch('cdflow_commands.cli.Session')
         self.Session_from_config_patcher = patch(
             'cdflow_commands.config.Session'
@@ -241,7 +239,6 @@ class TestDeployCLI(unittest.TestCase):
         self.ECSEventIterator = self.ECSEventIterator_patcher.start()
         self.S3BucketFactory = self.S3BucketFactory_patcher.start()
         self.mock_os_deploy = self.mock_os_deploy_patcher.start()
-        self.mock_os_cli = self.mock_os_cli_patcher.start()
         self.Session_from_cli = self.Session_from_cli_patcher.start()
         self.Session_from_config = self.Session_from_config_patcher.start()
         self.mock_open = self.mock_open_patcher.start()
@@ -250,10 +247,9 @@ class TestDeployCLI(unittest.TestCase):
         self.get_secrets = self.get_secrets_patcher.start()
         self.NamedTemporaryFile = self.NamedTemporaryFile_patcher.start()
 
-        self.mock_os_cli.environ = {
+        self.mock_os_deploy.environ = {
             'JOB_NAME': 'dummy-job-name'
         }
-        self.mock_os_deploy.environ = {}
 
         mock_metadata_file = MagicMock(spec=TextIOWrapper)
         metadata = {
@@ -334,7 +330,6 @@ class TestDeployCLI(unittest.TestCase):
         self.ECSEventIterator_patcher.stop()
         self.S3BucketFactory_patcher.stop()
         self.mock_os_deploy_patcher.stop()
-        self.mock_os_cli_patcher.stop()
         self.Session_from_cli_patcher.stop()
         self.Session_from_config_patcher.stop()
         self.mock_open_patcher.stop()
@@ -371,6 +366,7 @@ class TestDeployCLI(unittest.TestCase):
                 'infra'
             ],
             env={
+                'JOB_NAME': 'dummy-job-name',
                 'AWS_ACCESS_KEY_ID': self.aws_access_key_id,
                 'AWS_SECRET_ACCESS_KEY': self.aws_secret_access_key,
                 'AWS_SESSION_TOKEN': self.aws_session_token
@@ -392,6 +388,7 @@ class TestDeployCLI(unittest.TestCase):
                 'infra'
             ],
             env={
+                'JOB_NAME': 'dummy-job-name',
                 'AWS_ACCESS_KEY_ID': self.aws_access_key_id,
                 'AWS_SECRET_ACCESS_KEY': self.aws_secret_access_key,
                 'AWS_SESSION_TOKEN': self.aws_session_token
@@ -421,7 +418,7 @@ class TestDeployCLI(unittest.TestCase):
         # Then
         self.mock_sts_client.assume_role.assert_called_with(
             RoleArn='arn:aws:iam::123456789:role/admin',
-            RoleSessionName=self.mock_os_cli.environ['JOB_NAME']
+            RoleSessionName=self.mock_os_deploy.environ['JOB_NAME']
         )
 
     def test_prod_session_passed_to_live_deployments(self):
@@ -434,7 +431,7 @@ class TestDeployCLI(unittest.TestCase):
         # Then
         self.mock_sts_client.assume_role.assert_called_with(
             RoleArn='arn:aws:iam::987654321:role/admin',
-            RoleSessionName=self.mock_os_cli.environ['JOB_NAME']
+            RoleSessionName=self.mock_os_deploy.environ['JOB_NAME']
         )
 
     @patch('cdflow_commands.terragrunt.open')
@@ -452,9 +449,9 @@ class TestDestroyCLI(unittest.TestCase):
 
     @patch('cdflow_commands.cli.rmtree')
     @patch('cdflow_commands.cli.unlink')
-    @patch('cdflow_commands.cli.S3BucketFactory')
+    @patch('cdflow_commands.plugins.ecs.S3BucketFactory')
     @patch('cdflow_commands.plugins.base.os')
-    @patch('cdflow_commands.cli.os')
+    @patch('cdflow_commands.plugins.ecs.os')
     @patch('cdflow_commands.cli.Session')
     @patch('cdflow_commands.config.Session')
     @patch('cdflow_commands.config.open', new_callable=mock_open, create=True)
@@ -565,36 +562,3 @@ class TestDestroyCLI(unittest.TestCase):
 
         rmtree.assert_called_once_with('.terraform/')
         unlink.assert_called_once_with('.terragrunt')
-
-
-@patch('cdflow_commands.cli.rmtree')
-@patch('cdflow_commands.cli.unlink')
-@patch('cdflow_commands.cli.sys')
-@patch('cdflow_commands.cli.load_service_metadata')
-class TestVerboseLogging(unittest.TestCase):
-
-    def test_verbose_flag_in_arguments(
-        self, load_service_metadata, _1, _2, _3
-    ):
-        # Given
-        load_service_metadata.side_effect = UserFacingError
-
-        # When
-        with self.assertLogs('cdflow_commands.logger', level='DEBUG') as logs:
-            cli.run(['release', 'version', '--verbose'])
-
-        # Then
-        assert 'DEBUG:cdflow_commands.logger:Debug logging on' in logs.output
-
-    def test_short_verbose_flag_in_arguments(
-        self, load_service_metadata, _1, _2, _3
-    ):
-        # Given
-        load_service_metadata.side_effect = UserFacingError
-
-        # When
-        with self.assertLogs('cdflow_commands.logger', level='DEBUG') as logs:
-            cli.run(['release', 'version', '-v'])
-
-        # Then
-        assert 'DEBUG:cdflow_commands.logger:Debug logging on' in logs.output

@@ -11,6 +11,9 @@ from time import sleep, time
 
 from botocore.exceptions import ClientError
 
+from cdflow_commands.config import (
+    assume_role, get_platform_config_path, get_role_session_name
+)
 from cdflow_commands.exceptions import (
     UserFacingError, UserFacingFixedMessageError
 )
@@ -18,6 +21,145 @@ from cdflow_commands.logger import logger
 from cdflow_commands.plugins import Plugin
 from cdflow_commands.plugins.base import Destroy as BaseDestroy
 from cdflow_commands.secrets import get_secrets
+from cdflow_commands.terragrunt import S3BucketFactory, write_terragrunt_config
+
+
+def build_ecs_plugin(
+    environment_name, component_name, version,
+    metadata, global_config, root_session
+):
+    release_factory = build_release_factory(
+        component_name, version, metadata, global_config, root_session
+    )
+
+    deploy_factory = build_deploy_factory(
+        environment_name, component_name, version,
+        metadata, global_config, root_session
+    )
+
+    destroy_factory = build_destroy_factory(
+        environment_name, component_name, metadata, global_config, root_session
+    )
+
+    deploy_monitor_factory = build_deploy_monitor_factory(
+        metadata, global_config, environment_name, component_name, version,
+        root_session
+    )
+
+    return ECSPlugin(
+        release_factory,
+        deploy_factory,
+        destroy_factory,
+        deploy_monitor_factory
+    )
+
+
+def build_release_factory(
+    component_name, version, metadata, global_config, root_session
+):
+    def _release_factory():
+        boto_session = assume_role(
+            root_session,
+            global_config.dev_account_id,
+            get_role_session_name(os.environ)
+        )
+        ecr_client = boto_session.client('ecr')
+        release_config = ReleaseConfig(
+            global_config.dev_account_id,
+            global_config.prod_account_id,
+            metadata.aws_region
+        )
+
+        return Release(
+            release_config, ecr_client, component_name, version
+        )
+    return _release_factory
+
+
+def build_deploy_factory(
+    environment_name, component_name, version,
+    metadata, global_config, root_session
+):
+    def _deploy_factory():
+        is_prod = environment_name == 'live'
+        if is_prod:
+            account_id = global_config.prod_account_id
+        else:
+            account_id = global_config.dev_account_id
+
+        platform_config_file = get_platform_config_path(
+            metadata.account_prefix, metadata.aws_region, is_prod
+        )
+        boto_session = assume_role(
+            root_session,
+            account_id,
+            get_role_session_name(os.environ)
+        )
+        s3_bucket_factory = S3BucketFactory(boto_session, account_id)
+        s3_bucket = s3_bucket_factory.get_bucket_name()
+        write_terragrunt_config(
+            metadata.aws_region, s3_bucket, environment_name, component_name
+        )
+        deploy_config = DeployConfig(
+            team=metadata.team,
+            dev_account_id=global_config.dev_account_id,
+            platform_config_file=platform_config_file,
+        )
+        return Deploy(
+            boto_session, component_name, environment_name, version,
+            metadata.ecs_cluster, deploy_config
+        )
+    return _deploy_factory
+
+
+def build_destroy_factory(
+    environment_name, component_name, metadata, global_config, root_session
+):
+    def _destroy_factory():
+        is_prod = environment_name == 'live'
+        if is_prod:
+            account_id = global_config.prod_account_id
+        else:
+            account_id = global_config.dev_account_id
+
+        boto_session = assume_role(
+            root_session,
+            account_id,
+            get_role_session_name(os.environ)
+        )
+        s3_bucket_factory = S3BucketFactory(boto_session, account_id)
+        s3_bucket = s3_bucket_factory.get_bucket_name()
+        write_terragrunt_config(
+            metadata.aws_region, s3_bucket, environment_name, component_name
+        )
+        return Destroy(
+            boto_session, component_name, environment_name, s3_bucket
+        )
+    return _destroy_factory
+
+
+def build_deploy_monitor_factory(
+    metadata, global_config, environment_name,
+    component_name, version, root_session
+):
+    def _deploy_monitor_factory():
+        is_prod = environment_name == 'live'
+        if is_prod:
+            account_id = global_config.prod_account_id
+        else:
+            account_id = global_config.dev_account_id
+
+        boto_session = assume_role(
+            root_session,
+            account_id,
+            get_role_session_name(os.environ)
+        )
+        events = ECSEventIterator(
+            metadata.ecs_cluster, environment_name,
+            component_name, version, boto_session
+        )
+        return ECSMonitor(events)
+    return _deploy_monitor_factory
 
 
 class Destroy(BaseDestroy):
