@@ -1,8 +1,8 @@
 import json
 import os
-from subprocess import check_call
-from itertools import chain
 from collections import namedtuple
+from itertools import chain
+from subprocess import check_call
 from tempfile import NamedTemporaryFile
 
 from cdflow_commands.plugins import Plugin
