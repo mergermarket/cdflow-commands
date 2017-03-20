@@ -8,7 +8,9 @@ from tempfile import NamedTemporaryFile
 from cdflow_commands.config import (
     assume_role, get_platform_config_path, get_role_session_name
 )
+from cdflow_commands.logger import logger
 from cdflow_commands.plugins import Plugin
+from cdflow_commands.plugins.base import Destroy
 from cdflow_commands.secrets import get_secrets
 from cdflow_commands.terragrunt import S3BucketFactory, write_terragrunt_config
 
@@ -75,8 +77,30 @@ def build_deploy_factory(
     return _deploy_factory
 
 
-def build_destroy_factory(*args):
-    pass
+def build_destroy_factory(
+    environment_name, component_name, metadata, global_config, root_session
+):
+    def _destroy_factory():
+        is_prod = environment_name == 'live'
+        if is_prod:
+            account_id = global_config.prod_account_id
+        else:
+            account_id = global_config.dev_account_id
+
+        boto_session = assume_role(
+            root_session,
+            account_id,
+            get_role_session_name(os.environ)
+        )
+        s3_bucket_factory = S3BucketFactory(boto_session, account_id)
+        s3_bucket = s3_bucket_factory.get_bucket_name()
+        write_terragrunt_config(
+            metadata.aws_region, s3_bucket, environment_name, component_name
+        )
+        return Destroy(
+            boto_session, component_name, environment_name, s3_bucket
+        )
+    return _destroy_factory
 
 
 class Deploy:
@@ -146,7 +170,7 @@ class InfrastructurePlugin(Plugin):
         self.destroy_factory = destroy_factory
 
     def release(self):
-        pass
+        logger.info('Release takes no action on infrastructure type project')
 
     def deploy(self):
         deploy = self.deploy_factory()
