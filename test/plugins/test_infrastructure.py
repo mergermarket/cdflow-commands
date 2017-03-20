@@ -1,8 +1,7 @@
 import unittest
 
-from mock import Mock, ANY
-
 from cdflow_commands.plugins.infrastructure import InfrastructurePlugin
+from mock import ANY, Mock
 
 
 class TestInfrastructurePlugin(unittest.TestCase):

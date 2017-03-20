@@ -9,7 +9,6 @@ from cdflow_commands.exceptions import (
     UserFacingError, UserFacingFixedMessageError
 )
 
-
 PLATFORM_CONFIG_PATH_TEMPLATE = 'infra/platform-config/{}/{}/{}.json'
 
 

@@ -1,12 +1,11 @@
-import unittest
 import json
+import unittest
 from itertools import chain
-
-from mock import Mock, patch, ANY
 
 from boto3 import Session
 
 from cdflow_commands.plugins.infrastructure import Deploy, DeployConfig
+from mock import ANY, Mock, patch
 
 
 @patch('cdflow_commands.plugins.infrastructure.os')
@@ -56,10 +55,10 @@ class TestDeploy(unittest.TestCase):
 
         # Then
         base_parameters = [
-            '-var', "component={}".format(self._component_name),
-            '-var', "env={}".format(self._environment_name),
-            '-var', "aws_region={}".format(self._boto_session.region_name),
-            '-var', "team={}".format(self._deploy_config.team),
+            '-var', 'component={}'.format(self._component_name),
+            '-var', 'env={}'.format(self._environment_name),
+            '-var', 'aws_region={}'.format(self._boto_session.region_name),
+            '-var', 'team={}'.format(self._deploy_config.team),
             '-var-file', self._deploy_config.platform_config_file,
             '-var-file', '/mock/file/path'
         ]
@@ -85,10 +84,10 @@ class TestDeploy(unittest.TestCase):
         self._deploy.run()
 
         base_parameters = [
-            '-var', "component={}".format(self._component_name),
-            '-var', "env={}".format(self._environment_name),
-            '-var', "aws_region={}".format(self._boto_session.region_name),
-            '-var', "team={}".format(self._deploy_config.team),
+            '-var', 'component={}'.format(self._component_name),
+            '-var', 'env={}'.format(self._environment_name),
+            '-var', 'aws_region={}'.format(self._boto_session.region_name),
+            '-var', 'team={}'.format(self._deploy_config.team),
             '-var-file', self._deploy_config.platform_config_file,
             '-var-file', '/mock/file/path'
         ]

@@ -3,7 +3,6 @@ from textwrap import dedent
 
 from botocore.exceptions import ClientError
 
-
 TAG_NAME = 'is-cdflow-tfstate-bucket'
 TAG_VALUE = 'true'
 NAME_PREFIX = 'cdflow-tfstate'

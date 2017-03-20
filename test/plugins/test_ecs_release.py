@@ -1,16 +1,14 @@
-import unittest
-
-from string import ascii_lowercase, ascii_letters, digits
-from base64 import b64encode
 import json
+import unittest
+from base64 import b64encode
+from string import ascii_letters, ascii_lowercase, digits
 
-from mock import patch, Mock
-from hypothesis import given, assume, settings
-from hypothesis.strategies import text
 from botocore.exceptions import ClientError
 
 from cdflow_commands.plugins.ecs import Release, ReleaseConfig
-
+from hypothesis import assume, given, settings
+from hypothesis.strategies import text
+from mock import Mock, patch
 
 IDENTIFIER_ALPHABET = ascii_letters + digits + '-_'
 

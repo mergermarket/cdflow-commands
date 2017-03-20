@@ -222,7 +222,7 @@ class Release(object):
                     'Sid': 'allow production',
                     'Effect': 'Allow',
                     'Principal': {'AWS': 'arn:aws:iam::{}:root'.format(
-                         self._prod_account_id
+                        self._prod_account_id
                     )},
                     'Action': [
                         'ecr:GetDownloadUrlForLayer',
@@ -395,7 +395,7 @@ class ECSMonitor():
 
     def _show_deployment_progress(self, event):
         for message in event.messages:
-            logger.info("ECS service event - {}".format(message))
+            logger.info('ECS service event - {}'.format(message))
 
         logger.info(
             'ECS service tasks - '

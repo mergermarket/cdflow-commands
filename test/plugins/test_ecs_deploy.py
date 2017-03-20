@@ -1,14 +1,12 @@
 import unittest
-from mock import patch
-from string import printable, ascii_letters
+from string import ascii_letters, printable
 
-from hypothesis import given
-from hypothesis.strategies import text, fixed_dictionaries, dictionaries
 from boto3 import Session
-from mock import ANY
 
 from cdflow_commands.plugins.ecs import Deploy, DeployConfig
-
+from hypothesis import given
+from hypothesis.strategies import dictionaries, fixed_dictionaries, text
+from mock import ANY, patch
 
 IGNORED_PARAMS = [ANY] * 18
 CALL_KWARGS = 2

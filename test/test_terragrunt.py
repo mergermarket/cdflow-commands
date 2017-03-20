@@ -1,19 +1,16 @@
 import unittest
-
-from mock import Mock, patch, mock_open
 from re import match
 from string import printable
 from textwrap import dedent
 
-from hypothesis import given
-from hypothesis.strategies import text, fixed_dictionaries
-
 from botocore.exceptions import ClientError
 
 from cdflow_commands.terragrunt import (
-    S3BucketFactory, TAG_NAME, TAG_VALUE, write_terragrunt_config
+    TAG_NAME, TAG_VALUE, S3BucketFactory, write_terragrunt_config
 )
-
+from hypothesis import given
+from hypothesis.strategies import fixed_dictionaries, text
+from mock import Mock, mock_open, patch
 
 NEW_BUCKET_PATTERN = r'^cdflow-tfstate-[a-z0-9]+$'
 

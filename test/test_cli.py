@@ -1,9 +1,8 @@
 import unittest
 
-from mock import patch
-
 from cdflow_commands import cli
 from cdflow_commands.exceptions import UserFacingError
+from mock import patch
 
 
 @patch('cdflow_commands.cli.rmtree')
