@@ -14,28 +14,24 @@ Options:
 """
 import logging
 import os
+import sys
 from os import unlink
 from shutil import rmtree
-import sys
 
 from boto3.session import Session
-from docopt import docopt
 
 from cdflow_commands.config import (
-    load_service_metadata,
-    load_global_config,
-    get_role_session_name,
-    assume_role,
-    get_component_name,
-    get_platform_config_path
+    assume_role, get_component_name, get_platform_config_path,
+    get_role_session_name, load_global_config, load_service_metadata
 )
 from cdflow_commands.exceptions import UserFacingError
 from cdflow_commands.logger import logger
-from cdflow_commands.terragrunt import S3BucketFactory, write_terragrunt_config
 from cdflow_commands.plugins.ecs import (
-    Deploy, DeployConfig, ECSPlugin, Release, ReleaseConfig, Destroy,
-    ECSEventIterator, ECSMonitor
+    Deploy, DeployConfig, Destroy, ECSEventIterator, ECSMonitor, ECSPlugin,
+    Release, ReleaseConfig
 )
+from cdflow_commands.terragrunt import S3BucketFactory, write_terragrunt_config
+from docopt import docopt
 
 
 def run(argv):

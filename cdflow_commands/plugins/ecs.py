@@ -1,23 +1,23 @@
-from base64 import b64decode
-import os
-from os import path
 import json
-from subprocess import check_call
+import os
+from base64 import b64decode
 from collections import namedtuple
-from tempfile import NamedTemporaryFile
-from hashlib import sha1
 from functools import lru_cache
+from hashlib import sha1
+from os import path
+from subprocess import check_call
+from tempfile import NamedTemporaryFile
 from time import sleep, time
 
 from botocore.exceptions import ClientError
 
-from cdflow_commands.logger import logger
 from cdflow_commands.exceptions import (
     UserFacingError, UserFacingFixedMessageError
 )
-from cdflow_commands.secrets import get_secrets
+from cdflow_commands.logger import logger
 from cdflow_commands.plugins import Plugin
 from cdflow_commands.plugins.base import Destroy as BaseDestroy
+from cdflow_commands.secrets import get_secrets
 
 
 class Destroy(BaseDestroy):
