@@ -365,7 +365,7 @@ def build_service_name(environment, component):
     return service_name
 
 
-class ECSMonitor():
+class ECSMonitor:
 
     _TIMEOUT = 600
     _INTERVAL = 15
@@ -412,7 +412,7 @@ class ECSMonitor():
         self._previous_running_count = event.running
 
 
-class ECSEventIterator():
+class ECSEventIterator:
 
     _INTERVAL = 15
     _NEW_SERVICE_GRACE_PERIOD = 60
@@ -548,7 +548,7 @@ class ECSEventIterator():
         )
 
 
-class Event():
+class Event:
 
     def __init__(self, running, pending, desired, previous_running, messages):
         self.running = running
