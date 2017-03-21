@@ -1,14 +1,13 @@
 import unittest
 from string import ascii_letters, digits, printable
 
-from mock import patch
-from hypothesis import given, assume
-from hypothesis.strategies import text, fixed_dictionaries, dictionaries
-
 from boto3.session import Session
 from botocore.exceptions import ClientError
 
 from cdflow_commands.secrets import get_secrets
+from hypothesis import assume, given
+from hypothesis.strategies import dictionaries, fixed_dictionaries, text
+from mock import patch
 
 CALL_KWARGS = 2
 IDENTIFIERS = ascii_letters + digits + '-_'
@@ -51,14 +50,14 @@ class TestGetBuildSecretsFromCredstash(unittest.TestCase):
         with patch(
             'cdflow_commands.secrets.credstash'
         ) as mock_credstash:
-            secret_key_1 = ("deploy.{env_name}.{component_name}.{secret}"
+            secret_key_1 = ('deploy.{env_name}.{component_name}.{secret}'
                             .format(**inputs))
-            secret_key_2 = ("deploy.{env_name}.{component_name}.{other_secret}"
+            secret_key_2 = ('deploy.{env_name}.{component_name}.{other_secret}'
                             .format(**inputs))
             mock_credstash.listSecrets.return_value = [
                 {
                     u'version': u'0000000000000000001',
-                    u'name': ("{prefix}.{env_name}.{component_name}.{secret}"
+                    u'name': ('{prefix}.{env_name}.{component_name}.{secret}'
                               .format(**inputs))
                 },
                 {
@@ -67,8 +66,8 @@ class TestGetBuildSecretsFromCredstash(unittest.TestCase):
                 },
                 {
                     u'version': u'0000000000000000002',
-                    u'name': ("deploy.{other_env_name}.{component_name}."
-                              "{secret}".format(**inputs))
+                    u'name': ('deploy.{other_env_name}.{component_name}.'
+                              '{secret}'.format(**inputs))
                 },
                 {
                     u'version': u'0000000000000000002',
@@ -76,8 +75,8 @@ class TestGetBuildSecretsFromCredstash(unittest.TestCase):
                 },
                 {
                     u'version': u'0000000000000000002',
-                    u'name': ("deploy.{env_name}.{other_component_name}."
-                              "{secret}".format(**inputs))
+                    u'name': ('deploy.{env_name}.{other_component_name}.'
+                              '{secret}'.format(**inputs))
                 }
             ]
 

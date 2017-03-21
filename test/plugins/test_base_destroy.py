@@ -1,13 +1,11 @@
 import unittest
-
-from string import printable
 from collections import namedtuple
+from string import printable
 
-from mock import patch, ANY, Mock
+from cdflow_commands.plugins.base import Destroy
 from hypothesis import given
-from hypothesis.strategies import text, dictionaries, fixed_dictionaries
-
-from cdflow_commands.destroy import Destroy
+from hypothesis.strategies import dictionaries, fixed_dictionaries, text
+from mock import ANY, Mock, patch
 
 BotoCreds = namedtuple('BotoCreds', ['access_key', 'secret_key', 'token'])
 
@@ -31,7 +29,7 @@ class TestDestroy(unittest.TestCase):
             boto_session, component_name, environment_name, 'dummy-bucket'
         )
 
-        with patch('cdflow_commands.destroy.check_call') as check_call:
+        with patch('cdflow_commands.plugins.base.check_call') as check_call:
             destroy.run()
             check_call.assert_any_call([
                 'terragrunt', 'plan', '-destroy',
@@ -53,7 +51,7 @@ class TestDestroy(unittest.TestCase):
             boto_session, component_name, environment_name, 'dummy-bucket'
         )
 
-        with patch('cdflow_commands.destroy.check_call') as check_call:
+        with patch('cdflow_commands.plugins.base.check_call') as check_call:
             destroy.run()
             check_call.assert_any_call([
                 'terragrunt', 'destroy', '-force',
@@ -79,7 +77,7 @@ class TestDestroy(unittest.TestCase):
             'dummy-environment', 'dummy-bucket'
         )
 
-        with patch('cdflow_commands.destroy.check_call') as check_call:
+        with patch('cdflow_commands.plugins.base.check_call') as check_call:
             destroy.run()
 
             env = check_call.mock_calls[0][CALL_KWARGS]['env']
@@ -111,9 +109,9 @@ class TestDestroy(unittest.TestCase):
         )
 
         with patch(
-            'cdflow_commands.destroy.check_call'
+            'cdflow_commands.plugins.base.check_call'
         ) as check_call, patch(
-            'cdflow_commands.destroy.os'
+            'cdflow_commands.plugins.base.os'
         ) as mock_os:
             mock_os.environ = mock_env.copy()
             destroy.run()
@@ -150,7 +148,7 @@ class TestDestroy(unittest.TestCase):
         )
 
         # When
-        with patch('cdflow_commands.destroy.check_call'):
+        with patch('cdflow_commands.plugins.base.check_call'):
             destroy.run()
 
         # Then

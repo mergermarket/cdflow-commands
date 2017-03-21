@@ -1,6 +1,6 @@
-import credstash
-
 from botocore.exceptions import ClientError
+
+import credstash
 
 
 def get_secrets(env_name, team, component_name, boto_session):
@@ -12,7 +12,7 @@ def get_secrets(env_name, team, component_name, boto_session):
     }
 
     prefix = 'deploy.{}.{}.'.format(env_name, component_name)
-    table_name = "credstash-{}".format(team)
+    table_name = 'credstash-{}'.format(team)
 
     return {
         name[len(prefix):]: credstash.getSecret(
@@ -23,12 +23,12 @@ def get_secrets(env_name, team, component_name, boto_session):
         )
         for name
         in _component_secrets_for_environment(
-                table_name,
-                boto_session.region_name,
-                prefix,
-                aws_credentials
-            )
-        }
+            table_name,
+            boto_session.region_name,
+            prefix,
+            aws_credentials
+        )
+    }
 
 
 def _component_secrets_for_environment(
