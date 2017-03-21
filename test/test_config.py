@@ -1,18 +1,14 @@
-import unittest
-
 import json
-from io import TextIOWrapper
-from subprocess import CalledProcessError
+import unittest
 from datetime import datetime
+from io import TextIOWrapper
 from string import ascii_letters, digits, printable
-
-from mock import patch, Mock, MagicMock, mock_open
-from hypothesis import example
-from hypothesis import given
-from hypothesis.strategies import text, composite, fixed_dictionaries
+from subprocess import CalledProcessError
 
 from cdflow_commands import config
-
+from hypothesis import example, given
+from hypothesis.strategies import composite, fixed_dictionaries, text
+from mock import MagicMock, Mock, mock_open, patch
 
 ROLE_SAFE_ALPHABET = ascii_letters + digits + '+=,.@-'
 ROLE_UNSAFE_CHARACTERS = '\/!$%^&*()#'

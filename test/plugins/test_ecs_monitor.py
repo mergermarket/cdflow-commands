@@ -1,18 +1,17 @@
-import unittest
 import datetime
-from dateutil.tz import tzlocal
+import unittest
 from itertools import cycle, islice
 
-from mock import MagicMock, Mock, ANY
-from hypothesis import given, settings, example
-from hypothesis.strategies import text, fixed_dictionaries
-
 from boto3 import Session
+from dateutil.tz import tzlocal
 
-from cdflow_commands.ecs_monitor import (
-    ECSEventIterator, ECSMonitor, build_service_name, DoneEvent,
-    InProgressEvent, ImageDoesNotMatchError, TimeoutError, FailedTasksError
+from cdflow_commands.plugins.ecs import (
+    DoneEvent, ECSEventIterator, ECSMonitor, FailedTasksError,
+    ImageDoesNotMatchError, InProgressEvent, TimeoutError, build_service_name
 )
+from hypothesis import example, given, settings
+from hypothesis.strategies import fixed_dictionaries, text
+from mock import ANY, MagicMock, Mock
 
 
 class TestECSMonitor(unittest.TestCase):
@@ -832,7 +831,7 @@ class TestBuildServiceName(unittest.TestCase):
             test_data['environment'], test_data['component']
         )
         # Then
-        assert service_name == "{}-{}".format(
+        assert service_name == '{}-{}'.format(
             test_data['environment'], test_data['component']
         )
 
@@ -846,7 +845,7 @@ class TestBuildServiceName(unittest.TestCase):
             test_data['environment'], test_data['component']
         )
         # Then
-        assert service_name.startswith("{}-{}".format(
+        assert service_name.startswith('{}-{}'.format(
             test_data['environment'], test_data['component']
         )[:24])
 
