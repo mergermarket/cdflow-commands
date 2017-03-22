@@ -293,6 +293,20 @@ class TestGetComponentName(unittest.TestCase):
     @given(text(
         alphabet=ascii_letters + digits + '-._', min_size=1, max_size=100
     ))
+    def test_component_not_passed_as_argument_with_backslash(
+        self, component_name
+    ):
+        with patch('cdflow_commands.config.check_output') as check_output:
+            check_output.return_value = 'git@github.com:org/{}/\n'.format(
+                component_name
+            ).encode('utf-8')
+            extraced_component_name = config.get_component_name(None)
+
+            assert extraced_component_name == component_name
+
+    @given(text(
+        alphabet=ascii_letters + digits + '-._', min_size=1, max_size=100
+    ))
     def test_component_not_passed_as_argument_with_https_origin(
         self, component_name
     ):
