@@ -40,8 +40,7 @@ class TestRelease(unittest.TestCase):
         self, component_name, dev_account_id, aws_region
     ):
         config = ReleaseConfig(dev_account_id, 'dummy-account-id', aws_region)
-        boto_ecr_client = Mock()
-        release = Release(config, boto_ecr_client, component_name)
+        release = Release(config, self._boto_ecr_client, component_name)
         with patch('cdflow_commands.plugins.ecs.check_call') as check_call:
             release.create()
 
@@ -150,6 +149,7 @@ class TestRelease(unittest.TestCase):
                 }
             ]
         }
+
         boto_ecr_client.describe_repositories.side_effect = ClientError(
             {'Error': {'Code': 'RepositoryNotFoundException'}},
             None
@@ -176,25 +176,14 @@ class TestRelease(unittest.TestCase):
         component_name = 'dummy-component'
         version = '1.2.3'
 
-        boto_ecr_client = Mock()
-        boto_ecr_client.get_authorization_token.return_value = {
-            'authorizationData': [
-                {
-                    'authorizationToken': b64encode('{}:{}'.format(
-                        'dummy-username', 'dummy-password'
-                    ).encode('utf-8')),
-                    'proxyEndpoint': 'dummy-proxy-endpoint'
-                }
-            ]
-        }
-        boto_ecr_client.describe_repositories.side_effect = ClientError(
+        self._boto_ecr_client.describe_repositories.side_effect = ClientError(
             {'Error': {'Code': error_code}},
             None
         )
 
         config = ReleaseConfig(dev_account_id, 'dummy-account-id', aws_region)
         release = Release(
-            config, boto_ecr_client, component_name, version
+            config, self._boto_ecr_client, component_name, version
         )
 
         with patch('cdflow_commands.plugins.ecs.check_call'):
@@ -264,18 +253,6 @@ class TestRelease(unittest.TestCase):
         component_name = 'dummy-component'
         version = '1.2.3'
 
-        boto_ecr_client = Mock()
-        boto_ecr_client.get_authorization_token.return_value = {
-            'authorizationData': [
-                {
-                    'authorizationToken': b64encode('{}:{}'.format(
-                        'dummy-username', 'dummy-password'
-                    ).encode('utf-8')),
-                    'proxyEndpoint': 'dummy-proxy-endpoint'
-                }
-            ]
-        }
-
         def _mock_exists(path):
             if path == './on-docker-build':
                 return True
@@ -288,7 +265,9 @@ class TestRelease(unittest.TestCase):
             '987654321',
             aws_region
         )
-        release = Release(config, boto_ecr_client, component_name, version)
+        release = Release(
+            config, self._boto_ecr_client, component_name, version
+        )
 
         # When
         release.create()
@@ -315,18 +294,6 @@ class TestRelease(unittest.TestCase):
         component_name = 'dummy-component'
         version = '1.2.3'
 
-        boto_ecr_client = Mock()
-        boto_ecr_client.get_authorization_token.return_value = {
-            'authorizationData': [
-                {
-                    'authorizationToken': b64encode('{}:{}'.format(
-                        'dummy-username', 'dummy-password'
-                    ).encode('utf-8')),
-                    'proxyEndpoint': 'dummy-proxy-endpoint'
-                }
-            ]
-        }
-
         def _error_on_docker_build(command):
             if command[0] == Release.ON_BUILD_HOOK:
                 raise CalledProcessError(1, ['./on-docker-build'])
@@ -339,7 +306,9 @@ class TestRelease(unittest.TestCase):
             '987654321',
             aws_region
         )
-        release = Release(config, boto_ecr_client, component_name, version)
+        release = Release(
+            config, self._boto_ecr_client, component_name, version
+        )
 
         # When
         self.assertRaises(Exception, release.create)
@@ -360,18 +329,6 @@ class TestRelease(unittest.TestCase):
         component_name = 'dummy-component'
         version = '1.2.3'
 
-        boto_ecr_client = Mock()
-        boto_ecr_client.get_authorization_token.return_value = {
-            'authorizationData': [
-                {
-                    'authorizationToken': b64encode('{}:{}'.format(
-                        'dummy-username', 'dummy-password'
-                    ).encode('utf-8')),
-                    'proxyEndpoint': 'dummy-proxy-endpoint'
-                }
-            ]
-        }
-
         def _error_on_docker_build(command):
             if command[0] == Release.ON_BUILD_HOOK:
                 raise CalledProcessError(1, ['./on-docker-build'])
@@ -384,7 +341,9 @@ class TestRelease(unittest.TestCase):
             '987654321',
             aws_region
         )
-        release = Release(config, boto_ecr_client, component_name, version)
+        release = Release(
+            config, self._boto_ecr_client, component_name, version
+        )
 
         # When
         self.assertRaises(UserFacingError, release.create)
