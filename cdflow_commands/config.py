@@ -120,7 +120,7 @@ def _get_component_name_from_git_remote():
         remote = check_output(['git', 'config', 'remote.origin.url'])
     except CalledProcessError:
         raise NoGitRemoteError()
-    name = remote.decode('utf-8').strip("\t\n /").split('/')[-1]
+    name = remote.decode('utf-8').strip('\t\n /').split('/')[-1]
     if name.endswith('.git'):
         return name[:-4]
     return name
