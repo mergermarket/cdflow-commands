@@ -5,7 +5,7 @@ from collections import namedtuple
 from functools import lru_cache
 from hashlib import sha1
 from os import path
-from subprocess import check_call
+from subprocess import CalledProcessError, check_call
 from tempfile import NamedTemporaryFile
 from time import sleep, time
 
@@ -173,7 +173,13 @@ ReleaseConfig = namedtuple('ReleaseConfig', [
 ])
 
 
+class OnDockerBuildError(UserFacingError):
+    pass
+
+
 class Release(object):
+
+    ON_BUILD_HOOK = './on-docker-build'
 
     def __init__(self, config, boto_ecr_client, component_name, version=None):
         self._dev_account_id = config.dev_account_id
@@ -186,11 +192,20 @@ class Release(object):
     def create(self):
         check_call(['docker', 'build', '-t', self._image_name, '.'])
 
+        self._on_docker_build()
+
         if self._version:
             self._ensure_ecr_repo_exists()
             self._ensure_ecr_policy_set()
             self._docker_login()
             self._docker_push()
+
+    def _on_docker_build(self):
+        if path.exists(self.ON_BUILD_HOOK):
+            try:
+                check_call([self.ON_BUILD_HOOK, self._image_name])
+            except CalledProcessError as e:
+                raise OnDockerBuildError(str(e))
 
     @property
     def _image_name(self):

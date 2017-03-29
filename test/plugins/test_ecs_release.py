@@ -2,9 +2,11 @@ import json
 import unittest
 from base64 import b64encode
 from string import ascii_letters, ascii_lowercase, digits
+from subprocess import CalledProcessError
 
 from botocore.exceptions import ClientError
 
+from cdflow_commands.exceptions import UserFacingError
 from cdflow_commands.plugins.ecs import Release, ReleaseConfig
 from hypothesis import assume, given, settings
 from hypothesis.strategies import text
@@ -38,8 +40,7 @@ class TestRelease(unittest.TestCase):
         self, component_name, dev_account_id, aws_region
     ):
         config = ReleaseConfig(dev_account_id, 'dummy-account-id', aws_region)
-        boto_ecr_client = Mock()
-        release = Release(config, boto_ecr_client, component_name)
+        release = Release(config, self._boto_ecr_client, component_name)
         with patch('cdflow_commands.plugins.ecs.check_call') as check_call:
             release.create()
 
@@ -148,6 +149,7 @@ class TestRelease(unittest.TestCase):
                 }
             ]
         }
+
         boto_ecr_client.describe_repositories.side_effect = ClientError(
             {'Error': {'Code': 'RepositoryNotFoundException'}},
             None
@@ -174,25 +176,14 @@ class TestRelease(unittest.TestCase):
         component_name = 'dummy-component'
         version = '1.2.3'
 
-        boto_ecr_client = Mock()
-        boto_ecr_client.get_authorization_token.return_value = {
-            'authorizationData': [
-                {
-                    'authorizationToken': b64encode('{}:{}'.format(
-                        'dummy-username', 'dummy-password'
-                    ).encode('utf-8')),
-                    'proxyEndpoint': 'dummy-proxy-endpoint'
-                }
-            ]
-        }
-        boto_ecr_client.describe_repositories.side_effect = ClientError(
+        self._boto_ecr_client.describe_repositories.side_effect = ClientError(
             {'Error': {'Code': error_code}},
             None
         )
 
         config = ReleaseConfig(dev_account_id, 'dummy-account-id', aws_region)
         release = Release(
-            config, boto_ecr_client, component_name, version
+            config, self._boto_ecr_client, component_name, version
         )
 
         with patch('cdflow_commands.plugins.ecs.check_call'):
@@ -250,3 +241,109 @@ class TestRelease(unittest.TestCase):
                     }]
                 }, sort_keys=True)
             )
+
+    @patch('cdflow_commands.plugins.ecs.check_call')
+    @patch('cdflow_commands.plugins.ecs.path')
+    def test_runs_on_docker_build_script_if_one_is_present(
+        self, os_path, check_call
+    ):
+        # Given
+        dev_account_id = '123456789'
+        aws_region = 'eu-west-12'
+        component_name = 'dummy-component'
+        version = '1.2.3'
+
+        def _mock_exists(path):
+            if path == './on-docker-build':
+                return True
+            return False
+
+        os_path.exists = _mock_exists
+
+        config = ReleaseConfig(
+            dev_account_id,
+            '987654321',
+            aws_region
+        )
+        release = Release(
+            config, self._boto_ecr_client, component_name, version
+        )
+
+        # When
+        release.create()
+
+        # Then
+        check_call.assert_any_call([
+            './on-docker-build',
+            '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
+                dev_account_id,
+                aws_region,
+                component_name,
+                version
+            )
+        ])
+
+    @patch('cdflow_commands.plugins.ecs.check_call')
+    @patch('cdflow_commands.plugins.ecs.path')
+    def test_error_from_on_docker_build_prevents_push(
+        self, os_path, check_call
+    ):
+        # Given
+        dev_account_id = '123456789'
+        aws_region = 'eu-west-12'
+        component_name = 'dummy-component'
+        version = '1.2.3'
+
+        def _error_on_docker_build(command):
+            if command[0] == Release.ON_BUILD_HOOK:
+                raise CalledProcessError(1, ['./on-docker-build'])
+
+        os_path.exists.return_value = True
+        check_call.side_effect = _error_on_docker_build
+
+        config = ReleaseConfig(
+            dev_account_id,
+            '987654321',
+            aws_region
+        )
+        release = Release(
+            config, self._boto_ecr_client, component_name, version
+        )
+
+        # When
+        self.assertRaises(Exception, release.create)
+
+        # Then
+        call_arguments = [call[1][0] for call in check_call.mock_calls]
+        for arguments in call_arguments:
+            assert ['docker', 'push'] != arguments[:2]
+
+    @patch('cdflow_commands.plugins.ecs.check_call')
+    @patch('cdflow_commands.plugins.ecs.path')
+    def test_error_from_on_docker_build_becomes_a_user_error(
+        self, os_path, check_call
+    ):
+        # Given
+        dev_account_id = '123456789'
+        aws_region = 'eu-west-12'
+        component_name = 'dummy-component'
+        version = '1.2.3'
+
+        def _error_on_docker_build(command):
+            if command[0] == Release.ON_BUILD_HOOK:
+                raise CalledProcessError(1, ['./on-docker-build'])
+
+        os_path.exists.return_value = True
+        check_call.side_effect = _error_on_docker_build
+
+        config = ReleaseConfig(
+            dev_account_id,
+            '987654321',
+            aws_region
+        )
+        release = Release(
+            config, self._boto_ecr_client, component_name, version
+        )
+
+        # When
+        self.assertRaises(UserFacingError, release.create)
