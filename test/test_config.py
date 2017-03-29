@@ -54,8 +54,10 @@ class TestLoadConfig(unittest.TestCase):
         }
         mock_file.read.return_value = json.dumps(expected_config)
         mock_open.return_value.__enter__.return_value = mock_file
-        with self.assertRaisesRegexp(UserFacingError,
-                'Deployment failed - did you set .* in .*'):
+        with self.assertRaisesRegexp(
+            UserFacingError,
+            'Deployment failed - did you set .* in .*'
+        ):
             config.load_service_metadata()
 
     @patch('cdflow_commands.config.open', new_callable=mock_open, create=True)
