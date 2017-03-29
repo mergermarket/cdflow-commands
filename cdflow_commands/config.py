@@ -44,13 +44,18 @@ GlobalConfig = namedtuple(
 def load_service_metadata():
     with open('service.json') as f:
         metadata = json.loads(f.read())
-        return Metadata(
-            metadata['TEAM'],
-            metadata['TYPE'],
-            metadata['REGION'],
-            metadata['ACCOUNT_PREFIX'],
-            metadata.get('ECS_CLUSTER', 'default')
-        )
+        try:
+            return Metadata(
+                metadata['TEAM'],
+                metadata['TYPE'],
+                metadata['REGION'],
+                metadata['ACCOUNT_PREFIX'],
+                metadata.get('ECS_CLUSTER', 'default')
+            )
+        except KeyError as key:
+            raise UserFacingError(
+                    "Deployment failed - did you set {} in {}?".format(
+                        key, f.name))
 
 
 def load_global_config(account_prefix, aws_region):

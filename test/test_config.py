@@ -5,6 +5,8 @@ from io import TextIOWrapper
 from string import ascii_letters, digits, printable
 from subprocess import CalledProcessError
 
+from cdflow_commands.exceptions import UserFacingError
+
 from cdflow_commands import config
 from hypothesis import example, given
 from hypothesis.strategies import composite, fixed_dictionaries, text
@@ -43,6 +45,18 @@ def email(draw, min_size=7):
 
 
 class TestLoadConfig(unittest.TestCase):
+
+    @patch('cdflow_commands.config.open', new_callable=mock_open, create=True)
+    def test_service_metadata_user_facing_error(self, mock_open):
+        mock_file = MagicMock(spec=TextIOWrapper)
+        expected_config = {
+            'FOO': 'bar',
+        }
+        mock_file.read.return_value = json.dumps(expected_config)
+        mock_open.return_value.__enter__.return_value = mock_file
+        with self.assertRaisesRegexp(UserFacingError,
+                'Deployment failed - did you set .* in .*'):
+            config.load_service_metadata()
 
     @patch('cdflow_commands.config.open', new_callable=mock_open, create=True)
     def test_service_metadata_loaded_with_default_ecs_cluster(self, mock_open):
