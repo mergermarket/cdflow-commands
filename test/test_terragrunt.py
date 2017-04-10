@@ -1,4 +1,5 @@
 import unittest
+from io import BufferedRandom
 from re import match
 from string import printable
 from textwrap import dedent
@@ -8,7 +9,8 @@ from botocore.exceptions import ClientError
 
 from cdflow_commands.terragrunt import (
     TAG_NAME, TAG_VALUE, S3BucketFactory, write_terragrunt_config,
-    LockTableFactory, MissingTagError, IncorrectSchemaError
+    LockTableFactory, MissingTagError, IncorrectSchemaError,
+    write_terraform_backend_config
 )
 from hypothesis import given
 from hypothesis.strategies import fixed_dictionaries, text
@@ -580,3 +582,25 @@ class TestLockTableFactory(unittest.TestCase):
         table_factory = LockTableFactory(boto_session)
 
         self.assertRaises(ClientError, table_factory.get_table_name)
+
+
+class TestTerraformBackendConfig(unittest.TestCase):
+
+    @patch('cdflow_commands.terragrunt.NamedTemporaryFile')
+    def test_backend_config_written_into_infra_code(self, NamedTemporaryFile):
+        mock_file = MagicMock(spec=BufferedRandom)
+        NamedTemporaryFile.return_value.__enter__.return_value = mock_file
+
+        directory = 'infra'
+        write_terraform_backend_config(directory)
+
+        NamedTemporaryFile.assert_called_once_with(
+            prefix='cdflow_backend_', suffix='.tf', dir=directory, delete=False
+        )
+
+        mock_file.write.assert_called_once_with(dedent('''
+            terraform {
+                backend "s3" {
+                }
+            }
+        ''').strip())
