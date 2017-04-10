@@ -25,6 +25,7 @@ class LockTableFactory:
     TABLE_NAME = 'terraform_locks'
     TAG_NAME = 'cdflow_terraform_locks'
     TAG_VALUE = 'true'
+    ID_COLUMN = 'LockID'
 
     def __init__(self, boto_session):
         self._boto_session = boto_session
@@ -36,9 +37,9 @@ class LockTableFactory:
             client = self._dbclient = self._boto_session.client('dynamodb')
         return client
 
-    def _try_to_get_table(self, table_name):
+    def _try_to_get_table(self):
         response = self._client.describe_table(
-            TableName=table_name
+            TableName=self.TABLE_NAME
         )
         self._check_tag(response['Table']['TableArn'])
         self._check_schema(response['Table'])
@@ -46,9 +47,9 @@ class LockTableFactory:
 
     def _check_schema(self, table_definition):
         for attribute in table_definition['AttributeDefinitions']:
-            if attribute['AttributeName'] == 'LockID':
+            if attribute['AttributeName'] == self.ID_COLUMN:
                 return True
-        raise IncorrectSchemaError('No attribute LockID in table')
+        raise IncorrectSchemaError(f'No attribute {self.ID_COLUMN} in table')
 
     def _check_tag(self, table_arn):
         tags_response = self._client.list_tags_of_resource(
@@ -67,13 +68,13 @@ class LockTableFactory:
             except MissingTagError as e:
                 logger.debug(e)
 
-    def _create_table(self, table_name):
+    def _create_table(self):
         response = self._client.create_table(
-            TableName=table_name,
+            TableName=self.TABLE_NAME,
             AttributeDefinitions=[
-                {'AttributeName': 'LockID', 'AttributeType': 'S'}
+                {'AttributeName': self.ID_COLUMN, 'AttributeType': 'S'}
             ],
-            KeySchema=[{'AttributeName': 'LockID', 'KeyType': 'HASH'}],
+            KeySchema=[{'AttributeName': self.ID_COLUMN, 'KeyType': 'HASH'}],
             ProvisionedThroughput={
                 'ReadCapacityUnits': 1,
                 'WriteCapacityUnits': 1
@@ -85,8 +86,8 @@ class LockTableFactory:
                 {'Key': self.TAG_NAME, 'Value': self.TAG_VALUE}
             ]
         )
-        self._client.get_waiter('table_exists').wait(TableName=table_name)
-        return table_name
+        self._client.get_waiter('table_exists').wait(TableName=self.TABLE_NAME)
+        return self.TABLE_NAME
 
     @staticmethod
     def _resource_not_found(exception):
@@ -98,10 +99,10 @@ class LockTableFactory:
 
     def get_table_name(self):
         try:
-            return self._try_to_get_table(self.TABLE_NAME)
+            return self._try_to_get_table()
         except ClientError as e:
             if self._resource_not_found(e):
-                return self._create_table(self.TABLE_NAME)
+                return self._create_table()
             else:
                 raise e
 

@@ -561,3 +561,22 @@ class TestLockTableFactory(unittest.TestCase):
                 {'Key': 'cdflow_terraform_locks', 'Value': 'true'}
             ]
         )
+
+    def test_other_client_errors_are_reraised(self):
+        boto_session = MagicMock(spec=Session)
+        mock_dynamodb_client = Mock()
+        mock_dynamodb_client.describe_table.side_effect = ClientError(
+            {
+                'Error': {
+                    'Message': 'You made a mistake',
+                    'Code': 'TerribleError'
+                }
+            },
+            None
+        )
+
+        boto_session.client.return_value = mock_dynamodb_client
+
+        table_factory = LockTableFactory(boto_session)
+
+        self.assertRaises(ClientError, table_factory.get_table_name)
