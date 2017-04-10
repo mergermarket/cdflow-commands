@@ -3,10 +3,107 @@ from textwrap import dedent
 
 from botocore.exceptions import ClientError
 
+from cdflow_commands.exceptions import CDFlowError
+from cdflow_commands.logger import logger
+
 TAG_NAME = 'is-cdflow-tfstate-bucket'
 TAG_VALUE = 'true'
 NAME_PREFIX = 'cdflow-tfstate'
 MAX_CREATION_ATTEMPTS = 10
+
+
+class MissingTagError(CDFlowError):
+    pass
+
+
+class IncorrectSchemaError(CDFlowError):
+    pass
+
+
+class LockTableFactory:
+
+    TABLE_NAME = 'terraform_locks'
+    TAG_NAME = 'cdflow_terraform_locks'
+    TAG_VALUE = 'true'
+
+    def __init__(self, boto_session):
+        self._boto_session = boto_session
+
+    @property
+    def _client(self):
+        client = getattr(self, '_dbclient', None)
+        if not client:
+            client = self._dbclient = self._boto_session.client('dynamodb')
+        return client
+
+    def _try_to_get_table(self, table_name):
+        response = self._client.describe_table(
+            TableName=table_name
+        )
+        self._check_tag(response['Table']['TableArn'])
+        self._check_schema(response['Table'])
+        return response['Table']['TableName']
+
+    def _check_schema(self, table_definition):
+        for attribute in table_definition['AttributeDefinitions']:
+            if attribute['AttributeName'] == 'LockID':
+                return True
+        raise IncorrectSchemaError('No attribute LockID in table')
+
+    def _check_tag(self, table_arn):
+        tags_response = self._client.list_tags_of_resource(
+            ResourceArn=table_arn
+        )
+        for tag in tags_response['Tags']:
+            if tag['Key'] == self.TAG_NAME and tag['Value'] == self.TAG_VALUE:
+                return True
+        raise MissingTagError(f'No tag {self.TAG_NAME} found for {table_arn}')
+
+    def _get_fallback_table(self):
+        tables = self._client.list_tables()
+        for table_name in tables['TableNames']:
+            try:
+                return self._try_to_get_table(table_name)
+            except MissingTagError as e:
+                logger.debug(e)
+
+    def _create_table(self, table_name):
+        response = self._client.create_table(
+            TableName=table_name,
+            AttributeDefinitions=[
+                {'AttributeName': 'LockID', 'AttributeType': 'S'}
+            ],
+            KeySchema=[{'AttributeName': 'LockID', 'KeyType': 'HASH'}],
+            ProvisionedThroughput={
+                'ReadCapacityUnits': 1,
+                'WriteCapacityUnits': 1
+            }
+        )
+        self._client.tag_resource(
+            ResourceArn=response['TableDescription']['TableArn'],
+            Tags=[
+                {'Key': self.TAG_NAME, 'Value': self.TAG_VALUE}
+            ]
+        )
+        self._client.get_waiter('table_exists').wait(TableName=table_name)
+        return table_name
+
+    @staticmethod
+    def _resource_not_found(exception):
+        return (
+            exception.response.get('Error', {}).get('Code')
+            ==
+            'ResourceNotFoundException'
+        )
+
+    def get_table_name(self):
+        try:
+            return self._try_to_get_table(self.TABLE_NAME)
+        except ClientError as e:
+            if self._resource_not_found(e):
+                return self._create_table(self.TABLE_NAME)
+            else:
+                raise e
 
 
 class S3BucketFactory(object):
