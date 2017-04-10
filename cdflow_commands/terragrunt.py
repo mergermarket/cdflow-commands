@@ -1,4 +1,5 @@
 from hashlib import sha1
+from tempfile import NamedTemporaryFile
 from textwrap import dedent
 
 from botocore.exceptions import ClientError
@@ -18,6 +19,18 @@ class MissingTagError(CDFlowError):
 
 class IncorrectSchemaError(CDFlowError):
     pass
+
+
+def write_terraform_backend_config(directory):
+    with NamedTemporaryFile(
+        prefix='cdflow_backend_', suffix='.tf', dir=directory, delete=False
+    ) as backend_file:
+        backend_file.write(dedent('''
+            terraform {
+                backend "s3" {
+                }
+            }
+        ''').strip())
 
 
 class LockTableFactory:
