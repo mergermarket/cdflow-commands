@@ -1,7 +1,7 @@
 import unittest
 from io import BufferedRandom
 from re import match
-from string import printable
+from string import printable, ascii_letters, ascii_lowercase, digits
 from textwrap import dedent
 
 from boto3.session import Session
@@ -10,7 +10,7 @@ from botocore.exceptions import ClientError
 from cdflow_commands.terragrunt import (
     TAG_NAME, TAG_VALUE, S3BucketFactory, write_terragrunt_config,
     LockTableFactory, MissingTagError, IncorrectSchemaError,
-    write_terraform_backend_config
+    initialise_terraform_backend
 )
 from hypothesis import given
 from hypothesis.strategies import fixed_dictionaries, text
@@ -584,15 +584,45 @@ class TestLockTableFactory(unittest.TestCase):
         self.assertRaises(ClientError, table_factory.get_table_name)
 
 
+terraform_backend_input = fixed_dictionaries({
+        'directory': text(min_size=1),
+        'aws_region': text(min_size=1),
+        'bucket_name': text(
+            alphabet=ascii_letters+digits+'-_.', min_size=3, max_size=63
+        ),
+        'lock_table_name': text(
+            alphabet=ascii_lowercase+digits+'-', min_size=3, max_size=63
+        ),
+        'environment_name': text(min_size=1),
+        'component_name': text(min_size=1)
+    })
+
+
 class TestTerraformBackendConfig(unittest.TestCase):
 
-    @patch('cdflow_commands.terragrunt.NamedTemporaryFile')
-    def test_backend_config_written_into_infra_code(self, NamedTemporaryFile):
-        mock_file = MagicMock(spec=BufferedRandom)
-        NamedTemporaryFile.return_value.__enter__.return_value = mock_file
+    @given(terraform_backend_input)
+    def test_backend_config_written_into_infra_code(
+        self, terraform_backend_input
+    ):
+        directory = terraform_backend_input['directory']
+        aws_region = terraform_backend_input['aws_region']
+        bucket_name = terraform_backend_input['bucket_name']
+        lock_table_name = terraform_backend_input['lock_table_name']
+        environment_name = terraform_backend_input['environment_name']
+        component_name = terraform_backend_input['component_name']
 
-        directory = 'infra'
-        write_terraform_backend_config(directory)
+        with patch(
+            'cdflow_commands.terragrunt.NamedTemporaryFile'
+        ) as NamedTemporaryFile, patch(
+            'cdflow_commands.terragrunt.check_call'
+        ):
+            mock_file = MagicMock(spec=BufferedRandom)
+            NamedTemporaryFile.return_value.__enter__.return_value = mock_file
+
+            initialise_terraform_backend(
+                directory, aws_region, bucket_name, lock_table_name,
+                environment_name, component_name
+            )
 
         NamedTemporaryFile.assert_called_once_with(
             prefix='cdflow_backend_', suffix='.tf', dir=directory, delete=False
@@ -604,3 +634,37 @@ class TestTerraformBackendConfig(unittest.TestCase):
                 }
             }
         ''').strip())
+
+    @given(terraform_backend_input)
+    def test_backend_is_initialised(self, terraform_backend_input):
+        directory = terraform_backend_input['directory']
+        aws_region = terraform_backend_input['aws_region']
+        bucket_name = terraform_backend_input['bucket_name']
+        lock_table_name = terraform_backend_input['lock_table_name']
+        environment_name = terraform_backend_input['environment_name']
+        component_name = terraform_backend_input['component_name']
+
+        state_file_key = (
+            f'{environment_name}/{component_name}/terraform.tfstate'
+        )
+
+        with patch(
+            'cdflow_commands.terragrunt.NamedTemporaryFile'
+        ), patch(
+            'cdflow_commands.terragrunt.check_call'
+        ) as check_call:
+            initialise_terraform_backend(
+                directory, aws_region, bucket_name, lock_table_name,
+                environment_name, component_name
+            )
+
+        check_call.assert_called_once_with(
+            [
+                'terraform', 'init',
+                f'-backend-config="bucket={bucket_name}"',
+                f'-backend-config="region={aws_region}"',
+                f'-backend-config="key={state_file_key}"',
+                f'-backend-config="lock_table={lock_table_name}"',
+            ],
+            cwd=directory
+        )
