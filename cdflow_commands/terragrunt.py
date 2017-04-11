@@ -1,4 +1,5 @@
 from hashlib import sha1
+from subprocess import check_call
 from tempfile import NamedTemporaryFile
 from textwrap import dedent
 
@@ -21,7 +22,10 @@ class IncorrectSchemaError(CDFlowError):
     pass
 
 
-def write_terraform_backend_config(directory):
+def initialise_terraform_backend(
+    directory, aws_region, bucket_name, lock_table_name,
+    environment_name, component_name
+):
     with NamedTemporaryFile(
         prefix='cdflow_backend_', suffix='.tf', dir=directory, delete=False
     ) as backend_file:
@@ -31,6 +35,18 @@ def write_terraform_backend_config(directory):
                 }
             }
         ''').strip())
+
+    state_file_key = f'{environment_name}/{component_name}/terraform.tfstate'
+    check_call(
+        [
+            'terraform', 'init',
+            f'-backend-config="bucket={bucket_name}"',
+            f'-backend-config="region={aws_region}"',
+            f'-backend-config="key={state_file_key}"',
+            f'-backend-config="lock_table={lock_table_name}"',
+        ],
+        cwd=directory
+    )
 
 
 class LockTableFactory:
