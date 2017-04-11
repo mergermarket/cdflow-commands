@@ -1,10 +1,13 @@
 import json
 import unittest
 from itertools import chain
+from string import ascii_letters
 
 from boto3 import Session
 
 from cdflow_commands.plugins.infrastructure import Deploy, DeployConfig
+from hypothesis import given
+from hypothesis.strategies import text
 from mock import ANY, Mock, patch
 
 
@@ -144,3 +147,59 @@ class TestDeploy(unittest.TestCase):
                 'PATH': '/home/me/bin'
             }
         )
+
+
+class TestEnvironmentSpecificConfigAddedToTerraformArgs(unittest.TestCase):
+
+    @given(text(alphabet=ascii_letters, min_size=2, max_size=10))
+    def test_environment_specific_config_in_args(self, env_name):
+
+        # Given
+        boto_session = Session(
+            'dummy-access-key', 'dummy-secreet-access-key',
+            'dummy-session-token', 'eu-west-1'
+        )
+        deploy_config = DeployConfig(
+            'dummy-team', 'dummy-platform-config-file'
+        )
+        deploy = Deploy(
+            boto_session, 'dummy-component', env_name,
+            [], deploy_config
+        )
+
+        # When
+        with patch(
+            'cdflow_commands.plugins.infrastructure.check_call'
+        ) as check_call, patch(
+            'cdflow_commands.plugins.infrastructure.path'
+        ) as path, patch(
+            'cdflow_commands.plugins.infrastructure.NamedTemporaryFile',
+            autospec=True
+        ) as NamedTemporaryFile, patch(
+            'cdflow_commands.plugins.infrastructure.get_secrets'
+        ) as get_secrets:
+            NamedTemporaryFile.return_value.__enter__.return_value.name = ANY
+            get_secrets.return_value = {}
+            path.exists.return_value = True
+            deploy.run()
+            # Then
+            config_file = 'config/{}.json'.format(env_name)
+            args = [
+                '-var', 'component=dummy-component',
+                '-var', 'env={}'.format(env_name),
+                '-var', 'aws_region=eu-west-1',
+                '-var', 'team=dummy-team',
+                '-var-file', 'dummy-platform-config-file',
+                '-var-file', ANY,
+                '-var-file', config_file,
+                'infra'
+            ]
+            check_call.assert_any_call(
+                ['terragrunt', 'plan'] + args,
+                env=ANY
+            )
+            check_call.assert_any_call(
+                ['terragrunt', 'apply'] + args,
+                env=ANY
+            )
+            path.exists.assert_any_call(config_file)

@@ -2,6 +2,7 @@ import json
 import os
 from collections import namedtuple
 from itertools import chain
+from os import path
 from subprocess import check_call
 from tempfile import NamedTemporaryFile
 
@@ -123,6 +124,10 @@ class Deploy:
             '-var-file', self._config.platform_config_file,
             '-var-file', secrets_file
         ]
+
+        config_file = 'config/{}.json'.format(self._environment_name)
+        if path.exists(config_file):
+            parameters += ['-var-file', config_file]
 
         additional_variables = chain.from_iterable(
             ('-var', variable) for variable in self._additional_variables
