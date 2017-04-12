@@ -1,4 +1,6 @@
+import atexit
 from hashlib import sha1
+from os import unlink
 from os.path import abspath
 from shutil import move
 from subprocess import check_call
@@ -23,6 +25,13 @@ class IncorrectSchemaError(CDFlowError):
     pass
 
 
+def remove_file(filepath):
+    try:
+        unlink(filepath)
+    except OSError as e:
+        logger.debug(f'Error removing {filepath}: {e}')
+
+
 def initialise_terraform_backend(
     directory, aws_region, bucket_name, lock_table_name,
     environment_name, component_name
@@ -38,6 +47,8 @@ def initialise_terraform_backend(
                 }
             }
         ''').strip())
+        logger.debug(f'Registering {backend_file.name} to be removed at exit')
+        atexit.register(remove_file, backend_file.name)
 
     state_file_key = f'{environment_name}/{component_name}/terraform.tfstate'
     logger.debug(
