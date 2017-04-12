@@ -237,36 +237,3 @@ class S3BucketFactory(object):
                 concatenated.encode('utf-8')
             ).hexdigest()[:12]
         )
-
-
-def write_terragrunt_config(
-    aws_region, bucket_name, environment_name, component_name
-):
-    config_template = dedent('''
-        lock = {{
-            backend = "dynamodb"
-            config {{
-                state_file_id = "{state_file_id}"
-                aws_region = "{aws_region}"
-                table_name = "terragrunt_locks"
-                max_lock_retries = 360
-            }}
-        }}
-        remote_state = {{
-            backend = "s3"
-            config {{
-                encrypt = "true"
-                bucket = "{bucket}"
-                key = "{key_prefix}/terraform.tfstate"
-                region = "{aws_region}"
-            }}
-        }}
-    ''').strip() + '\n'
-    config = config_template.format(
-        state_file_id='-'.join((environment_name, component_name)),
-        key_prefix='/'.join((environment_name, component_name)),
-        aws_region=aws_region,
-        bucket=bucket_name,
-    )
-    with open('.terragrunt', 'w') as f:
-        f.write(config)
