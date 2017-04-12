@@ -27,6 +27,7 @@ class IncorrectSchemaError(CDFlowError):
 
 def remove_file(filepath):
     try:
+        logger.debug(f'Removing {filepath}')
         unlink(filepath)
     except OSError as e:
         logger.debug(f'Error removing {filepath}: {e}')
