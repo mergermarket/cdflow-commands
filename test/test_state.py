@@ -524,17 +524,17 @@ class TestLockTableFactory(unittest.TestCase):
 
 
 terraform_backend_input = fixed_dictionaries({
-        'directory': text(min_size=1),
-        'aws_region': text(min_size=1),
-        'bucket_name': text(
-            alphabet=ascii_letters+digits+'-_.', min_size=3, max_size=63
-        ),
-        'lock_table_name': text(
-            alphabet=ascii_lowercase+digits+'-', min_size=3, max_size=63
-        ),
-        'environment_name': text(min_size=1),
-        'component_name': text(min_size=1)
-    })
+    'directory': text(min_size=1).filter(lambda t: '/' not in t),
+    'aws_region': text(min_size=1),
+    'bucket_name': text(
+        alphabet=ascii_letters + digits + '-_.', min_size=3, max_size=63
+    ),
+    'lock_table_name': text(
+        alphabet=ascii_lowercase + digits + '-', min_size=3, max_size=63
+    ),
+    'environment_name': text(min_size=1),
+    'component_name': text(min_size=1)
+})
 
 
 class TestTerraformBackendConfig(unittest.TestCase):
@@ -554,7 +554,7 @@ class TestTerraformBackendConfig(unittest.TestCase):
             'cdflow_commands.state.NamedTemporaryFile'
         ) as NamedTemporaryFile, patch(
             'cdflow_commands.state.check_call'
-        ):
+        ), patch('cdflow_commands.state.rename'):
             mock_file = MagicMock(spec=BufferedRandom)
             NamedTemporaryFile.return_value.__enter__.return_value = mock_file
 
@@ -564,7 +564,8 @@ class TestTerraformBackendConfig(unittest.TestCase):
             )
 
         NamedTemporaryFile.assert_called_once_with(
-            prefix='cdflow_backend_', suffix='.tf', dir=directory, delete=False
+            prefix='cdflow_backend_', suffix='.tf',
+            dir=directory, delete=False, mode='w+'
         )
 
         mock_file.write.assert_called_once_with(dedent('''
@@ -591,7 +592,9 @@ class TestTerraformBackendConfig(unittest.TestCase):
             'cdflow_commands.state.NamedTemporaryFile'
         ), patch(
             'cdflow_commands.state.check_call'
-        ) as check_call:
+        ) as check_call, patch(
+            'cdflow_commands.state.rename'
+        ):
             initialise_terraform_backend(
                 directory, aws_region, bucket_name, lock_table_name,
                 environment_name, component_name
@@ -600,10 +603,35 @@ class TestTerraformBackendConfig(unittest.TestCase):
         check_call.assert_called_once_with(
             [
                 'terraform', 'init',
-                f'-backend-config="bucket={bucket_name}"',
-                f'-backend-config="region={aws_region}"',
-                f'-backend-config="key={state_file_key}"',
-                f'-backend-config="lock_table={lock_table_name}"',
+                f'-backend-config=bucket={bucket_name}',
+                f'-backend-config=region={aws_region}',
+                f'-backend-config=key={state_file_key}',
+                f'-backend-config=lock_table={lock_table_name}',
             ],
             cwd=directory
+        )
+
+    @given(terraform_backend_input)
+    def test_state_file_is_moved_to_root(self, terraform_backend_input):
+        directory = terraform_backend_input['directory']
+        aws_region = terraform_backend_input['aws_region']
+        bucket_name = terraform_backend_input['bucket_name']
+        lock_table_name = terraform_backend_input['lock_table_name']
+        environment_name = terraform_backend_input['environment_name']
+        component_name = terraform_backend_input['component_name']
+
+        with patch(
+            'cdflow_commands.state.NamedTemporaryFile'
+        ), patch(
+            'cdflow_commands.state.check_call'
+        ), patch(
+            'cdflow_commands.state.rename'
+        ) as rename:
+            initialise_terraform_backend(
+                directory, aws_region, bucket_name, lock_table_name,
+                environment_name, component_name
+            )
+
+        rename.assert_called_once_with(
+            f'/cdflow/{directory}/.terraform', '/cdflow/.terraform'
         )

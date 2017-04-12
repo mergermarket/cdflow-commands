@@ -1,4 +1,6 @@
 from hashlib import sha1
+from os import rename
+from os.path import abspath
 from subprocess import check_call
 from tempfile import NamedTemporaryFile
 from textwrap import dedent
@@ -27,8 +29,10 @@ def initialise_terraform_backend(
     environment_name, component_name
 ):
     with NamedTemporaryFile(
-        prefix='cdflow_backend_', suffix='.tf', dir=directory, delete=False
+        prefix='cdflow_backend_', suffix='.tf',
+        dir=directory, delete=False, mode='w+'
     ) as backend_file:
+        logger.debug(f'Writing backend config to {backend_file.name}')
         backend_file.write(dedent('''
             terraform {
                 backend "s3" {
@@ -37,16 +41,26 @@ def initialise_terraform_backend(
         ''').strip())
 
     state_file_key = f'{environment_name}/{component_name}/terraform.tfstate'
+    logger.debug(
+        f'Initialising backend in {directory} with {bucket_name}, '
+         '{aws_region}, {state_file_key}, {lock_table_name}'
+    )
     check_call(
         [
             'terraform', 'init',
-            f'-backend-config="bucket={bucket_name}"',
-            f'-backend-config="region={aws_region}"',
-            f'-backend-config="key={state_file_key}"',
-            f'-backend-config="lock_table={lock_table_name}"',
+            f'-backend-config=bucket={bucket_name}',
+            f'-backend-config=region={aws_region}',
+            f'-backend-config=key={state_file_key}',
+            f'-backend-config=lock_table={lock_table_name}',
         ],
         cwd=directory
     )
+
+    from_path = abspath(f'{directory}/.terraform')
+    to_path = abspath('./.terraform')
+
+    logger.debug(f'Moving {from_path} to {to_path}')
+    rename(from_path, to_path)
 
 
 class LockTableFactory:
