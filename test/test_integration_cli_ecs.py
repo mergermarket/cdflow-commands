@@ -451,16 +451,6 @@ class TestDeployCLI(unittest.TestCase):
             RoleSessionName=self.mock_os_deploy.environ['JOB_NAME']
         )
 
-    @patch('cdflow_commands.terragrunt.open')
-    def test_tfstate_bucket_set_up_in_dev_account_for_aslive_deployment(
-        self, mock_open
-    ):
-        # When
-        cli.run(['deploy', 'live', '1.2.3'])
-
-        # Then
-        mock_open.assert_called_once_with('.terragrunt', 'w')
-
 
 class TestDestroyCLI(unittest.TestCase):
 

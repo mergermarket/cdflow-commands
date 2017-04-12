@@ -13,8 +13,7 @@ from cdflow_commands.plugins import Plugin
 from cdflow_commands.plugins.base import Destroy
 from cdflow_commands.secrets import get_secrets
 from cdflow_commands.terragrunt import (
-    S3BucketFactory, write_terragrunt_config,
-    LockTableFactory, initialise_terraform_backend
+    S3BucketFactory, LockTableFactory, initialise_terraform_backend
 )
 
 DeployConfig = namedtuple('DeployConfig', [
@@ -74,9 +73,6 @@ def build_deploy_factory(
             environment_name, component_name
         )
 
-        write_terragrunt_config(
-            metadata.aws_region, s3_bucket, environment_name, component_name
-        )
         deploy_config = DeployConfig(
             team=metadata.team,
             platform_config_file=platform_config_file,
@@ -114,9 +110,6 @@ def build_destroy_factory(
             environment_name, component_name
         )
 
-        write_terragrunt_config(
-            metadata.aws_region, s3_bucket, environment_name, component_name
-        )
         return Destroy(
             boto_session, component_name, environment_name, s3_bucket
         )

@@ -8,9 +8,8 @@ from boto3.session import Session
 from botocore.exceptions import ClientError
 
 from cdflow_commands.terragrunt import (
-    TAG_NAME, TAG_VALUE, S3BucketFactory, write_terragrunt_config,
-    LockTableFactory, MissingTagError, IncorrectSchemaError,
-    initialise_terraform_backend
+    TAG_NAME, TAG_VALUE, S3BucketFactory, LockTableFactory,
+    MissingTagError, IncorrectSchemaError, initialise_terraform_backend
 )
 from hypothesis import given
 from hypothesis.strategies import fixed_dictionaries, text
@@ -331,66 +330,6 @@ class TestS3BucketFactory(unittest.TestCase):
         assert match(NEW_BUCKET_PATTERN, second_bucket_param)
         assert first_bucket_param != bucket_name
         assert second_bucket_param == bucket_name
-
-
-class TestTerragruntConfig(unittest.TestCase):
-
-    terragrunt_config_params = fixed_dictionaries({
-        'environment_name': text(alphabet=printable, min_size=2, max_size=10),
-        'component_name': text(alphabet=printable, min_size=2, max_size=30),
-        'aws_region': text(alphabet=printable, min_size=2, max_size=10),
-        'bucket_name': text(alphabet=printable, min_size=2, max_size=10),
-    })
-
-    @given(terragrunt_config_params)
-    def test_terragrunt_config_written(self, terragrunt_config_params):
-        # Given
-        with patch(
-            'cdflow_commands.terragrunt.open', mock_open()
-        ) as mocked_open:
-            # When
-            write_terragrunt_config(
-                terragrunt_config_params['aws_region'],
-                terragrunt_config_params['bucket_name'],
-                terragrunt_config_params['environment_name'],
-                terragrunt_config_params['component_name'],
-            )
-
-            # Then
-            mocked_open.assert_called_once_with('.terragrunt', 'w')
-            expected_config_template = dedent('''
-                lock = {{
-                    backend = "dynamodb"
-                    config {{
-                        state_file_id = "{state_file_id}"
-                        aws_region = "{aws_region}"
-                        table_name = "terragrunt_locks"
-                        max_lock_retries = 360
-                    }}
-                }}
-                remote_state = {{
-                    backend = "s3"
-                    config {{
-                        encrypt = "true"
-                        bucket = "{bucket_name}"
-                        key = "{key_prefix}/terraform.tfstate"
-                        region = "{aws_region}"
-                    }}
-                }}
-            ''').strip() + '\n'
-            expected_config = expected_config_template.format(
-                state_file_id='-'.join((
-                    terragrunt_config_params['environment_name'],
-                    terragrunt_config_params['component_name']
-                )),
-                key_prefix='/'.join((
-                    terragrunt_config_params['environment_name'],
-                    terragrunt_config_params['component_name']
-                )),
-                aws_region=terragrunt_config_params['aws_region'],
-                bucket_name=terragrunt_config_params['bucket_name'],
-            )
-            mocked_open().write.assert_called_once_with(expected_config)
 
 
 class TestLockTableFactory(unittest.TestCase):
