@@ -1,4 +1,5 @@
 import unittest
+from contextlib import ExitStack
 from io import BufferedRandom
 from re import match
 from string import ascii_letters, ascii_lowercase, digits
@@ -8,7 +9,8 @@ from boto3.session import Session
 from botocore.exceptions import ClientError
 from cdflow_commands.state import (
     TAG_NAME, TAG_VALUE, IncorrectSchemaError, LockTableFactory,
-    MissingTagError, S3BucketFactory, initialise_terraform_backend
+    MissingTagError, S3BucketFactory, initialise_terraform_backend,
+    remove_file
 )
 from hypothesis import given
 from hypothesis.strategies import fixed_dictionaries, text
@@ -523,7 +525,9 @@ class TestLockTableFactory(unittest.TestCase):
 
 
 terraform_backend_input = fixed_dictionaries({
-    'directory': text(min_size=1).filter(lambda t: '/' not in t),
+    'directory': text(min_size=1).filter(
+        lambda t: '/' not in t and '.' not in t
+    ),
     'aws_region': text(min_size=1),
     'bucket_name': text(
         alphabet=ascii_letters + digits + '-_.', min_size=3, max_size=63
@@ -549,11 +553,14 @@ class TestTerraformBackendConfig(unittest.TestCase):
         environment_name = terraform_backend_input['environment_name']
         component_name = terraform_backend_input['component_name']
 
-        with patch(
-            'cdflow_commands.state.NamedTemporaryFile'
-        ) as NamedTemporaryFile, patch(
-            'cdflow_commands.state.check_call'
-        ), patch('cdflow_commands.state.move'):
+        with ExitStack() as stack:
+            stack.enter_context(patch('cdflow_commands.state.check_call'))
+            stack.enter_context(patch('cdflow_commands.state.move'))
+            stack.enter_context(patch('cdflow_commands.state.atexit'))
+            NamedTemporaryFile = stack.enter_context(
+                patch('cdflow_commands.state.NamedTemporaryFile')
+            )
+
             mock_file = MagicMock(spec=BufferedRandom)
             NamedTemporaryFile.return_value.__enter__.return_value = mock_file
 
@@ -587,13 +594,16 @@ class TestTerraformBackendConfig(unittest.TestCase):
             f'{environment_name}/{component_name}/terraform.tfstate'
         )
 
-        with patch(
-            'cdflow_commands.state.NamedTemporaryFile'
-        ), patch(
-            'cdflow_commands.state.check_call'
-        ) as check_call, patch(
-            'cdflow_commands.state.move'
-        ):
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch('cdflow_commands.state.NamedTemporaryFile')
+            )
+            stack.enter_context(patch('cdflow_commands.state.move'))
+            stack.enter_context(patch('cdflow_commands.state.atexit'))
+            check_call = stack.enter_context(
+                patch('cdflow_commands.state.check_call')
+            )
+
             initialise_terraform_backend(
                 directory, aws_region, bucket_name, lock_table_name,
                 environment_name, component_name
@@ -619,13 +629,14 @@ class TestTerraformBackendConfig(unittest.TestCase):
         environment_name = terraform_backend_input['environment_name']
         component_name = terraform_backend_input['component_name']
 
-        with patch(
-            'cdflow_commands.state.NamedTemporaryFile'
-        ), patch(
-            'cdflow_commands.state.check_call'
-        ), patch(
-            'cdflow_commands.state.move'
-        ) as move:
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch('cdflow_commands.state.NamedTemporaryFile')
+            )
+            stack.enter_context(patch('cdflow_commands.state.check_call'))
+            stack.enter_context(patch('cdflow_commands.state.atexit'))
+            move = stack.enter_context(patch('cdflow_commands.state.move'))
+
             initialise_terraform_backend(
                 directory, aws_region, bucket_name, lock_table_name,
                 environment_name, component_name
@@ -634,3 +645,66 @@ class TestTerraformBackendConfig(unittest.TestCase):
         move.assert_called_once_with(
             f'/cdflow/{directory}/.terraform', '/cdflow/.terraform'
         )
+
+    @given(fixed_dictionaries({
+        'terraform_backend_input': terraform_backend_input,
+        'temp_file_name': text(
+            min_size=3, max_size=10, alphabet=ascii_lowercase+digits
+        )
+    }))
+    def test_config_file_is_removed_at_exit(self, test_fixtures):
+        directory = test_fixtures['terraform_backend_input']['directory']
+        aws_region = test_fixtures['terraform_backend_input']['aws_region']
+        bucket_name = test_fixtures['terraform_backend_input']['bucket_name']
+        lock_table_name = (
+            test_fixtures['terraform_backend_input']['lock_table_name']
+        )
+        environment_name = (
+            test_fixtures['terraform_backend_input']['environment_name']
+        )
+        component_name = (
+            test_fixtures['terraform_backend_input']['component_name']
+        )
+
+        backend_config_file_name = (
+            f'cdflow_backend_{test_fixtures["temp_file_name"]}.tf'
+        )
+
+        with ExitStack() as stack:
+            stack.enter_context(patch('cdflow_commands.state.check_call'))
+            stack.enter_context(patch('cdflow_commands.state.move'))
+            NamedTemporaryFile = stack.enter_context(
+                patch('cdflow_commands.state.NamedTemporaryFile')
+            )
+            atexit = stack.enter_context(patch('cdflow_commands.state.atexit'))
+
+            NamedTemporaryFile.return_value.__enter__.return_value.name = \
+                backend_config_file_name
+
+            initialise_terraform_backend(
+                directory, aws_region, bucket_name, lock_table_name,
+                environment_name, component_name
+            )
+
+        atexit.register.assert_called_once_with(
+            remove_file, backend_config_file_name
+        )
+
+    @given(text(average_size=10))
+    def test_remove_file_function(self, filepath):
+        with patch('cdflow_commands.state.unlink') as unlink:
+            remove_file(filepath)
+
+        unlink.assert_called_once_with(filepath)
+
+    @given(text(average_size=10))
+    def test_remove_file_function_handles_missing_file(self, filepath):
+        with patch('cdflow_commands.state.unlink') as unlink:
+            unlink.side_effect = OSError('File not found')
+
+            try:
+                remove_file(filepath)
+            except OSError as e:
+                self.fail(f'An error was thrown: {e}')
+
+        unlink.assert_called_once_with(filepath)
