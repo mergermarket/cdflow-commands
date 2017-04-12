@@ -102,14 +102,6 @@ class LockTableFactory:
                 return True
         raise MissingTagError(f'No tag {self.TAG_NAME} found for {table_arn}')
 
-    def _get_fallback_table(self):
-        tables = self._client.list_tables()
-        for table_name in tables['TableNames']:
-            try:
-                return self._try_to_get_table(table_name)
-            except MissingTagError as e:
-                logger.debug(e)
-
     def _create_table(self):
         response = self._client.create_table(
             TableName=self.TABLE_NAME,
