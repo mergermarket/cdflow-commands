@@ -13,7 +13,7 @@ from cdflow_commands.plugins import Plugin
 from cdflow_commands.plugins.base import Destroy
 from cdflow_commands.secrets import get_secrets
 from cdflow_commands.state import (
-    S3BucketFactory, LockTableFactory, initialise_terraform_backend
+    LockTableFactory, S3BucketFactory, initialise_terraform_backend
 )
 
 DeployConfig = namedtuple('DeployConfig', [

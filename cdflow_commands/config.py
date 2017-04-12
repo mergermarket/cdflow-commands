@@ -54,8 +54,8 @@ def load_service_metadata():
             )
         except KeyError as key:
             raise UserFacingError(
-                    "Deployment failed - did you set {} in {}?".format(
-                        key, f.name))
+                'Deployment failed - did you set {} in {}?'.format(
+                    key, f.name))
 
 
 def load_global_config(account_prefix, aws_region):

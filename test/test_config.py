@@ -5,9 +5,8 @@ from io import TextIOWrapper
 from string import ascii_letters, digits, printable
 from subprocess import CalledProcessError
 
-from cdflow_commands.exceptions import UserFacingError
-
 from cdflow_commands import config
+from cdflow_commands.exceptions import UserFacingError
 from hypothesis import example, given
 from hypothesis.strategies import composite, fixed_dictionaries, text
 from mock import MagicMock, Mock, mock_open, patch
