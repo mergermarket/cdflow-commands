@@ -212,6 +212,9 @@ class TestDeployCLI(unittest.TestCase):
         self.S3BucketFactory_patcher = patch(
             'cdflow_commands.plugins.ecs.S3BucketFactory'
         )
+        self.LockTableFactory_patcher = patch(
+            'cdflow_commands.plugins.ecs.LockTableFactory'
+        )
         self.mock_os_deploy_patcher = patch('cdflow_commands.plugins.ecs.os')
         self.Session_from_cli_patcher = patch('cdflow_commands.cli.Session')
         self.Session_from_config_patcher = patch(
@@ -230,10 +233,17 @@ class TestDeployCLI(unittest.TestCase):
         self.NamedTemporaryFile_patcher = patch(
             'cdflow_commands.plugins.ecs.NamedTemporaryFile'
         )
+        self.NamedTemporaryFile_state_patcher = patch(
+            'cdflow_commands.terragrunt.NamedTemporaryFile'
+        )
+        self.check_call_state_patcher = patch(
+            'cdflow_commands.terragrunt.check_call'
+        )
         self.rmtree = self.rmtree_patcher.start()
         self.unlink = self.unlink_patcher.start()
         self.ECSEventIterator = self.ECSEventIterator_patcher.start()
         self.S3BucketFactory = self.S3BucketFactory_patcher.start()
+        self.LockTableFactory = self.LockTableFactory_patcher.start()
         self.mock_os_deploy = self.mock_os_deploy_patcher.start()
         self.Session_from_cli = self.Session_from_cli_patcher.start()
         self.Session_from_config = self.Session_from_config_patcher.start()
@@ -242,6 +252,9 @@ class TestDeployCLI(unittest.TestCase):
         self.check_output = self.check_output_patcher.start()
         self.get_secrets = self.get_secrets_patcher.start()
         self.NamedTemporaryFile = self.NamedTemporaryFile_patcher.start()
+        self.NamedTemporaryFile_state = \
+            self.NamedTemporaryFile_state_patcher.start()
+        self.check_call_state = self.check_call_state_patcher.start()
 
         self.mock_os_deploy.environ = {
             'JOB_NAME': 'dummy-job-name'
@@ -325,6 +338,7 @@ class TestDeployCLI(unittest.TestCase):
         self.unlink_patcher.stop()
         self.ECSEventIterator_patcher.stop()
         self.S3BucketFactory_patcher.stop()
+        self.LockTableFactory_patcher.stop()
         self.mock_os_deploy_patcher.stop()
         self.Session_from_cli_patcher.stop()
         self.Session_from_config_patcher.stop()
@@ -333,6 +347,8 @@ class TestDeployCLI(unittest.TestCase):
         self.check_output_patcher.stop()
         self.get_secrets_patcher.stop()
         self.NamedTemporaryFile_patcher.stop()
+        self.NamedTemporaryFile_state_patcher.stop()
+        self.check_call_state_patcher.stop()
 
     def test_deploy_is_configured_and_run(self):
         # When
@@ -340,7 +356,12 @@ class TestDeployCLI(unittest.TestCase):
             cli.run(['deploy', 'aslive', '1.2.3'])
 
         # Then
-        self.check_call.assert_any_call(['terragrunt', 'get', 'infra'])
+        self.check_call_state.assert_any_call(
+            ['terraform', 'init', ANY, ANY, ANY, ANY],
+            cwd='infra'
+        )
+
+        self.check_call.assert_any_call(['terraform', 'get', 'infra'])
 
         image_name = (
             '123456789.dkr.ecr.eu-west-12.amazonaws.com/'
@@ -349,7 +370,7 @@ class TestDeployCLI(unittest.TestCase):
 
         self.check_call.assert_any_call(
             [
-                'terragrunt', 'plan',
+                'terraform', 'plan',
                 '-var', 'component=dummy-component',
                 '-var', 'env=aslive',
                 '-var', 'aws_region=eu-west-12',
@@ -371,7 +392,7 @@ class TestDeployCLI(unittest.TestCase):
 
         self.check_call.assert_any_call(
             [
-                'terragrunt', 'apply',
+                'terraform', 'apply',
                 '-var', 'component=dummy-component',
                 '-var', 'env=aslive',
                 '-var', 'aws_region=eu-west-12',
@@ -446,6 +467,7 @@ class TestDestroyCLI(unittest.TestCase):
     @patch('cdflow_commands.cli.rmtree')
     @patch('cdflow_commands.cli.unlink')
     @patch('cdflow_commands.plugins.ecs.S3BucketFactory')
+    @patch('cdflow_commands.plugins.ecs.LockTableFactory')
     @patch('cdflow_commands.plugins.base.os')
     @patch('cdflow_commands.plugins.ecs.os')
     @patch('cdflow_commands.cli.Session')
@@ -453,10 +475,12 @@ class TestDestroyCLI(unittest.TestCase):
     @patch('cdflow_commands.config.open', new_callable=mock_open, create=True)
     @patch('cdflow_commands.plugins.base.check_call')
     @patch('cdflow_commands.config.check_output')
+    @patch('cdflow_commands.terragrunt.check_call')
+    @patch('cdflow_commands.terragrunt.NamedTemporaryFile')
     def test_destroy_is_configured_and_run(
-        self, check_output, check_call, mock_open,
-        Session_from_config, Session_from_cli, mock_os_cli, mock_os_deploy, _,
-        unlink, rmtree
+        self, _1, check_call_state, check_output, check_call, mock_open,
+        Session_from_config, Session_from_cli, mock_os_cli, mock_os_deploy,
+        _2, _3, unlink, rmtree
     ):
         # Given
         mock_os_cli.environ = {
@@ -530,9 +554,14 @@ class TestDestroyCLI(unittest.TestCase):
         cli.run(['destroy', 'aslive'])
 
         # Then
+        check_call_state.assert_any_call(
+            ['terraform', 'init', ANY, ANY, ANY, ANY],
+            cwd='tf-destroy'
+        )
+
         check_call.assert_any_call(
             [
-                'terragrunt', 'plan', '-destroy',
+                'terraform', 'plan', '-destroy',
                 '-var', 'aws_region=eu-west-12',
                 '/cdflow/tf-destroy'
             ],
@@ -545,7 +574,7 @@ class TestDestroyCLI(unittest.TestCase):
 
         check_call.assert_any_call(
             [
-                'terragrunt', 'destroy', '-force',
+                'terraform', 'destroy', '-force',
                 '-var', 'aws_region=eu-west-12',
                 '/cdflow/tf-destroy'
             ],

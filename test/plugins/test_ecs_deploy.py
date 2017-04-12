@@ -39,12 +39,12 @@ class TestDeploy(unittest.TestCase):
         get_secrets.return_value = {}
         self._deploy.run()
         # Then
-        check_call.assert_any_call(['terragrunt', 'get', 'infra'])
+        check_call.assert_any_call(['terraform', 'get', 'infra'])
 
     @patch('cdflow_commands.plugins.ecs.check_call')
     @patch('cdflow_commands.plugins.ecs.get_secrets')
     @patch('cdflow_commands.plugins.ecs.NamedTemporaryFile')
-    def test_terragrunt_plan_called(
+    def test_terraform_plan_called(
         self, NamedTemporaryFile, get_secrets, check_call
     ):
         # When
@@ -53,7 +53,7 @@ class TestDeploy(unittest.TestCase):
         self._deploy.run()
         # Then
         check_call.assert_any_call(
-            ['terragrunt', 'plan'] + IGNORED_PARAMS + ['infra'],
+            ['terraform', 'plan'] + IGNORED_PARAMS + ['infra'],
             env=ANY
         )
 
@@ -69,7 +69,7 @@ class TestDeploy(unittest.TestCase):
         self._deploy.run()
         # Then
         check_call.assert_any_call(
-            ['terragrunt', 'apply'] + IGNORED_PARAMS + ['infra'],
+            ['terraform', 'apply'] + IGNORED_PARAMS + ['infra'],
             env=ANY
         )
 
@@ -82,7 +82,7 @@ class TestDeploy(unittest.TestCase):
     })
 
     @given(credentials)
-    def test_terragrunt_passed_aws_credentials_from_session(
+    def test_terraform_passed_aws_credentials_from_session(
         self, credentials
     ):
         # Given
@@ -109,7 +109,7 @@ class TestDeploy(unittest.TestCase):
 
             # Then
             check_call.assert_any_call(
-                ['terragrunt', 'plan'] + IGNORED_PARAMS + ['infra'],
+                ['terraform', 'plan'] + IGNORED_PARAMS + ['infra'],
                 env=ANY
             )
             plan_env = check_call.mock_calls[1][CALL_KWARGS]['env']
@@ -121,7 +121,7 @@ class TestDeploy(unittest.TestCase):
                 credentials['session_token']
 
             check_call.assert_any_call(
-                ['terragrunt', 'apply'] + IGNORED_PARAMS + ['infra'],
+                ['terraform', 'apply'] + IGNORED_PARAMS + ['infra'],
                 env=ANY
             )
             apply_env = check_call.mock_calls[2][CALL_KWARGS]['env']
@@ -135,7 +135,7 @@ class TestDeploy(unittest.TestCase):
     @given(dictionaries(
         keys=text(alphabet=printable), values=text(alphabet=printable)
     ))
-    def test_terragrunt_passed_copy_of_local_process_environment(
+    def test_terraform_passed_copy_of_local_process_environment(
         self, mock_environment
     ):
         # Given
@@ -171,18 +171,18 @@ class TestDeploy(unittest.TestCase):
             deploy.run()
             # Then
             check_call.assert_any_call(
-                ['terragrunt', 'plan'] + IGNORED_PARAMS + ['infra'],
+                ['terraform', 'plan'] + IGNORED_PARAMS + ['infra'],
                 env=expected_environment
             )
             check_call.assert_any_call(
-                ['terragrunt', 'apply'] + IGNORED_PARAMS + ['infra'],
+                ['terraform', 'apply'] + IGNORED_PARAMS + ['infra'],
                 env=expected_environment
             )
 
     @given(dictionaries(
         keys=text(alphabet=printable), values=text(alphabet=printable)
     ))
-    def test_terragrunt_does_not_mutate_local_process_environment(
+    def test_terraform_does_not_mutate_local_process_environment(
         self, mock_environment
     ):
         # Given
@@ -228,7 +228,7 @@ class TestDeploy(unittest.TestCase):
     })
 
     @given(deploy_data)
-    def test_terragrunt_gets_all_parameters(self, data):
+    def test_terraform_gets_all_parameters(self, data):
         # Given
         deploy_config = DeployConfig(
             data['team'],
@@ -284,11 +284,11 @@ class TestDeploy(unittest.TestCase):
                 'infra'
             ]
             check_call.assert_any_call(
-                ['terragrunt', 'plan'] + args,
+                ['terraform', 'plan'] + args,
                 env=ANY
             )
             check_call.assert_any_call(
-                ['terragrunt', 'apply'] + args,
+                ['terraform', 'apply'] + args,
                 env=ANY
             )
 
@@ -345,11 +345,11 @@ class TestEnvironmentSpecificConfigAddedToTerraformArgs(unittest.TestCase):
                 'infra'
             ]
             check_call.assert_any_call(
-                ['terragrunt', 'plan'] + args,
+                ['terraform', 'plan'] + args,
                 env=ANY
             )
             check_call.assert_any_call(
-                ['terragrunt', 'apply'] + args,
+                ['terraform', 'apply'] + args,
                 env=ANY
             )
             path.exists.assert_any_call(config_file)
