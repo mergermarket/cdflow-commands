@@ -553,7 +553,7 @@ class TestTerraformBackendConfig(unittest.TestCase):
             'cdflow_commands.state.NamedTemporaryFile'
         ) as NamedTemporaryFile, patch(
             'cdflow_commands.state.check_call'
-        ), patch('cdflow_commands.state.rename'):
+        ), patch('cdflow_commands.state.move'):
             mock_file = MagicMock(spec=BufferedRandom)
             NamedTemporaryFile.return_value.__enter__.return_value = mock_file
 
@@ -592,7 +592,7 @@ class TestTerraformBackendConfig(unittest.TestCase):
         ), patch(
             'cdflow_commands.state.check_call'
         ) as check_call, patch(
-            'cdflow_commands.state.rename'
+            'cdflow_commands.state.move'
         ):
             initialise_terraform_backend(
                 directory, aws_region, bucket_name, lock_table_name,
@@ -624,13 +624,13 @@ class TestTerraformBackendConfig(unittest.TestCase):
         ), patch(
             'cdflow_commands.state.check_call'
         ), patch(
-            'cdflow_commands.state.rename'
-        ) as rename:
+            'cdflow_commands.state.move'
+        ) as move:
             initialise_terraform_backend(
                 directory, aws_region, bucket_name, lock_table_name,
                 environment_name, component_name
             )
 
-        rename.assert_called_once_with(
+        move.assert_called_once_with(
             f'/cdflow/{directory}/.terraform', '/cdflow/.terraform'
         )

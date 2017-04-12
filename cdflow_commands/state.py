@@ -1,6 +1,6 @@
 from hashlib import sha1
-from os import rename
 from os.path import abspath
+from shutil import move
 from subprocess import check_call
 from tempfile import NamedTemporaryFile
 from textwrap import dedent
@@ -59,7 +59,7 @@ def initialise_terraform_backend(
     to_path = abspath('./.terraform')
 
     logger.debug(f'Moving {from_path} to {to_path}')
-    rename(from_path, to_path)
+    move(from_path, to_path)
 
 
 class LockTableFactory:
