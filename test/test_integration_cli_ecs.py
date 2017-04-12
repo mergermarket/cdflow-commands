@@ -10,7 +10,6 @@ from mock import ANY, MagicMock, Mock, mock_open, patch
 
 
 @patch('cdflow_commands.cli.rmtree')
-@patch('cdflow_commands.cli.unlink')
 @patch('cdflow_commands.plugins.ecs.os')
 @patch('cdflow_commands.cli.Session')
 @patch('cdflow_commands.config.Session')
@@ -21,7 +20,7 @@ class TestReleaseCLI(unittest.TestCase):
 
     def test_release_is_configured_and_created(
         self, check_call, _1, mock_open,
-        Session_from_config, Session_from_cli, mock_os, _2, _3
+        Session_from_config, Session_from_cli, mock_os, _2
     ):
         mock_metadata_file = MagicMock(spec=TextIOWrapper)
         metadata = {
@@ -106,7 +105,7 @@ class TestReleaseCLI(unittest.TestCase):
 
     def test_release_uses_component_name_from_origin(
         self, check_call, check_output, mock_open,
-        Session_from_config, Session_from_cli, mock_os, _1, _2
+        Session_from_config, Session_from_cli, mock_os, _
     ):
         mock_metadata_file = MagicMock(spec=TextIOWrapper)
         metadata = {
@@ -205,7 +204,6 @@ class TestDeployCLI(unittest.TestCase):
         ECSMonitor._INTERVAL = 0.1
 
         self.rmtree_patcher = patch('cdflow_commands.cli.rmtree')
-        self.unlink_patcher = patch('cdflow_commands.cli.unlink')
         self.ECSEventIterator_patcher = patch(
             'cdflow_commands.plugins.ecs.ECSEventIterator'
         )
@@ -239,8 +237,10 @@ class TestDeployCLI(unittest.TestCase):
         self.check_call_state_patcher = patch(
             'cdflow_commands.state.check_call'
         )
+        self.rename_patcher = patch(
+            'cdflow_commands.state.rename'
+        )
         self.rmtree = self.rmtree_patcher.start()
-        self.unlink = self.unlink_patcher.start()
         self.ECSEventIterator = self.ECSEventIterator_patcher.start()
         self.S3BucketFactory = self.S3BucketFactory_patcher.start()
         self.LockTableFactory = self.LockTableFactory_patcher.start()
@@ -255,6 +255,7 @@ class TestDeployCLI(unittest.TestCase):
         self.NamedTemporaryFile_state = \
             self.NamedTemporaryFile_state_patcher.start()
         self.check_call_state = self.check_call_state_patcher.start()
+        self.rename = self.rename_patcher.start()
 
         self.mock_os_deploy.environ = {
             'JOB_NAME': 'dummy-job-name'
@@ -335,7 +336,6 @@ class TestDeployCLI(unittest.TestCase):
     def tearDown(self):
         ECSMonitor._INTERVAL = self._original_interval
         self.rmtree_patcher.stop()
-        self.unlink_patcher.stop()
         self.ECSEventIterator_patcher.stop()
         self.S3BucketFactory_patcher.stop()
         self.LockTableFactory_patcher.stop()
@@ -349,6 +349,7 @@ class TestDeployCLI(unittest.TestCase):
         self.NamedTemporaryFile_patcher.stop()
         self.NamedTemporaryFile_state_patcher.stop()
         self.check_call_state_patcher.stop()
+        self.rename_patcher.stop()
 
     def test_deploy_is_configured_and_run(self):
         # When
@@ -454,7 +455,6 @@ class TestDeployCLI(unittest.TestCase):
 class TestDestroyCLI(unittest.TestCase):
 
     @patch('cdflow_commands.cli.rmtree')
-    @patch('cdflow_commands.cli.unlink')
     @patch('cdflow_commands.plugins.ecs.S3BucketFactory')
     @patch('cdflow_commands.plugins.ecs.LockTableFactory')
     @patch('cdflow_commands.plugins.base.os')
@@ -466,10 +466,11 @@ class TestDestroyCLI(unittest.TestCase):
     @patch('cdflow_commands.config.check_output')
     @patch('cdflow_commands.state.check_call')
     @patch('cdflow_commands.state.NamedTemporaryFile')
+    @patch('cdflow_commands.state.rename')
     def test_destroy_is_configured_and_run(
-        self, _1, check_call_state, check_output, check_call, mock_open,
+        self, _1, _2, check_call_state, check_output, check_call, mock_open,
         Session_from_config, Session_from_cli, mock_os_cli, mock_os_deploy,
-        _2, _3, unlink, rmtree
+        _3, _4, rmtree
     ):
         # Given
         mock_os_cli.environ = {
@@ -545,7 +546,7 @@ class TestDestroyCLI(unittest.TestCase):
         # Then
         check_call_state.assert_any_call(
             ['terraform', 'init', ANY, ANY, ANY, ANY],
-            cwd='tf-destroy'
+            cwd='/cdflow/tf-destroy'
         )
 
         check_call.assert_any_call(
