@@ -10,7 +10,6 @@ from tempfile import NamedTemporaryFile
 from time import sleep, time
 
 from botocore.exceptions import ClientError
-
 from cdflow_commands.config import (
     assume_role, get_platform_config_path, get_role_session_name
 )

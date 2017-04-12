@@ -1,19 +1,18 @@
 import unittest
 from io import BufferedRandom
 from re import match
-from string import printable, ascii_letters, ascii_lowercase, digits
+from string import ascii_letters, ascii_lowercase, digits
 from textwrap import dedent
 
 from boto3.session import Session
 from botocore.exceptions import ClientError
-
 from cdflow_commands.state import (
-    TAG_NAME, TAG_VALUE, S3BucketFactory, LockTableFactory,
-    MissingTagError, IncorrectSchemaError, initialise_terraform_backend
+    TAG_NAME, TAG_VALUE, IncorrectSchemaError, LockTableFactory,
+    MissingTagError, S3BucketFactory, initialise_terraform_backend
 )
 from hypothesis import given
 from hypothesis.strategies import fixed_dictionaries, text
-from mock import Mock, mock_open, patch, MagicMock
+from mock import MagicMock, Mock, patch
 
 NEW_BUCKET_PATTERN = r'^cdflow-tfstate-[a-z0-9]+$'
 

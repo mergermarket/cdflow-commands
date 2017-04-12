@@ -6,7 +6,6 @@ from tempfile import NamedTemporaryFile
 from textwrap import dedent
 
 from botocore.exceptions import ClientError
-
 from cdflow_commands.exceptions import CDFlowError
 from cdflow_commands.logger import logger
 
@@ -43,7 +42,7 @@ def initialise_terraform_backend(
     state_file_key = f'{environment_name}/{component_name}/terraform.tfstate'
     logger.debug(
         f'Initialising backend in {directory} with {bucket_name}, '
-         '{aws_region}, {state_file_key}, {lock_table_name}'
+        '{aws_region}, {state_file_key}, {lock_table_name}'
     )
     check_call(
         [

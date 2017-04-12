@@ -2,7 +2,6 @@ import unittest
 from string import ascii_letters, printable
 
 from boto3 import Session
-
 from cdflow_commands.plugins.ecs import Deploy, DeployConfig
 from hypothesis import given
 from hypothesis.strategies import dictionaries, fixed_dictionaries, text
