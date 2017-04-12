@@ -97,8 +97,8 @@ class TestDeployCLI(unittest.TestCase):
         self.check_call_state_patcher = patch(
             'cdflow_commands.state.check_call'
         )
-        self.rename_patcher = patch(
-            'cdflow_commands.state.rename'
+        self.move_patcher = patch(
+            'cdflow_commands.state.move'
         )
         self.rmtree = self.rmtree_patcher.start()
         self.S3BucketFactory = self.S3BucketFactory_patcher.start()
@@ -114,7 +114,7 @@ class TestDeployCLI(unittest.TestCase):
         self.NamedTemporaryFile_state = \
             self.NamedTemporaryFile_state_patcher.start()
         self.check_call_state = self.check_call_state_patcher.start()
-        self.rename = self.rename_patcher.start()
+        self.move = self.move_patcher.start()
 
         self.mock_os_deploy.environ = {
             'JOB_NAME': 'dummy-job-name'
@@ -200,7 +200,7 @@ class TestDeployCLI(unittest.TestCase):
         self.NamedTemporaryFile_patcher.stop()
         self.NamedTemporaryFile_state_patcher.stop()
         self.check_call_state_patcher.stop()
-        self.rename_patcher.stop()
+        self.move_patcher.stop()
 
     def test_deploy_is_configured_and_run(self):
         # Given
@@ -277,7 +277,7 @@ class TestDestroyCLI(unittest.TestCase):
     @patch('cdflow_commands.config.check_output')
     @patch('cdflow_commands.state.check_call')
     @patch('cdflow_commands.state.NamedTemporaryFile')
-    @patch('cdflow_commands.state.rename')
+    @patch('cdflow_commands.state.move')
     def test_destroy_is_configured_and_run(
         self, _1, _2, check_call_state, check_output, check_call, mock_open,
         Session_from_config, Session_from_cli, mock_os_cli, mock_os_deploy,

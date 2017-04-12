@@ -106,7 +106,8 @@ def build_destroy_factory(
         lock_table_name = lock_table_factory.get_table_name()
 
         initialise_terraform_backend(
-            '/cdflow/tf-destroy', metadata.aws_region, s3_bucket, lock_table_name,
+            '/cdflow/tf-destroy', metadata.aws_region,
+            s3_bucket, lock_table_name,
             environment_name, component_name
         )
 
