@@ -6,14 +6,11 @@ from mock import patch
 
 
 @patch('cdflow_commands.cli.rmtree')
-@patch('cdflow_commands.cli.unlink')
 @patch('cdflow_commands.cli.sys')
 @patch('cdflow_commands.cli.load_service_metadata')
 class TestVerboseLogging(unittest.TestCase):
 
-    def test_verbose_flag_in_arguments(
-        self, load_service_metadata, _1, _2, _3
-    ):
+    def test_verbose_flag_in_arguments(self, load_service_metadata, _1, _2):
         # Given
         load_service_metadata.side_effect = UserFacingError
 
@@ -25,7 +22,7 @@ class TestVerboseLogging(unittest.TestCase):
         assert 'DEBUG:cdflow_commands.logger:Debug logging on' in logs.output
 
     def test_short_verbose_flag_in_arguments(
-        self, load_service_metadata, _1, _2, _3
+        self, load_service_metadata, _1, _2
     ):
         # Given
         load_service_metadata.side_effect = UserFacingError
@@ -39,14 +36,11 @@ class TestVerboseLogging(unittest.TestCase):
 
 
 @patch('cdflow_commands.cli.rmtree')
-@patch('cdflow_commands.cli.unlink')
 @patch('cdflow_commands.cli.sys')
 @patch('cdflow_commands.cli.load_service_metadata')
 class TestUserFacingErrorThrown(unittest.TestCase):
 
-    def test_non_zero_exit(
-        self, load_service_metadata, mock_sys, _1, _2
-    ):
+    def test_non_zero_exit(self, load_service_metadata, mock_sys, _):
         # Given
         load_service_metadata.side_effect = UserFacingError('Error')
 
@@ -60,7 +54,7 @@ class TestUserFacingErrorThrown(unittest.TestCase):
         assert expected_message in logs.output
 
     def test_files_are_always_attempted_to_be_removed(
-        self, load_service_metadata, mock_sys, unlink, rmtree
+        self, load_service_metadata, mock_sys, rmtree
     ):
         # Given
         load_service_metadata.side_effect = UserFacingError
@@ -72,11 +66,10 @@ class TestUserFacingErrorThrown(unittest.TestCase):
         rmtree.assert_called_once_with('.terraform/')
 
     def test_missing_files_are_ignored(
-        self, load_service_metadata, mock_sys, unlink, rmtree
+        self, load_service_metadata, mock_sys, rmtree
     ):
         # Given
         load_service_metadata.side_effect = UserFacingError
-        unlink.side_effect = OSError
         rmtree.side_effect = OSError
 
         # When
