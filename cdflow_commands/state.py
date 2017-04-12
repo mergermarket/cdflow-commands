@@ -42,7 +42,7 @@ def initialise_terraform_backend(
     state_file_key = f'{environment_name}/{component_name}/terraform.tfstate'
     logger.debug(
         f'Initialising backend in {directory} with {bucket_name}, '
-        '{aws_region}, {state_file_key}, {lock_table_name}'
+        f'{aws_region}, {state_file_key}, {lock_table_name}'
     )
     check_call(
         [
