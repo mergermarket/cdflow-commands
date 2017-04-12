@@ -40,10 +40,6 @@ def run(argv):
             rmtree('.terraform/')
         except OSError:
             logger.debug('No path .terraform/ to remove')
-        try:
-            unlink('.terragrunt')
-        except OSError:
-            logger.debug('No path .terragrunt to remove')
 
 
 def _run(argv):

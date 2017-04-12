@@ -70,7 +70,6 @@ class TestUserFacingErrorThrown(unittest.TestCase):
 
         # Then
         rmtree.assert_called_once_with('.terraform/')
-        unlink.assert_called_once_with('.terragrunt')
 
     def test_missing_files_are_ignored(
         self, load_service_metadata, mock_sys, unlink, rmtree
@@ -86,8 +85,6 @@ class TestUserFacingErrorThrown(unittest.TestCase):
 
         # Then
         rmtree.assert_called_once_with('.terraform/')
-        unlink.assert_called_once_with('.terragrunt')
 
         message_template = 'DEBUG:cdflow_commands.logger:No path {} to remove'
         assert message_template.format('.terraform/') in logs.output
-        assert message_template.format('.terragrunt') in logs.output

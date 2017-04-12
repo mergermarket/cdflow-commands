@@ -7,7 +7,7 @@ from textwrap import dedent
 from boto3.session import Session
 from botocore.exceptions import ClientError
 
-from cdflow_commands.terragrunt import (
+from cdflow_commands.state import (
     TAG_NAME, TAG_VALUE, S3BucketFactory, LockTableFactory,
     MissingTagError, IncorrectSchemaError, initialise_terraform_backend
 )
@@ -70,8 +70,8 @@ class TestS3BucketFactory(unittest.TestCase):
 
         s3_client.list_buckets.return_value = {
             'Buckets': [
-                {'Name': 'terragrunt-bucket'},
-                {'Name': 'another-terragrunt-bucket'}
+                {'Name': 'state-bucket'},
+                {'Name': 'another-state-bucket'}
             ]
         }
 
@@ -104,12 +104,12 @@ class TestS3BucketFactory(unittest.TestCase):
         s3_client.list_buckets.return_value = {
             'Buckets': [
                 {'Name': 'another-bucket'},
-                {'Name': 'terragrunt-bucket'}
+                {'Name': 'state-bucket'}
             ]
         }
 
         def get_bucket_tagging(Bucket):
-            if Bucket == 'terragrunt-bucket':
+            if Bucket == 'state-bucket':
                 return {
                     'TagSet': [
                         {
@@ -137,7 +137,7 @@ class TestS3BucketFactory(unittest.TestCase):
         bucket = s3_bucket_factory.get_bucket_name()
 
         # Then
-        assert bucket == 'terragrunt-bucket'
+        assert bucket == 'state-bucket'
 
     def test_bucket_created_and_tagged(self):
 
@@ -551,9 +551,9 @@ class TestTerraformBackendConfig(unittest.TestCase):
         component_name = terraform_backend_input['component_name']
 
         with patch(
-            'cdflow_commands.terragrunt.NamedTemporaryFile'
+            'cdflow_commands.state.NamedTemporaryFile'
         ) as NamedTemporaryFile, patch(
-            'cdflow_commands.terragrunt.check_call'
+            'cdflow_commands.state.check_call'
         ):
             mock_file = MagicMock(spec=BufferedRandom)
             NamedTemporaryFile.return_value.__enter__.return_value = mock_file
@@ -588,9 +588,9 @@ class TestTerraformBackendConfig(unittest.TestCase):
         )
 
         with patch(
-            'cdflow_commands.terragrunt.NamedTemporaryFile'
+            'cdflow_commands.state.NamedTemporaryFile'
         ), patch(
-            'cdflow_commands.terragrunt.check_call'
+            'cdflow_commands.state.check_call'
         ) as check_call:
             initialise_terraform_backend(
                 directory, aws_region, bucket_name, lock_table_name,
