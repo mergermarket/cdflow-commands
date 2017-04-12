@@ -3,7 +3,6 @@ import unittest
 from itertools import chain
 
 from boto3 import Session
-
 from cdflow_commands.plugins.infrastructure import Deploy, DeployConfig
 from mock import ANY, Mock, patch
 

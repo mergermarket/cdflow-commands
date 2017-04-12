@@ -17,8 +17,6 @@ import sys
 from shutil import rmtree
 
 from boto3.session import Session
-from docopt import docopt
-
 from cdflow_commands.config import (
     get_component_name, load_global_config, load_service_metadata
 )
@@ -26,6 +24,7 @@ from cdflow_commands.exceptions import UserFacingError
 from cdflow_commands.logger import logger
 from cdflow_commands.plugins.ecs import build_ecs_plugin
 from cdflow_commands.plugins.infrastructure import build_infrastructure_plugin
+from docopt import docopt
 
 
 def run(argv):
