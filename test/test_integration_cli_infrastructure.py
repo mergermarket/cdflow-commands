@@ -94,10 +94,10 @@ class TestDeployCLI(unittest.TestCase):
             'cdflow_commands.plugins.infrastructure.NamedTemporaryFile'
         )
         self.NamedTemporaryFile_state_patcher = patch(
-            'cdflow_commands.terragrunt.NamedTemporaryFile'
+            'cdflow_commands.state.NamedTemporaryFile'
         )
         self.check_call_state_patcher = patch(
-            'cdflow_commands.terragrunt.check_call'
+            'cdflow_commands.state.check_call'
         )
         self.rmtree = self.rmtree_patcher.start()
         self.unlink = self.unlink_patcher.start()
@@ -275,8 +275,8 @@ class TestDestroyCLI(unittest.TestCase):
     @patch('cdflow_commands.config.open', new_callable=mock_open, create=True)
     @patch('cdflow_commands.plugins.base.check_call')
     @patch('cdflow_commands.config.check_output')
-    @patch('cdflow_commands.terragrunt.check_call')
-    @patch('cdflow_commands.terragrunt.NamedTemporaryFile')
+    @patch('cdflow_commands.state.check_call')
+    @patch('cdflow_commands.state.NamedTemporaryFile')
     def test_destroy_is_configured_and_run(
         self, _1, check_call_state, check_output, check_call, mock_open,
         Session_from_config, Session_from_cli, mock_os_cli, mock_os_deploy,
@@ -386,4 +386,3 @@ class TestDestroyCLI(unittest.TestCase):
         )
 
         rmtree.assert_called_once_with('.terraform/')
-        unlink.assert_called_once_with('.terragrunt')
