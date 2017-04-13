@@ -5,7 +5,6 @@ from string import ascii_letters, ascii_lowercase, digits
 from subprocess import CalledProcessError
 
 from botocore.exceptions import ClientError
-
 from cdflow_commands.exceptions import UserFacingError
 from cdflow_commands.plugins.ecs import Release, ReleaseConfig
 from hypothesis import assume, given, settings

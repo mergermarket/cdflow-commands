@@ -14,7 +14,7 @@ class Destroy(object):
         self._bucket_name = bucket_name
 
     @property
-    def _terragrunt_parameters(self):
+    def _terraform_parameters(self):
         return [
             '-var', 'aws_region={}'.format(self._aws_region),
             '/cdflow/tf-destroy'
@@ -30,11 +30,11 @@ class Destroy(object):
         env = os.environ.copy()
         env.update(aws_credentials)
         check_call(
-            ['terragrunt', 'plan', '-destroy'] + self._terragrunt_parameters,
+            ['terraform', 'plan', '-destroy'] + self._terraform_parameters,
             env=env
         )
         check_call(
-            ['terragrunt', 'destroy', '-force'] + self._terragrunt_parameters,
+            ['terraform', 'destroy', '-force'] + self._terraform_parameters,
             env=env
         )
         boto_s3_client = self._boto_session.client('s3')

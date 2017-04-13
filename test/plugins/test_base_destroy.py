@@ -19,7 +19,7 @@ class TestDestroy(unittest.TestCase):
         'environment_name': text(alphabet=printable, min_size=1),
         'region': text(alphabet=printable, min_size=8, max_size=12),
     }))
-    def test_plan_was_called_via_terragrunt(self, test_fixtures):
+    def test_plan_was_called_via_terraform(self, test_fixtures):
         component_name = test_fixtures['component_name']
         environment_name = test_fixtures['environment_name']
 
@@ -32,7 +32,7 @@ class TestDestroy(unittest.TestCase):
         with patch('cdflow_commands.plugins.base.check_call') as check_call:
             destroy.run()
             check_call.assert_any_call([
-                'terragrunt', 'plan', '-destroy',
+                'terraform', 'plan', '-destroy',
                 '-var', 'aws_region={}'.format(test_fixtures['region']),
                 '/cdflow/tf-destroy'
             ], env=ANY)
@@ -42,7 +42,7 @@ class TestDestroy(unittest.TestCase):
         'environment_name': text(alphabet=printable, min_size=1),
         'region': text(alphabet=printable, min_size=8, max_size=12),
     }))
-    def test_destroy_was_called_via_terragrunt(self, test_fixtures):
+    def test_destroy_was_called_via_terraform(self, test_fixtures):
         component_name = test_fixtures['component_name']
         environment_name = test_fixtures['environment_name']
         boto_session = Mock()
@@ -54,7 +54,7 @@ class TestDestroy(unittest.TestCase):
         with patch('cdflow_commands.plugins.base.check_call') as check_call:
             destroy.run()
             check_call.assert_any_call([
-                'terragrunt', 'destroy', '-force',
+                'terraform', 'destroy', '-force',
                 '-var', 'aws_region={}'.format(test_fixtures['region']),
                 '/cdflow/tf-destroy'
             ], env=ANY)
