@@ -194,11 +194,11 @@ class TestEnvironmentSpecificConfigAddedToTerraformArgs(unittest.TestCase):
                 'infra'
             ]
             check_call.assert_any_call(
-                ['terragrunt', 'plan'] + args,
+                ['terraform', 'plan'] + args,
                 env=ANY
             )
             check_call.assert_any_call(
-                ['terragrunt', 'apply'] + args,
+                ['terraform', 'apply'] + args,
                 env=ANY
             )
             path.exists.assert_any_call(config_file)
