@@ -1,6 +1,5 @@
-from botocore.exceptions import ClientError
-
 import credstash
+from botocore.exceptions import ClientError
 
 
 def get_secrets(env_name, team, component_name, boto_session):

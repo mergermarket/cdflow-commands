@@ -4,7 +4,6 @@ from itertools import chain
 from string import ascii_letters
 
 from boto3 import Session
-
 from cdflow_commands.plugins.infrastructure import Deploy, DeployConfig
 from hypothesis import given
 from hypothesis.strategies import text
@@ -45,9 +44,9 @@ class TestDeploy(unittest.TestCase):
         get_secrets.return_value = {}
         self._deploy.run()
 
-        check_call.assert_any_call(['terragrunt', 'get', 'infra'])
+        check_call.assert_any_call(['terraform', 'get', 'infra'])
 
-    def test_terragrunt_plan_called(
+    def test_terraform_plan_called(
         self, NamedTemporaryFile, get_secrets, check_call, mock_os
     ):
         # When
@@ -73,11 +72,11 @@ class TestDeploy(unittest.TestCase):
         ignored_parameters = base_parameters + list(extra_parameters)
 
         check_call.assert_any_call(
-            ['terragrunt', 'plan'] + ignored_parameters + ['infra'],
+            ['terraform', 'plan'] + ignored_parameters + ['infra'],
             env=ANY
         )
 
-    def test_terragrunt_apply_called(
+    def test_terraform_apply_called(
         self, NamedTemporaryFile, get_secrets, check_call, mock_os
     ):
         # When
@@ -103,7 +102,7 @@ class TestDeploy(unittest.TestCase):
 
         # Then
         check_call.assert_any_call(
-            ['terragrunt', 'apply'] + ignored_parameters + ['infra'],
+            ['terraform', 'apply'] + ignored_parameters + ['infra'],
             env=ANY
         )
 
@@ -124,7 +123,7 @@ class TestDeploy(unittest.TestCase):
             json.dumps({'secrets': {'a': 1}}).encode('utf-8')
         )
 
-    def test_aws_credentials_passed_to_terragrunt(
+    def test_aws_credentials_passed_to_terraform(
         self, NamedTemporaryFile, get_secrets, check_call, mock_os
     ):
         # Given
@@ -139,7 +138,7 @@ class TestDeploy(unittest.TestCase):
 
         # Then
         check_call.assert_any_call(
-            ['terragrunt', 'apply'] + [ANY] * 14 + ['infra'],
+            ['terraform', 'apply'] + [ANY] * 14 + ['infra'],
             env={
                 'AWS_ACCESS_KEY_ID': self._aws_access_key,
                 'AWS_SECRET_ACCESS_KEY': self._aws_secret_access_key,

@@ -14,11 +14,9 @@ Options:
 """
 import logging
 import sys
-from os import unlink
 from shutil import rmtree
 
 from boto3.session import Session
-
 from cdflow_commands.config import (
     get_component_name, load_global_config, load_service_metadata
 )
@@ -40,10 +38,6 @@ def run(argv):
             rmtree('.terraform/')
         except OSError:
             logger.debug('No path .terraform/ to remove')
-        try:
-            unlink('.terragrunt')
-        except OSError:
-            logger.debug('No path .terragrunt to remove')
 
 
 def _run(argv):

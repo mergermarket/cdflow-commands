@@ -3,7 +3,6 @@ from string import ascii_letters, digits, printable
 
 from boto3.session import Session
 from botocore.exceptions import ClientError
-
 from cdflow_commands.secrets import get_secrets
 from hypothesis import assume, given
 from hypothesis.strategies import dictionaries, fixed_dictionaries, text

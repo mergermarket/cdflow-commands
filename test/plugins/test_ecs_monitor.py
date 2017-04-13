@@ -3,12 +3,11 @@ import unittest
 from itertools import cycle, islice
 
 from boto3 import Session
-from dateutil.tz import tzlocal
-
 from cdflow_commands.plugins.ecs import (
     DoneEvent, ECSEventIterator, ECSMonitor, FailedTasksError,
     ImageDoesNotMatchError, InProgressEvent, TimeoutError, build_service_name
 )
+from dateutil.tz import tzlocal
 from hypothesis import example, given, settings
 from hypothesis.strategies import fixed_dictionaries, text
 from mock import ANY, MagicMock, Mock

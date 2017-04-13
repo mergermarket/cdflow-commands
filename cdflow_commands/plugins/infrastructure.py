@@ -13,7 +13,9 @@ from cdflow_commands.logger import logger
 from cdflow_commands.plugins import Plugin
 from cdflow_commands.plugins.base import Destroy
 from cdflow_commands.secrets import get_secrets
-from cdflow_commands.terragrunt import S3BucketFactory, write_terragrunt_config
+from cdflow_commands.state import (
+    LockTableFactory, S3BucketFactory, initialise_terraform_backend
+)
 
 DeployConfig = namedtuple('DeployConfig', [
     'team',
@@ -63,9 +65,15 @@ def build_deploy_factory(
         )
         s3_bucket_factory = S3BucketFactory(boto_session, account_id)
         s3_bucket = s3_bucket_factory.get_bucket_name()
-        write_terragrunt_config(
-            metadata.aws_region, s3_bucket, environment_name, component_name
+
+        lock_table_factory = LockTableFactory(boto_session)
+        lock_table_name = lock_table_factory.get_table_name()
+
+        initialise_terraform_backend(
+            'infra', metadata.aws_region, s3_bucket, lock_table_name,
+            environment_name, component_name
         )
+
         deploy_config = DeployConfig(
             team=metadata.team,
             platform_config_file=platform_config_file,
@@ -94,9 +102,16 @@ def build_destroy_factory(
         )
         s3_bucket_factory = S3BucketFactory(boto_session, account_id)
         s3_bucket = s3_bucket_factory.get_bucket_name()
-        write_terragrunt_config(
-            metadata.aws_region, s3_bucket, environment_name, component_name
+
+        lock_table_factory = LockTableFactory(boto_session)
+        lock_table_name = lock_table_factory.get_table_name()
+
+        initialise_terraform_backend(
+            '/cdflow/tf-destroy', metadata.aws_region,
+            s3_bucket, lock_table_name,
+            environment_name, component_name
         )
+
         return Destroy(
             boto_session, component_name, environment_name, s3_bucket
         )
@@ -115,7 +130,7 @@ class Deploy:
         self._additional_variables = additional_variables
         self._config = config
 
-    def _terragrunt_parameters(self, secrets_file):
+    def _terraform_parameters(self, secrets_file):
         parameters = [
             '-var', 'component={}'.format(self._component_name),
             '-var', 'env={}'.format(self._environment_name),
@@ -136,7 +151,7 @@ class Deploy:
         return parameters + list(additional_variables)
 
     def run(self):
-        check_call(['terragrunt', 'get', 'infra'])
+        check_call(['terraform', 'get', 'infra'])
 
         credentials = self._boto_session.get_credentials()
         env = os.environ.copy()
@@ -155,12 +170,12 @@ class Deploy:
             )
             f.write(json.dumps({'secrets': secrets}).encode('utf-8'))
             f.flush()
-            parameters = self._terragrunt_parameters(f.name)
+            parameters = self._terraform_parameters(f.name)
             check_call(
-                ['terragrunt', 'plan'] + parameters + ['infra'], env=env
+                ['terraform', 'plan'] + parameters + ['infra'], env=env
             )
             check_call(
-                ['terragrunt', 'apply'] + parameters + ['infra'], env=env
+                ['terraform', 'apply'] + parameters + ['infra'], env=env
             )
 
 
