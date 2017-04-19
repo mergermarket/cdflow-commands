@@ -1,6 +1,9 @@
 import unittest
 
-from cdflow_commands.plugins.infrastructure import InfrastructurePlugin
+from cdflow_commands.exceptions import MissingArgumentError
+from cdflow_commands.plugins.infrastructure import (
+    InfrastructurePlugin, build_infrastructure_plugin
+)
 from mock import ANY, Mock
 
 
@@ -57,3 +60,11 @@ class TestInfrastructurePlugin(unittest.TestCase):
 
         # Then
         destroy.run.assert_called_once()
+
+    def test_plugin_fails_to_build_when_environment_missing(self):
+        # Given
+        environment = ''
+
+        # Then
+        with self.assertRaises(MissingArgumentError):
+            build_infrastructure_plugin(environment, ANY, ANY, ANY, ANY, ANY)
