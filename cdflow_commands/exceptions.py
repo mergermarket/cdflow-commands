@@ -6,6 +6,10 @@ class UserFacingError(CDFlowError):
     pass
 
 
+class MissingArgumentError(UserFacingError):
+    pass
+
+
 class FixedMessageError(CDFlowError):
     _message = 'Error'
 
