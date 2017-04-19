@@ -14,7 +14,7 @@ from cdflow_commands.config import (
     assume_role, get_platform_config_path, get_role_session_name
 )
 from cdflow_commands.exceptions import (
-    UserFacingError, UserFacingFixedMessageError
+    UserFacingError, UserFacingFixedMessageError, MissingArgumentError
 )
 from cdflow_commands.logger import logger
 from cdflow_commands.plugins import Plugin
@@ -29,6 +29,8 @@ def build_ecs_plugin(
     environment_name, component_name, version,
     metadata, global_config, root_session
 ):
+    validate_plugin_arguments(environment_name, version)
+
     release_factory = build_release_factory(
         component_name, version, metadata, global_config, root_session
     )
@@ -53,6 +55,14 @@ def build_ecs_plugin(
         destroy_factory,
         deploy_monitor_factory
     )
+
+
+def validate_plugin_arguments(environment_name, version):
+    if environment_name == '':
+        raise MissingArgumentError('Environment is missing')
+
+    if version == '':
+        raise MissingArgumentError('Version is missing')
 
 
 def build_release_factory(

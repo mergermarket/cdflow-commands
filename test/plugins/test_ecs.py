@@ -1,6 +1,7 @@
 import unittest
 
-from cdflow_commands.plugins.ecs import ECSPlugin
+from cdflow_commands.exceptions import MissingArgumentError
+from cdflow_commands.plugins.ecs import ECSPlugin, build_ecs_plugin
 from mock import ANY, Mock
 
 
@@ -83,3 +84,19 @@ class TestECSPlugin(unittest.TestCase):
 
         # Then
         deploy_monitor.wait.assert_called_once()
+
+    def test_plugin_fails_to_build_when_version_missing(self):
+        # Given
+        version = ''
+
+        # Then
+        with self.assertRaises(MissingArgumentError):
+            build_ecs_plugin(ANY, ANY, version, ANY, ANY, ANY)
+
+    def test_plugin_fails_to_build_when_environment_missing(self):
+        # Given
+        environment = ''
+
+        # Then
+        with self.assertRaises(MissingArgumentError):
+            build_ecs_plugin(environment, ANY, ANY, ANY, ANY, ANY)

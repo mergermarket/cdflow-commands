@@ -9,6 +9,7 @@ from tempfile import NamedTemporaryFile
 from cdflow_commands.config import (
     assume_role, get_platform_config_path, get_role_session_name
 )
+from cdflow_commands.exceptions import MissingArgumentError
 from cdflow_commands.logger import logger
 from cdflow_commands.plugins import Plugin
 from cdflow_commands.plugins.base import Destroy
@@ -27,7 +28,7 @@ def build_infrastructure_plugin(
     environment_name, component_name, additional_variables,
     metadata, global_config, root_session
 ):
-
+    validate_plugin_arguments(environment_name)
     release_factory = None
 
     deploy_factory = build_deploy_factory(
@@ -42,6 +43,11 @@ def build_infrastructure_plugin(
     return InfrastructurePlugin(
         release_factory, deploy_factory, destroy_factory
     )
+
+
+def validate_plugin_arguments(environment_name):
+    if environment_name == '':
+        raise MissingArgumentError('Environment is missing')
 
 
 def build_deploy_factory(
