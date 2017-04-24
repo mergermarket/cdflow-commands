@@ -98,7 +98,7 @@ class TestS3BucketFactory(unittest.TestCase):
 
         # Given
         session = Mock()
-        session.region_nane = 'dummy-region-name'
+        session.region_name = 'dummy-region-name'
         s3_client = Mock()
         session.client.return_value = s3_client
 
