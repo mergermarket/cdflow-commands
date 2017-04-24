@@ -140,6 +140,40 @@ class TestS3BucketFactory(unittest.TestCase):
         # Then
         assert bucket == 'state-bucket'
 
+    def test_bucket_created_and_tagged_in_us_standard_region(self):
+
+        # Given
+        session = Mock()
+        session.region_name = 'us-east-1'
+        s3_client = Mock()
+        session.client.return_value = s3_client
+
+        s3_client.list_buckets.return_value = {
+            'Buckets': [
+            ]
+        }
+
+        s3_bucket_factory = S3BucketFactory(session, 'dummy-account-id')
+        # When
+        bucket_name = s3_bucket_factory.get_bucket_name()
+
+        # Then
+        s3_client.create_bucket.assert_called_once_with(
+            Bucket=bucket_name
+        )
+
+        s3_client.put_bucket_tagging.assert_called_once_with(
+            Bucket=bucket_name,
+            Tagging={
+                'TagSet': [
+                    {
+                        'Key': TAG_NAME,
+                        'Value': TAG_VALUE,
+                    }
+                ]
+            }
+        )
+
     def test_bucket_created_and_tagged(self):
 
         # Given
@@ -176,6 +210,38 @@ class TestS3BucketFactory(unittest.TestCase):
                 ]
             }
         )
+
+    def test_existing_bucket_name_returned_when_in_us_standard_region(self):
+
+        # Given
+        session = Mock()
+        session.region_name = 'us-east-1'
+        s3_client = Mock()
+        session.client.return_value = s3_client
+
+        s3_client.list_buckets.return_value = {
+            'Buckets': [
+                {'Name': 'dummy-bucket-name'}
+            ]
+        }
+        s3_client.get_bucket_tagging.return_value = {
+            'TagSet': [
+                {
+                    'Key': TAG_NAME,
+                    'Value': TAG_VALUE,
+                }
+            ]
+        }
+        s3_client.get_bucket_location.return_value = {
+            'LocationConstraint': None
+        }
+
+        s3_bucket_factory = S3BucketFactory(session, 'dummy-account-id')
+        # When
+        bucket_name = s3_bucket_factory.get_bucket_name()
+
+        # Then
+        assert bucket_name == 'dummy-bucket-name'
 
     def test_bucket_created_and_tagged_when_one_exists_in_another_region(self):
 

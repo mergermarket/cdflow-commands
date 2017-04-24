@@ -194,6 +194,10 @@ class S3BucketFactory(object):
             Bucket=bucket_name
         )
         region = region_response['LocationConstraint']
+
+        if self._aws_region == 'us-east-1' and region is None:
+            return True
+
         return region == self._aws_region
 
     def _get_bucket_tags(self, bucket_name):
@@ -216,13 +220,21 @@ class S3BucketFactory(object):
             MAX_CREATION_ATTEMPTS
         ))
 
+    def _generate_create_bucket_params(self, bucket_name):
+        create_bucket_params = {
+            'Bucket': bucket_name,
+        }
+        if self._aws_region != 'us-east-1':
+            create_bucket_params['CreateBucketConfiguration'] = {
+                'LocationConstraint': self._aws_region
+            }
+
+        return create_bucket_params
+
     def _attempt_to_create_bucket(self, bucket_name):
         try:
             self._boto_s3_client.create_bucket(
-                Bucket=bucket_name,
-                CreateBucketConfiguration={
-                    'LocationConstraint': self._aws_region
-                }
+                **self._generate_create_bucket_params(bucket_name)
             )
         except ClientError as e:
             if e.response.get('Error', {}).get('Code') not in (
