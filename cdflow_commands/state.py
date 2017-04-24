@@ -17,10 +17,6 @@ NAME_PREFIX = 'cdflow-tfstate'
 MAX_CREATION_ATTEMPTS = 10
 
 
-class MissingTagError(CDFlowError):
-    pass
-
-
 class IncorrectSchemaError(CDFlowError):
     pass
 
@@ -77,8 +73,6 @@ def initialise_terraform_backend(
 class LockTableFactory:
 
     TABLE_NAME = 'terraform_locks'
-    TAG_NAME = 'cdflow_terraform_locks'
-    TAG_VALUE = 'true'
     ID_COLUMN = 'LockID'
 
     def __init__(self, boto_session):
@@ -95,7 +89,6 @@ class LockTableFactory:
         response = self._client.describe_table(
             TableName=self.TABLE_NAME
         )
-        self._check_tag(response['Table']['TableArn'])
         self._check_schema(response['Table'])
         return response['Table']['TableName']
 
@@ -105,17 +98,8 @@ class LockTableFactory:
                 return True
         raise IncorrectSchemaError(f'No attribute {self.ID_COLUMN} in table')
 
-    def _check_tag(self, table_arn):
-        tags_response = self._client.list_tags_of_resource(
-            ResourceArn=table_arn
-        )
-        for tag in tags_response['Tags']:
-            if tag['Key'] == self.TAG_NAME and tag['Value'] == self.TAG_VALUE:
-                return True
-        raise MissingTagError(f'No tag {self.TAG_NAME} found for {table_arn}')
-
     def _create_table(self):
-        response = self._client.create_table(
+        self._client.create_table(
             TableName=self.TABLE_NAME,
             AttributeDefinitions=[
                 {'AttributeName': self.ID_COLUMN, 'AttributeType': 'S'}
@@ -125,12 +109,6 @@ class LockTableFactory:
                 'ReadCapacityUnits': 1,
                 'WriteCapacityUnits': 1
             }
-        )
-        self._client.tag_resource(
-            ResourceArn=response['TableDescription']['TableArn'],
-            Tags=[
-                {'Key': self.TAG_NAME, 'Value': self.TAG_VALUE}
-            ]
         )
         self._client.get_waiter('table_exists').wait(TableName=self.TABLE_NAME)
         return self.TABLE_NAME

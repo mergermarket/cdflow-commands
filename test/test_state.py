@@ -9,8 +9,7 @@ from boto3.session import Session
 from botocore.exceptions import ClientError
 from cdflow_commands.state import (
     TAG_NAME, TAG_VALUE, IncorrectSchemaError, LockTableFactory,
-    MissingTagError, S3BucketFactory, initialise_terraform_backend,
-    remove_file
+    S3BucketFactory, initialise_terraform_backend, remove_file
 )
 from hypothesis import given
 from hypothesis.strategies import fixed_dictionaries, text
@@ -428,27 +427,6 @@ class TestLockTableFactory(unittest.TestCase):
 
         assert table_name == 'terraform_locks'
 
-    def test_requires_resource_to_be_tagged(self):
-        boto_session = MagicMock(spec=Session)
-        mock_dynamodb_client = Mock()
-        mock_dynamodb_client.describe_table.return_value = {
-            'Table': {
-                'AttributeDefinitions': [
-                    {'AttributeName': 'LockID', 'AttributeType': 'S'}
-                ],
-                'TableName': 'terraform_locks',
-                'TableArn': (
-                    'arn:aws:dynamodb:eu-west-12:123456789:'
-                    'table/terraform_locks'
-                ),
-            }
-        }
-        mock_dynamodb_client.list_tags_of_resource.return_value = {'Tags': []}
-        boto_session.client.return_value = mock_dynamodb_client
-        table_factory = LockTableFactory(boto_session)
-
-        self.assertRaises(MissingTagError, table_factory.get_table_name)
-
     def test_table_must_have_correct_schema(self):
         boto_session = MagicMock(spec=Session)
         mock_dynamodb_client = Mock()
@@ -536,39 +514,6 @@ class TestLockTableFactory(unittest.TestCase):
         mock_dynamodb_client.get_waiter.assert_called_once_with('table_exists')
 
         mock_waiter.wait.assert_called_once_with(TableName='terraform_locks')
-
-    def test_tags_newly_creates_table(self):
-        boto_session = MagicMock(spec=Session)
-        mock_dynamodb_client = Mock()
-        mock_dynamodb_client.describe_table.side_effect = ClientError(
-            {
-                'Error': {
-                    'Message': 'Requested resource not found:',
-                    'Code': 'ResourceNotFoundException'
-                }
-            },
-            None
-        )
-        table_arn = 'table:arn:aws:123456789/terraform_locks'
-        mock_dynamodb_client.create_table.return_value = {
-            'TableDescription': {
-                'TableName': 'string',
-                'TableStatus': 'CREATING',
-                'TableArn': table_arn,
-            }
-        }
-        boto_session.client.return_value = mock_dynamodb_client
-
-        table_factory = LockTableFactory(boto_session)
-
-        table_factory.get_table_name()
-
-        mock_dynamodb_client.tag_resource.assert_called_once_with(
-            ResourceArn=table_arn,
-            Tags=[
-                {'Key': 'cdflow_terraform_locks', 'Value': 'true'}
-            ]
-        )
 
     def test_other_client_errors_are_reraised(self):
         boto_session = MagicMock(spec=Session)
