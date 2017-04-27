@@ -24,6 +24,7 @@ from cdflow_commands.exceptions import UserFacingError
 from cdflow_commands.logger import logger
 from cdflow_commands.plugins.ecs import build_ecs_plugin
 from cdflow_commands.plugins.infrastructure import build_infrastructure_plugin
+from cdflow_commands.plugins.aws_lambda import build_lambda_plugin
 from docopt import docopt
 
 
@@ -85,6 +86,15 @@ def build_plugin(project_type, **kwargs):
             kwargs['environment_name'],
             kwargs['component_name'],
             kwargs['additional_variables'],
+            kwargs['metadata'],
+            kwargs['global_config'],
+            kwargs['root_session'],
+        )
+    elif project_type == 'lambda':
+        plugin = build_lambda_plugin(
+            kwargs['environment_name'],
+            kwargs['component_name'],
+            kwargs['version'],
             kwargs['metadata'],
             kwargs['global_config'],
             kwargs['root_session'],
