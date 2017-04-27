@@ -20,7 +20,7 @@ class TestLambdaRelease(unittest.TestCase):
             }
         }
         release = Release(
-            config, boto_s3_client, 'dummy-component-name', metadata
+            config, boto_s3_client, 'dummy-component-name', metadata, '1.0.0'
         )
         release.create()
         zip_file.assert_called_once_with('dummy-component-name.zip', 'x')
@@ -45,7 +45,7 @@ class TestLambdaRelease(unittest.TestCase):
             }
         }
         release = Release(
-            config, boto_s3_client, 'dummy-component-name', metadata
+            config, boto_s3_client, 'dummy-component-name', metadata, '1.0.0'
         )
         release.create()
         assert not boto_s3_client.create_bucket.called
@@ -65,7 +65,7 @@ class TestLambdaRelease(unittest.TestCase):
             }
         }
         release = Release(
-            config, boto_s3_client, 'dummy-component-name', metadata
+            config, boto_s3_client, 'dummy-component-name', metadata, '1.0.0'
         )
         release.create()
         boto_s3_client.create_bucket.assert_called_once_with(
@@ -89,12 +89,13 @@ class TestLambdaRelease(unittest.TestCase):
                 'ID': 'string'
             }
         }
+        version = '1.0.0'
         release = Release(
-            config, boto_s3_client, 'dummy-component-name', metadata
+            config, boto_s3_client, 'dummy-component-name', metadata, version
         )
         release.create()
         boto_s3_client.upload_file.assert_called_once_with(
             zip_file().filename,
             'mmg-lambdas-dummy-team-name',
-            'dummy-component-name.zip'
+            'dummy-component-name/1.0.0.zip'
         )

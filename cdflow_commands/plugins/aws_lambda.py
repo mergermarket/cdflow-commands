@@ -41,7 +41,8 @@ class LambdaPlugin():
             self._global_config,
             self._boto_s3_client,
             self._component_name,
-            self._metadata
+            self._metadata,
+            self._version
         )
         release.create()
 
@@ -52,12 +53,14 @@ class Release():
         global_config,
         boto_s3_client,
         component_name,
-        metadata
+        metadata,
+        version
     ):
         self._global_config = global_config
         self._boto_s3_client = boto_s3_client
         self._component_name = component_name
         self._metadata = metadata
+        self._version = version
 
     def create(self):
         # import pdb; pdb.set_trace()
@@ -85,5 +88,5 @@ class Release():
         self._boto_s3_client.upload_file(
             zip.filename,
             'mmg-lambdas-{}'.format(self._metadata.team),
-            self._component_name + '.zip'
+            '{}/{}.zip'.format(self._component_name, self._version)
         )
