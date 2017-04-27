@@ -9,12 +9,14 @@ from mock import Mock, MagicMock, patch, mock_open
 
 class TestReleaseCLI(unittest.TestCase):
 
+    @patch('cdflow_commands.plugins.aws_lambda.ZipFile')
     @patch('cdflow_commands.config.Session')
     @patch('cdflow_commands.cli.Session')
     @patch('cdflow_commands.plugins.aws_lambda.os')
     @patch('cdflow_commands.config.open', new_callable=mock_open, create=True)
     def test_release_package_is_created(
-        self, mock_open, mock_os, session_from_cli, session_from_config
+        self, mock_open, mock_os,
+        session_from_cli, session_from_config, zip_file
     ):
         mock_metadata_file = MagicMock(spec=TextIOWrapper)
         metadata = {
@@ -48,18 +50,17 @@ class TestReleaseCLI(unittest.TestCase):
         mock_root_session.region_name = 'eu-west-12'
         session_from_cli.return_value = mock_root_session
 
-        mock_ecr_client = Mock()
-        mock_ecr_client.get_authorization_token.return_value = {
-            'authorizationData': [
-                {
-                    'authorizationToken': 'dXNlcm5hbWU6cGFzc3dvcmQ=',
-                    'proxyEndpoint': 'dummy-endpoint'
-                }
-            ]
+        mock_s3_client = Mock()
+        mock_s3_client.list_buckets.return_value = {
+            'Buckets': [],
+            'Owner': {
+                'DisplayName': 'string',
+                'ID': 'string'
+            }
         }
 
         mock_session = Mock()
-        mock_session.client.return_value = mock_ecr_client
+        mock_session.client.return_value = mock_s3_client
         session_from_config.return_value = mock_session
 
         mock_sts = Mock()
@@ -85,3 +86,8 @@ class TestReleaseCLI(unittest.TestCase):
         component_name = 'dummy-component'
         version = '6.1.7'
         cli.run(['release', version, '-c', component_name])
+        mock_s3_client.upload_file.assert_called_once_with(
+            zip_file().filename,
+            'mmg-lambdas-dummy-team',
+            'dummy-component/6.1.7.zip'
+        )
