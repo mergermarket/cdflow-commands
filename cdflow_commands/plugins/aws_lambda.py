@@ -60,24 +60,30 @@ class Release():
         self._metadata = metadata
 
     def create(self):
+        # import pdb; pdb.set_trace()
         zip = ZipFile(self._component_name + '.zip', 'x')
 
-        for dirname, subdirs, files in os.walk('.'):
+        for dirname, subdirs, files in os.walk(self._component_name):
             zip.write(dirname)
             for filename in files:
                 zip.write(os.path.join(dirname, filename))
         zip.close()
-
-        self._boto_s3_client.create_bucket(
-            ACL='private',
-            Bucket=self._metadata.team,
-            CreateBucketConfiguration={
-                'LocationConstraint': self._metadata.aws_region
-            }
-        )
-
-        self._boto_s3_client.put_object(
-            Body=zip,
-            Bucket=self._metadata.team,
-            Key=self._component_name
+        bucket_list = self._boto_s3_client.list_buckets()
+        bucket_names = [
+            bucket['Name']
+            for bucket in bucket_list['Buckets']
+            if bucket['Name'] == 'mmg-lambdas-{}'.format(self._metadata.team)
+        ]
+        if not bucket_names:
+            self._boto_s3_client.create_bucket(
+                ACL='private',
+                Bucket='mmg-lambdas-{}'.format(self._metadata.team),
+                CreateBucketConfiguration={
+                    'LocationConstraint': self._metadata.aws_region
+                }
+            )
+        self._boto_s3_client.upload_file(
+            zip.filename,
+            'mmg-lambdas-{}'.format(self._metadata.team),
+            self._component_name + '.zip'
         )
