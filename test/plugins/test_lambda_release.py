@@ -1,5 +1,6 @@
 import unittest
 
+from datetime import datetime
 from mock import Mock, patch
 from cdflow_commands.plugins.aws_lambda import Release
 
@@ -10,12 +11,44 @@ class TestLambdaRelease(unittest.TestCase):
     def test_release_create_zips_directory(self, zip_file):
         config = Mock()
         metadata = Mock()
-        self._boto_s3_client = Mock()
+        boto_s3_client = Mock()
+        boto_s3_client.list_buckets.return_value = {
+            'Buckets': [],
+            'Owner': {
+                'DisplayName': 'string',
+                'ID': 'string'
+            }
+        }
         release = Release(
-            config, self._boto_s3_client, 'dummy-component-name', metadata
+            config, boto_s3_client, 'dummy-component-name', metadata
         )
         release.create()
         zip_file.assert_called_once_with('dummy-component-name.zip', 'x')
+
+    @patch('cdflow_commands.plugins.aws_lambda.ZipFile')
+    def test_release_does_not_create_bucket_if_existing(self, zip_file):
+        config = Mock()
+        metadata = Mock()
+        metadata.team = 'dummy-team-name'
+        metadata.aws_region = 'dummy-region'
+        boto_s3_client = Mock()
+        boto_s3_client.list_buckets.return_value = {
+            'Buckets': [
+                {
+                    'Name': 'mmg-lambdas-dummy-team-name',
+                    'CreationDate': datetime(2015, 1, 1)
+                },
+            ],
+            'Owner': {
+                'DisplayName': 'string',
+                'ID': 'string'
+            }
+        }
+        release = Release(
+            config, boto_s3_client, 'dummy-component-name', metadata
+        )
+        release.create()
+        assert not boto_s3_client.create_bucket.called
 
     @patch('cdflow_commands.plugins.aws_lambda.ZipFile')
     def test_release_creates_bucket_with_teamname(self, zip_file):
@@ -24,13 +57,20 @@ class TestLambdaRelease(unittest.TestCase):
         metadata.team = 'dummy-team-name'
         metadata.aws_region = 'dummy-region'
         boto_s3_client = Mock()
+        boto_s3_client.list_buckets.return_value = {
+            'Buckets': [],
+            'Owner': {
+                'DisplayName': 'string',
+                'ID': 'string'
+            }
+        }
         release = Release(
             config, boto_s3_client, 'dummy-component-name', metadata
         )
         release.create()
-        assert boto_s3_client.create_bucket.called_once_with(
+        boto_s3_client.create_bucket.assert_called_once_with(
             ACL='private',
-            Bucket='dummy-team-name',
+            Bucket='mmg-lambdas-dummy-team-name',
             CreateBucketConfiguration={
                 'LocationConstraint': 'dummy-region'
             }
@@ -41,13 +81,20 @@ class TestLambdaRelease(unittest.TestCase):
         config = Mock()
         metadata = Mock()
         metadata.team = 'dummy-team-name'
-        self._boto_s3_client = Mock()
+        boto_s3_client = Mock()
+        boto_s3_client.list_buckets.return_value = {
+            'Buckets': [],
+            'Owner': {
+                'DisplayName': 'string',
+                'ID': 'string'
+            }
+        }
         release = Release(
-            config, self._boto_s3_client, 'dummy-component-name', metadata
+            config, boto_s3_client, 'dummy-component-name', metadata
         )
         release.create()
-        self._boto_s3_client.put_object.assert_called_once_with(
-            Body=zip_file(),
-            Bucket='dummy-team-name',
-            Key='dummy-component-name'
+        boto_s3_client.upload_file.assert_called_once_with(
+            zip_file().filename,
+            'mmg-lambdas-dummy-team-name',
+            'dummy-component-name.zip'
         )
