@@ -2,7 +2,7 @@ import unittest
 from string import ascii_letters, printable
 
 from boto3 import Session
-from cdflow_commands.plugins.ecs import Deploy, DeployConfig
+from cdflow_commands.deploy import Deploy, DeployConfig
 from hypothesis import given
 from hypothesis.strategies import dictionaries, fixed_dictionaries, text
 from mock import ANY, patch
@@ -27,9 +27,9 @@ class TestDeploy(unittest.TestCase):
             'dummy-version', 'dummy-ecs-cluster', self._deploy_config
         )
 
-    @patch('cdflow_commands.plugins.ecs.check_call')
-    @patch('cdflow_commands.plugins.ecs.get_secrets')
-    @patch('cdflow_commands.plugins.ecs.NamedTemporaryFile')
+    @patch('cdflow_commands.deploy.check_call')
+    @patch('cdflow_commands.deploy.get_secrets')
+    @patch('cdflow_commands.deploy.NamedTemporaryFile')
     def test_terraform_modules_fetched(
         self, NamedTemporaryFile, get_secrets, check_call
     ):
@@ -40,9 +40,9 @@ class TestDeploy(unittest.TestCase):
         # Then
         check_call.assert_any_call(['terraform', 'get', 'infra'])
 
-    @patch('cdflow_commands.plugins.ecs.check_call')
-    @patch('cdflow_commands.plugins.ecs.get_secrets')
-    @patch('cdflow_commands.plugins.ecs.NamedTemporaryFile')
+    @patch('cdflow_commands.deploy.check_call')
+    @patch('cdflow_commands.deploy.get_secrets')
+    @patch('cdflow_commands.deploy.NamedTemporaryFile')
     def test_terraform_plan_called(
         self, NamedTemporaryFile, get_secrets, check_call
     ):
@@ -56,9 +56,9 @@ class TestDeploy(unittest.TestCase):
             env=ANY
         )
 
-    @patch('cdflow_commands.plugins.ecs.check_call')
-    @patch('cdflow_commands.plugins.ecs.get_secrets')
-    @patch('cdflow_commands.plugins.ecs.NamedTemporaryFile')
+    @patch('cdflow_commands.deploy.check_call')
+    @patch('cdflow_commands.deploy.get_secrets')
+    @patch('cdflow_commands.deploy.NamedTemporaryFile')
     def test_terrgrunt_apply_called(
         self, NamedTemporaryFile, get_secrets, check_call
     ):
@@ -94,11 +94,11 @@ class TestDeploy(unittest.TestCase):
         deploy = Deploy(boto_session, ANY, ANY, ANY, ANY, self._deploy_config)
 
         with patch(
-            'cdflow_commands.plugins.ecs.check_call'
+            'cdflow_commands.deploy.check_call'
         ) as check_call, patch(
-            'cdflow_commands.plugins.ecs.NamedTemporaryFile', autospec=True
+            'cdflow_commands.deploy.NamedTemporaryFile', autospec=True
         ) as NamedTemporaryFile, patch(
-            'cdflow_commands.plugins.ecs.get_secrets'
+            'cdflow_commands.deploy.get_secrets'
         ) as get_secrets:
             NamedTemporaryFile.return_value.__enter__.return_value.name = ANY
             get_secrets.return_value = {}
@@ -148,13 +148,13 @@ class TestDeploy(unittest.TestCase):
         deploy = Deploy(boto_session, ANY, ANY, ANY, ANY, self._deploy_config)
 
         with patch(
-            'cdflow_commands.plugins.ecs.os'
+            'cdflow_commands.deploy.os'
         ) as mock_os, patch(
-            'cdflow_commands.plugins.ecs.check_call'
+            'cdflow_commands.deploy.check_call'
         ) as check_call, patch(
-            'cdflow_commands.plugins.ecs.NamedTemporaryFile', autospec=True
+            'cdflow_commands.deploy.NamedTemporaryFile', autospec=True
         ) as NamedTemporaryFile, patch(
-            'cdflow_commands.plugins.ecs.get_secrets'
+            'cdflow_commands.deploy.get_secrets'
         ) as get_secrets:
             NamedTemporaryFile.return_value.__enter__.return_value.name = ANY
             get_secrets.return_value = {}
@@ -195,13 +195,13 @@ class TestDeploy(unittest.TestCase):
         deploy = Deploy(boto_session, ANY, ANY, ANY, ANY, self._deploy_config)
 
         with patch(
-            'cdflow_commands.plugins.ecs.os'
+            'cdflow_commands.deploy.os'
         ) as mock_os, patch(
-            'cdflow_commands.plugins.ecs.check_call'
+            'cdflow_commands.deploy.check_call'
         ), patch(
-            'cdflow_commands.plugins.ecs.NamedTemporaryFile', autospec=True
+            'cdflow_commands.deploy.NamedTemporaryFile', autospec=True
         ) as NamedTemporaryFile, patch(
-            'cdflow_commands.plugins.ecs.get_secrets'
+            'cdflow_commands.deploy.get_secrets'
         ) as get_secrets:
             NamedTemporaryFile.return_value.__enter__.return_value.name = ANY
             get_secrets.return_value = {}
@@ -257,11 +257,11 @@ class TestDeploy(unittest.TestCase):
 
         # When
         with patch(
-            'cdflow_commands.plugins.ecs.check_call'
+            'cdflow_commands.deploy.check_call'
         ) as check_call, patch(
-            'cdflow_commands.plugins.ecs.NamedTemporaryFile', autospec=True
+            'cdflow_commands.deploy.NamedTemporaryFile', autospec=True
         ) as NamedTemporaryFile, patch(
-            'cdflow_commands.plugins.ecs.get_secrets'
+            'cdflow_commands.deploy.get_secrets'
         ) as get_secrets:
             NamedTemporaryFile.return_value.__enter__.return_value.name = \
                 secret_file_path
@@ -312,13 +312,13 @@ class TestEnvironmentSpecificConfigAddedToTerraformArgs(unittest.TestCase):
 
         # When
         with patch(
-            'cdflow_commands.plugins.ecs.check_call'
+            'cdflow_commands.deploy.check_call'
         ) as check_call, patch(
-            'cdflow_commands.plugins.ecs.path'
+            'cdflow_commands.deploy.path'
         ) as path, patch(
-            'cdflow_commands.plugins.ecs.NamedTemporaryFile', autospec=True
+            'cdflow_commands.deploy.NamedTemporaryFile', autospec=True
         ) as NamedTemporaryFile, patch(
-            'cdflow_commands.plugins.ecs.get_secrets'
+            'cdflow_commands.deploy.get_secrets'
         ) as get_secrets:
             NamedTemporaryFile.return_value.__enter__.return_value.name = ANY
             get_secrets.return_value = {}
