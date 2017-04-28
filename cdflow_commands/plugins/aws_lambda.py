@@ -63,7 +63,6 @@ class Release():
         self._version = version
 
     def create(self):
-        # import pdb; pdb.set_trace()
         zip = ZipFile(self._component_name + '.zip', 'x')
 
         for dirname, subdirs, files in os.walk(self._component_name):
@@ -90,3 +89,5 @@ class Release():
             'mmg-lambdas-{}'.format(self._metadata.team),
             '{}/{}.zip'.format(self._component_name, self._version)
         )
+
+        os.remove(zip.filename)
