@@ -213,23 +213,24 @@ class TestDeployCLI(unittest.TestCase):
         self.LockTableFactory_patcher = patch(
             'cdflow_commands.plugins.ecs.LockTableFactory'
         )
-        self.mock_os_deploy_patcher = patch('cdflow_commands.plugins.ecs.os')
+        self.mock_os_ecs_patcher = patch('cdflow_commands.plugins.ecs.os')
+        self.mock_os_deploy_patcher = patch('cdflow_commands.deploy.os')
         self.Session_from_cli_patcher = patch('cdflow_commands.cli.Session')
         self.Session_from_config_patcher = patch(
             'cdflow_commands.config.Session'
         )
         self.mock_open_patcher = patch('cdflow_commands.config.open')
         self.check_call_patcher = patch(
-            'cdflow_commands.plugins.ecs.check_call'
+            'cdflow_commands.deploy.check_call'
         )
         self.check_output_patcher = patch(
             'cdflow_commands.config.check_output'
         )
         self.get_secrets_patcher = patch(
-            'cdflow_commands.plugins.ecs.get_secrets'
+            'cdflow_commands.deploy.get_secrets'
         )
         self.NamedTemporaryFile_patcher = patch(
-            'cdflow_commands.plugins.ecs.NamedTemporaryFile'
+            'cdflow_commands.deploy.NamedTemporaryFile'
         )
         self.NamedTemporaryFile_state_patcher = patch(
             'cdflow_commands.state.NamedTemporaryFile'
@@ -248,6 +249,7 @@ class TestDeployCLI(unittest.TestCase):
         self.S3BucketFactory = self.S3BucketFactory_patcher.start()
         self.LockTableFactory = self.LockTableFactory_patcher.start()
         self.mock_os_deploy = self.mock_os_deploy_patcher.start()
+        self.mock_os_ecs = self.mock_os_ecs_patcher.start()
         self.Session_from_cli = self.Session_from_cli_patcher.start()
         self.Session_from_config = self.Session_from_config_patcher.start()
         self.mock_open = self.mock_open_patcher.start()
@@ -261,7 +263,7 @@ class TestDeployCLI(unittest.TestCase):
         self.move = self.move_patcher.start()
         self.atexit_patcher.start()
 
-        self.mock_os_deploy.environ = {
+        self.mock_os_ecs.environ = {
             'JOB_NAME': 'dummy-job-name'
         }
 
@@ -344,6 +346,7 @@ class TestDeployCLI(unittest.TestCase):
         self.S3BucketFactory_patcher.stop()
         self.LockTableFactory_patcher.stop()
         self.mock_os_deploy_patcher.stop()
+        self.mock_os_ecs_patcher.stop()
         self.Session_from_cli_patcher.stop()
         self.Session_from_config_patcher.stop()
         self.mock_open_patcher.stop()
@@ -357,6 +360,12 @@ class TestDeployCLI(unittest.TestCase):
         self.atexit_patcher.stop()
 
     def test_deploy_is_configured_and_run(self):
+        # Given
+
+        self.mock_os_deploy.environ = {
+            'JOB_NAME': 'dummy-job-name'
+        }
+
         # When
         with self.assertLogs('cdflow_commands.logger', level='INFO') as logs:
             cli.run(['deploy', 'aslive', '1.2.3'])
@@ -440,7 +449,7 @@ class TestDeployCLI(unittest.TestCase):
         # Then
         self.mock_sts_client.assume_role.assert_called_with(
             RoleArn='arn:aws:iam::123456789:role/admin',
-            RoleSessionName=self.mock_os_deploy.environ['JOB_NAME']
+            RoleSessionName=self.mock_os_ecs.environ['JOB_NAME']
         )
 
     def test_prod_session_passed_to_live_deployments(self):
@@ -453,7 +462,7 @@ class TestDeployCLI(unittest.TestCase):
         # Then
         self.mock_sts_client.assume_role.assert_called_with(
             RoleArn='arn:aws:iam::987654321:role/admin',
-            RoleSessionName=self.mock_os_deploy.environ['JOB_NAME']
+            RoleSessionName=self.mock_os_ecs.environ['JOB_NAME']
         )
 
 

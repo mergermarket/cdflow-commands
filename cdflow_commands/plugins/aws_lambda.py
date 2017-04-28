@@ -3,6 +3,7 @@ from zipfile import ZipFile
 from cdflow_commands.config import (
     assume_role, get_role_session_name
 )
+from cdflow_commands.deploy import Deploy
 
 
 def build_lambda_plugin(
@@ -45,6 +46,15 @@ class LambdaPlugin():
             self._version
         )
         release.create()
+
+    def deploy(self):
+        deploy = Deploy(
+            self._component_name,
+            self._environment_name,
+            self._version,
+            self._global_config
+        )
+        deploy.run()
 
 
 class Release():

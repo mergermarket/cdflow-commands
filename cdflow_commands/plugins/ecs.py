@@ -6,7 +6,6 @@ from functools import lru_cache
 from hashlib import sha1
 from os import path
 from subprocess import CalledProcessError, check_call
-from tempfile import NamedTemporaryFile
 from time import sleep, time
 
 from botocore.exceptions import ClientError
@@ -19,10 +18,10 @@ from cdflow_commands.exceptions import (
 from cdflow_commands.logger import logger
 from cdflow_commands.plugins import Plugin
 from cdflow_commands.plugins.base import Destroy as BaseDestroy
-from cdflow_commands.secrets import get_secrets
 from cdflow_commands.state import (
     LockTableFactory, S3BucketFactory, initialise_terraform_backend
 )
+from cdflow_commands.deploy import Deploy, DeployConfig
 
 
 def build_ecs_plugin(
@@ -289,84 +288,84 @@ class Release(object):
         check_call(['docker', 'push', self._image_name])
 
 
-DeployConfig = namedtuple('DeployConfig', [
-    'team',
-    'dev_account_id',
-    'platform_config_file',
-])
+# DeployConfig = namedtuple('DeployConfig', [
+#     'team',
+#     'dev_account_id',
+#     'platform_config_file',
+# ])
 
 
-class Deploy(object):
+# class Deploy(object):
 
-    def __init__(
-        self, boto_session, component_name, environment_name,
-        version, ecs_cluster, config
-    ):
-        self._boto_session = boto_session
-        self._aws_region = boto_session.region_name
-        self._component_name = component_name
-        self._environment_name = environment_name
-        self._version = version
-        self._ecs_cluster = ecs_cluster
-        self._team = config.team
-        self._dev_account_id = config.dev_account_id
-        self._platform_config_file = config.platform_config_file
+#     def __init__(
+#         self, boto_session, component_name, environment_name,
+#         version, ecs_cluster, config
+#     ):
+#         self._boto_session = boto_session
+#         self._aws_region = boto_session.region_name
+#         self._component_name = component_name
+#         self._environment_name = environment_name
+#         self._version = version
+#         self._ecs_cluster = ecs_cluster
+#         self._team = config.team
+#         self._dev_account_id = config.dev_account_id
+#         self._platform_config_file = config.platform_config_file
 
-    @property
-    def _image_name(self):
-        return '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
-            self._dev_account_id,
-            self._aws_region,
-            self._component_name,
-            self._version
-        )
+#     @property
+#     def _image_name(self):
+#         return '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
+#             self._dev_account_id,
+#             self._aws_region,
+#             self._component_name,
+#             self._version
+#         )
 
-    def _terraform_parameters(self, secrets_file):
-        parameters = [
-            '-var', 'component={}'.format(self._component_name),
-            '-var', 'env={}'.format(self._environment_name),
-            '-var', 'aws_region={}'.format(self._aws_region),
-            '-var', 'team={}'.format(self._team),
-            '-var', 'image={}'.format(self._image_name),
-            '-var', 'version={}'.format(self._version),
-            '-var', 'ecs_cluster={}'.format(self._ecs_cluster),
-            '-var-file', self._platform_config_file,
-            '-var-file', secrets_file
-        ]
-        config_file = 'config/{}.json'.format(self._environment_name)
-        if path.exists(config_file):
-            parameters += ['-var-file', config_file]
-        return parameters + ['infra']
+#     def _terraform_parameters(self, secrets_file):
+#         parameters = [
+#             '-var', 'component={}'.format(self._component_name),
+#             '-var', 'env={}'.format(self._environment_name),
+#             '-var', 'aws_region={}'.format(self._aws_region),
+#             '-var', 'team={}'.format(self._team),
+#             '-var', 'image={}'.format(self._image_name),
+#             '-var', 'version={}'.format(self._version),
+#             '-var', 'ecs_cluster={}'.format(self._ecs_cluster),
+#             '-var-file', self._platform_config_file,
+#             '-var-file', secrets_file
+#         ]
+#         config_file = 'config/{}.json'.format(self._environment_name)
+#         if path.exists(config_file):
+#             parameters += ['-var-file', config_file]
+#         return parameters + ['infra']
 
-    def run(self):
-        check_call(['terraform', 'get', 'infra'])
+#     def run(self):
+#         check_call(['terraform', 'get', 'infra'])
 
-        credentials = self._boto_session.get_credentials()
-        env = os.environ.copy()
-        env.update({
-            'AWS_ACCESS_KEY_ID': credentials.access_key,
-            'AWS_SECRET_ACCESS_KEY': credentials.secret_key,
-            'AWS_SESSION_TOKEN': credentials.token
-        })
+#         credentials = self._boto_session.get_credentials()
+#         env = os.environ.copy()
+#         env.update({
+#             'AWS_ACCESS_KEY_ID': credentials.access_key,
+#             'AWS_SECRET_ACCESS_KEY': credentials.secret_key,
+#             'AWS_SESSION_TOKEN': credentials.token
+#         })
 
-        with NamedTemporaryFile() as f:
-            secrets = get_secrets(
-                self._environment_name,
-                self._team,
-                self._component_name,
-                self._boto_session
-            )
-            f.write(json.dumps({'secrets': secrets}).encode('utf-8'))
-            f.flush()
-            parameters = self._terraform_parameters(f.name)
-            check_call(
-                ['terraform', 'plan'] + parameters,
-                env=env
-            )
-            check_call(
-                ['terraform', 'apply'] + parameters,
-                env=env
-            )
+#         with NamedTemporaryFile() as f:
+#             secrets = get_secrets(
+#                 self._environment_name,
+#                 self._team,
+#                 self._component_name,
+#                 self._boto_session
+#             )
+#             f.write(json.dumps({'secrets': secrets}).encode('utf-8'))
+#             f.flush()
+#             parameters = self._terraform_parameters(f.name)
+#             check_call(
+#                 ['terraform', 'plan'] + parameters,
+#                 env=env
+#             )
+#             check_call(
+#                 ['terraform', 'apply'] + parameters,
+#                 env=env
+#             )
 
 
 class ECSPlugin(Plugin):
