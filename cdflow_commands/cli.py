@@ -62,6 +62,7 @@ def _run(argv):
         global_config=global_config,
         root_session=root_session,
     )
+
     if args['release']:
         plugin.release()
     elif args['deploy']:
