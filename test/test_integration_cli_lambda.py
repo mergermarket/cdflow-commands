@@ -19,6 +19,7 @@ class TestReleaseCLI(unittest.TestCase):
         self, mock_open, mock_os,
         session_from_cli, session_from_config, zip_file
     ):
+        # Given
         mock_metadata_file = MagicMock(spec=TextIOWrapper)
         metadata = {
             'TEAM': 'dummy-team',
@@ -86,9 +87,11 @@ class TestReleaseCLI(unittest.TestCase):
 
         component_name = 'dummy-component'
         version = '6.1.7'
+        # When
         cli.run(['release', version, '-c', component_name])
+        # Then
         mock_s3_client.upload_file.assert_called_once_with(
-            zip_file().filename,
+            zip_file().__enter__().filename,
             'mmg-lambdas-dummy-team',
             'dummy-component/6.1.7.zip'
         )
