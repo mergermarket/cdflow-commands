@@ -129,35 +129,56 @@ class Release():
         self._metadata = metadata
         self._version = version
 
-    def create(self):
-        zip = ZipFile(self._component_name + '.zip', 'x')
+    @property
+    def _bucket_name(self):
+        return 'mmg-lambdas-{}'.format(self._metadata.team)
 
-        for dirname, subdirs, files in os.walk(self._component_name):
-            zip.write(dirname)
-            for filename in files:
-                zip.write(os.path.join(dirname, filename))
-        zip.close()
+    @property
+    def _lambda_s3_key(self):
+        return '{}/{}.zip'.format(self._component_name, self._version)
+
+    def create(self):
+        zipped_folder = self._zip_up_component()
+        if not self._bucket_exists():
+            self._create_bucket()
+        self._upload_zip_to_bucket(zipped_folder.filename)
+        self._remove_zipped_folder(zipped_folder.filename)
+
+    def _zip_up_component(self):
+        with ZipFile(self._component_name + '.zip', 'w') as zipped_folder:
+            for dirname, subdirs, files in os.walk(self._component_name):
+                zipped_folder.write(dirname)
+                for filename in files:
+                    zipped_folder.write(os.path.join(dirname, filename))
+        return zipped_folder
+
+    def _bucket_exists(self):
         bucket_list = self._boto_s3_client.list_buckets()
         bucket_names = [
             bucket['Name']
             for bucket in bucket_list['Buckets']
-            if bucket['Name'] == 'mmg-lambdas-{}'.format(self._metadata.team)
+            if bucket['Name'] == self._bucket_name
         ]
-        if not bucket_names:
-            self._boto_s3_client.create_bucket(
-                ACL='private',
-                Bucket='mmg-lambdas-{}'.format(self._metadata.team),
-                CreateBucketConfiguration={
-                    'LocationConstraint': self._metadata.aws_region
-                }
-            )
-        self._boto_s3_client.upload_file(
-            zip.filename,
-            'mmg-lambdas-{}'.format(self._metadata.team),
-            '{}/{}.zip'.format(self._component_name, self._version)
+        return bucket_names
+
+    def _create_bucket(self):
+        self._boto_s3_client.create_bucket(
+            ACL='private',
+            Bucket=self._bucket_name,
+            CreateBucketConfiguration={
+                'LocationConstraint': self._metadata.aws_region
+            }
         )
 
-        os.remove(zip.filename)
+    def _upload_zip_to_bucket(self, filename):
+        self._boto_s3_client.upload_file(
+            filename,
+            self._bucket_name,
+            self._lambda_s3_key
+        )
+
+    def _remove_zipped_folder(self, filename):
+        os.remove(filename)
 
 
 DeployConfig = namedtuple('DeployConfig', [

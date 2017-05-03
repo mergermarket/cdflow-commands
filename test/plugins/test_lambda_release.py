@@ -9,7 +9,7 @@ class TestLambdaRelease(unittest.TestCase):
 
     @patch('cdflow_commands.plugins.aws_lambda.os')
     @patch('cdflow_commands.plugins.aws_lambda.ZipFile')
-    def test_release_create_zips_directory(self, zip_file, mock_os):
+    def test_release_creates_zip_from_directory(self, zip_file, mock_os):
         config = Mock()
         metadata = Mock()
         boto_s3_client = Mock()
@@ -24,11 +24,11 @@ class TestLambdaRelease(unittest.TestCase):
             config, boto_s3_client, 'dummy-component-name', metadata, '1.0.0'
         )
         release.create()
-        zip_file.assert_called_once_with('dummy-component-name.zip', 'x')
+        zip_file.assert_called_once_with('dummy-component-name.zip', 'w')
 
     @patch('cdflow_commands.plugins.aws_lambda.os')
     @patch('cdflow_commands.plugins.aws_lambda.ZipFile')
-    def test_release_does_not_create_bucket_if_existing(
+    def test_release_does_not_create_bucket_if_bucket_already_exists(
         self, zip_file, mock_os
     ):
         config = Mock()
@@ -56,7 +56,7 @@ class TestLambdaRelease(unittest.TestCase):
 
     @patch('cdflow_commands.plugins.aws_lambda.os')
     @patch('cdflow_commands.plugins.aws_lambda.ZipFile')
-    def test_release_creates_bucket_with_teamname(self, zip_file, mock_os):
+    def test_release_creates_bucket_if_needed(self, zip_file, mock_os):
         config = Mock()
         metadata = Mock()
         metadata.team = 'dummy-team-name'
@@ -101,7 +101,7 @@ class TestLambdaRelease(unittest.TestCase):
         )
         release.create()
         boto_s3_client.upload_file.assert_called_once_with(
-            zip_file().filename,
+            zip_file().__enter__().filename,
             'mmg-lambdas-dummy-team-name',
             'dummy-component-name/1.0.0.zip'
         )
@@ -125,4 +125,4 @@ class TestLambdaRelease(unittest.TestCase):
             config, boto_s3_client, 'dummy-component-name', metadata, version
         )
         release.create()
-        mock_os.remove.assert_called_once_with(zip_file().filename)
+        mock_os.remove.assert_called_once_with(zip_file().__enter__().filename)
