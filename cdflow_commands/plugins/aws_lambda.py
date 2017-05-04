@@ -95,12 +95,17 @@ def build_deploy_factory(
                 is_prod
             )
         )
+        lambda_config = LambdaConfig(
+            handler=metadata.handler,
+            runtime=metadata.runtime
+        )
         return Deploy(
             boto_session,
             component_name,
             environment_name,
             version,
-            deploy_config
+            deploy_config,
+            lambda_config
         )
     return _deploy_factory
 
@@ -200,12 +205,17 @@ DeployConfig = namedtuple('DeployConfig', [
     'platform_config_file',
 ])
 
+LambdaConfig = namedtuple('LambdaConfig', [
+    'handler',
+    'runtime'
+])
+
 
 class Deploy(object):
 
     def __init__(
         self, boto_session, component_name, environment_name,
-        version, deploy_config
+        version, deploy_config, lambda_config
     ):
         self._boto_session = boto_session
         self._aws_region = boto_session.region_name
@@ -215,6 +225,15 @@ class Deploy(object):
         self._team = deploy_config.team
         self._dev_account_id = deploy_config.dev_account_id
         self._platform_config_file = deploy_config.platform_config_file
+        self._lambda_config = lambda_config
+
+    @property
+    def _handler(self):
+        return self._lambda_config.handler
+
+    @property
+    def _runtime(self):
+        return self._lambda_config.runtime
 
     def _terraform_parameters(self, secrets_file):
         parameters = [
@@ -223,6 +242,8 @@ class Deploy(object):
             '-var', 'aws_region={}'.format(self._aws_region),
             '-var', 'team={}'.format(self._team),
             '-var', 'version={}'.format(self._version),
+            '-var', 'handler={}'.format(self._handler),
+            '-var', 'runtime={}'.format(self._runtime),
             '-var-file', self._platform_config_file,
             '-var-file', secrets_file
         ]
@@ -241,7 +262,6 @@ class Deploy(object):
             'AWS_SECRET_ACCESS_KEY': credentials.secret_key,
             'AWS_SESSION_TOKEN': credentials.token
         })
-
         with NamedTemporaryFile() as f:
             secrets = get_secrets(
                 self._environment_name,

@@ -126,7 +126,9 @@ class TestDeployCLI(unittest.TestCase):
             'TEAM': 'dummy-team',
             'TYPE': 'lambda',
             'REGION': 'eu-west-12',
-            'ACCOUNT_PREFIX': 'mmg'
+            'ACCOUNT_PREFIX': 'mmg',
+            'HANDLER': 'dummy-handler',
+            'RUNTIME': 'dummy-runtime'
         }
         mock_metadata_file.read.return_value = json.dumps(metadata)
         mock_dev_file = MagicMock(spec=TextIOWrapper)
@@ -213,6 +215,8 @@ class TestDeployCLI(unittest.TestCase):
                 '-var', 'aws_region=eu-west-12',
                 '-var', 'team=dummy-team',
                 '-var', 'version=1.2.3',
+                '-var', 'handler=dummy-handler',
+                '-var', 'runtime=dummy-runtime',
                 '-var-file', 'infra/platform-config/mmg/dev/eu-west-12.json',
                 '-var-file', ANY,
                 'infra'
@@ -233,6 +237,8 @@ class TestDeployCLI(unittest.TestCase):
                 '-var', 'aws_region=eu-west-12',
                 '-var', 'team=dummy-team',
                 '-var', 'version=1.2.3',
+                '-var', 'handler=dummy-handler',
+                '-var', 'runtime=dummy-runtime',
                 '-var-file', 'infra/platform-config/mmg/dev/eu-west-12.json',
                 '-var-file', ANY,
                 'infra'
