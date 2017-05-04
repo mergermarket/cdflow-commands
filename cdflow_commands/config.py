@@ -28,7 +28,15 @@ class NoGitRemoteError(UserFacingFixedMessageError):
 
 
 Metadata = namedtuple(
-    'Metadata', ['team', 'type', 'aws_region', 'account_prefix', 'ecs_cluster']
+    'Metadata', [
+        'team',
+        'type',
+        'aws_region',
+        'account_prefix',
+        'ecs_cluster',
+        'handler',
+        'runtime'
+    ]
 )
 
 
@@ -49,7 +57,9 @@ def load_service_metadata():
                 metadata['TYPE'],
                 metadata['REGION'],
                 metadata['ACCOUNT_PREFIX'],
-                metadata.get('ECS_CLUSTER', 'default')
+                metadata.get('ECS_CLUSTER', 'default'),
+                metadata.get('HANDLER', ''),
+                metadata.get('RUNTIME', '')
             )
         except KeyError as key:
             raise UserFacingError(
