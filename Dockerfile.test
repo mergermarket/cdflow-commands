@@ -1,7 +1,10 @@
-FROM python:3
+FROM python:3-alpine
 
 RUN mkdir /cdflow
 WORKDIR /cdflow
+
+RUN apk update
+RUN apk add gcc musl-dev libffi-dev openssl-dev
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
