@@ -10,6 +10,9 @@ from cdflow_commands.config import (
 )
 from cdflow_commands.plugins import Plugin
 from cdflow_commands.secrets import get_secrets
+from cdflow_commands.state import (
+    LockTableFactory, S3BucketFactory, initialise_terraform_backend
+)
 
 
 def build_lambda_plugin(
@@ -72,6 +75,16 @@ def build_deploy_factory(
             root_session,
             account_id,
             get_role_session_name(os.environ)
+        )
+        s3_bucket_factory = S3BucketFactory(boto_session, account_id)
+        s3_bucket = s3_bucket_factory.get_bucket_name()
+
+        lock_table_factory = LockTableFactory(boto_session)
+        lock_table_name = lock_table_factory.get_table_name()
+
+        initialise_terraform_backend(
+            'infra', metadata.aws_region, s3_bucket, lock_table_name,
+            environment_name, component_name
         )
         deploy_config = DeployConfig(
             team=metadata.team,
