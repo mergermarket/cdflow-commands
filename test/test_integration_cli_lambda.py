@@ -108,10 +108,17 @@ class TestDeployCLI(unittest.TestCase):
     @patch('cdflow_commands.config.Session')
     @patch('cdflow_commands.cli.Session')
     @patch('cdflow_commands.plugins.aws_lambda.os')
+    @patch('cdflow_commands.plugins.aws_lambda.S3BucketFactory')
     @patch('cdflow_commands.config.open', new_callable=mock_open, create=True)
+    @patch('cdflow_commands.state.check_call')
+    @patch('cdflow_commands.plugins.aws_lambda.LockTableFactory')
+    @patch('cdflow_commands.state.NamedTemporaryFile')
+    @patch('cdflow_commands.state.move')
+    @patch('cdflow_commands.state.atexit')
     def test_deploy_is_configured_and_run(
-        self, mock_open, mock_lambda_os,
-        session_from_cli, session_from_config, get_secrets, check_call, rmtree
+        self, _1, _2, _3, _4, check_call_state, mock_open,
+        mock_lambda_s3_factory, mock_lambda_os, session_from_cli,
+        session_from_config, get_secrets, check_call, rmtree
     ):
         # Given
         mock_metadata_file = MagicMock(spec=TextIOWrapper)
@@ -183,9 +190,6 @@ class TestDeployCLI(unittest.TestCase):
         mock_lambda_os.environ = {
             'JOB_NAME': 'dummy-job-name'
         }
-        mock_lambda_os.environ = {
-            'JOB_NAME': 'dummy-job-name'
-        }
         get_secrets.return_value = {}
 
         component_name = 'dummy-component'
@@ -194,6 +198,11 @@ class TestDeployCLI(unittest.TestCase):
         cli.run(['deploy', 'aslive', '1.2.3', '-c', component_name])
 
         # Then
+        check_call_state.assert_any_call(
+            ['terraform', 'init', ANY, ANY, ANY, ANY],
+            cwd='infra'
+        )
+
         check_call.assert_any_call(['terraform', 'get', 'infra'])
 
         check_call.assert_any_call(
