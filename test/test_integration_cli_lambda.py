@@ -92,8 +92,8 @@ class TestReleaseCLI(unittest.TestCase):
         # Then
         mock_s3_client.upload_file.assert_called_once_with(
             zip_file().__enter__().filename,
-            'mmg-lambdas-dummy-team',
-            'dummy-component/6.1.7.zip'
+            'lambda-releases',
+            'dummy-team/dummy-component/6.1.7.zip'
         )
 
 
