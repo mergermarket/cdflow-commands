@@ -149,11 +149,13 @@ class Release():
 
     @property
     def _bucket_name(self):
-        return 'mmg-lambdas-{}'.format(self._metadata.team)
+        return 'lambda-releases'
 
     @property
     def _lambda_s3_key(self):
-        return '{}/{}.zip'.format(self._component_name, self._version)
+        return '{}/{}/{}.zip'.format(
+            self._metadata.team, self._component_name, self._version
+        )
 
     def create(self):
         zipped_folder = self._zip_up_component()

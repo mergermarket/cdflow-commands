@@ -40,7 +40,7 @@ class TestLambdaRelease(unittest.TestCase):
         boto_s3_client.list_buckets.return_value = {
             'Buckets': [
                 {
-                    'Name': 'mmg-lambdas-dummy-team-name',
+                    'Name': 'lambda-releases',
                     'CreationDate': datetime(2015, 1, 1)
                 },
             ],
@@ -76,7 +76,7 @@ class TestLambdaRelease(unittest.TestCase):
         release.create()
         boto_s3_client.create_bucket.assert_called_once_with(
             ACL='private',
-            Bucket='mmg-lambdas-dummy-team-name',
+            Bucket='lambda-releases',
             CreateBucketConfiguration={
                 'LocationConstraint': 'dummy-region'
             }
@@ -103,8 +103,8 @@ class TestLambdaRelease(unittest.TestCase):
         release.create()
         boto_s3_client.upload_file.assert_called_once_with(
             zip_file().__enter__().filename,
-            'mmg-lambdas-dummy-team-name',
-            'dummy-component-name/1.0.0.zip'
+            'lambda-releases',
+            'dummy-team-name/dummy-component-name/1.0.0.zip'
         )
 
     @patch('cdflow_commands.plugins.aws_lambda.os')
