@@ -138,7 +138,7 @@ class S3BucketFactory(object):
         self._aws_region = boto_session.region_name
         self._account_id = account_id
 
-    def get_bucket_name(self):
+    def get_bucket_name(self, bucket_name_prefix=NAME_PREFIX):
 
         buckets = {
             bucket['Name']
@@ -159,7 +159,7 @@ class S3BucketFactory(object):
         if len(tagged_buckets) == 1:
             return list(tagged_buckets)[0]
         else:
-            bucket_name = self._create_bucket()
+            bucket_name = self._create_bucket(bucket_name_prefix)
             self._tag_bucket(bucket_name)
             return bucket_name
 
@@ -189,9 +189,11 @@ class S3BucketFactory(object):
             raise
         return {tag['Key']: tag['Value'] for tag in tags}
 
-    def _create_bucket(self):
+    def _create_bucket(self, bucket_name_prefix):
         for attempt in range(MAX_CREATION_ATTEMPTS):
-            bucket_name = self._generate_bucket_name(attempt)
+            bucket_name = self._generate_bucket_name(
+                attempt, bucket_name_prefix
+            )
             if self._attempt_to_create_bucket(bucket_name):
                 return bucket_name
         raise Exception('could not create bucket after {} attempts'.format(
@@ -235,11 +237,11 @@ class S3BucketFactory(object):
             }
         )
 
-    def _generate_bucket_name(self, attempt):
+    def _generate_bucket_name(self, attempt, bucket_name_prefix):
         parts = map(str, [self._aws_region, self._account_id, attempt])
         concatenated = ''.join(parts)
         return '{}-{}'.format(
-            NAME_PREFIX,
+            bucket_name_prefix,
             sha1(
                 concatenated.encode('utf-8')
             ).hexdigest()[:12]
