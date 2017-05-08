@@ -45,14 +45,14 @@ def build_release_factory(
     global_config, root_session, component_name, metadata, version
 ):
     def _release_factory():
-        boto_s3_client = assume_role(
+        boto_session = assume_role(
             root_session,
             global_config.dev_account_id,
             get_role_session_name(os.environ)
-        ).client('s3')
+        )
         return Release(
             global_config,
-            boto_s3_client,
+            boto_session,
             component_name,
             metadata,
             version
@@ -136,13 +136,13 @@ class Release():
     def __init__(
         self,
         global_config,
-        boto_s3_client,
+        boto_session,
         component_name,
         metadata,
         version
     ):
         self._global_config = global_config
-        self._boto_s3_client = boto_s3_client
+        self._boto_session = boto_session
         self._component_name = component_name
         self._metadata = metadata
         self._version = version
@@ -159,9 +159,12 @@ class Release():
 
     def create(self):
         zipped_folder = self._zip_up_component()
-        if not self._bucket_exists():
-            self._create_bucket()
-        self._upload_zip_to_bucket(zipped_folder.filename)
+        s3_bucket_factory = S3BucketFactory(
+            self._boto_session, self._global_config.dev_account_id
+        )
+        s3_bucket_factory.get_bucket_name(self._bucket_name)
+        boto_s3_client = self._boto_session.client('s3')
+        self._upload_zip_to_bucket(boto_s3_client, zipped_folder.filename)
         self._remove_zipped_folder(zipped_folder.filename)
 
     def _zip_up_component(self):
@@ -190,8 +193,8 @@ class Release():
             }
         )
 
-    def _upload_zip_to_bucket(self, filename):
-        self._boto_s3_client.upload_file(
+    def _upload_zip_to_bucket(self, boto_s3_client, filename):
+        boto_s3_client.upload_file(
             filename,
             self._bucket_name,
             self._lambda_s3_key
