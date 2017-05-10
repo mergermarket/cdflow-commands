@@ -149,7 +149,7 @@ class Release():
 
     @property
     def _bucket_name(self):
-        return 'lambda-releases'
+        return 'cdflow-lambda-releases'
 
     @property
     def _lambda_s3_key(self):
@@ -162,9 +162,13 @@ class Release():
         s3_bucket_factory = S3BucketFactory(
             self._boto_session, self._global_config.dev_account_id
         )
-        s3_bucket_factory.get_bucket_name(self._bucket_name)
+        created_bucket_name = s3_bucket_factory.get_bucket_name(
+            self._bucket_name
+        )
         boto_s3_client = self._boto_session.client('s3')
-        self._upload_zip_to_bucket(boto_s3_client, zipped_folder.filename)
+        self._upload_zip_to_bucket(
+            boto_s3_client, created_bucket_name, zipped_folder.filename
+        )
         self._remove_zipped_folder(zipped_folder.filename)
 
     def _zip_up_component(self):
@@ -175,28 +179,10 @@ class Release():
                     zipped_folder.write(os.path.join(dirname, filename))
         return zipped_folder
 
-    def _bucket_exists(self):
-        bucket_list = self._boto_s3_client.list_buckets()
-        bucket_names = [
-            bucket['Name']
-            for bucket in bucket_list['Buckets']
-            if bucket['Name'] == self._bucket_name
-        ]
-        return bucket_names
-
-    def _create_bucket(self):
-        self._boto_s3_client.create_bucket(
-            ACL='private',
-            Bucket=self._bucket_name,
-            CreateBucketConfiguration={
-                'LocationConstraint': self._metadata.aws_region
-            }
-        )
-
-    def _upload_zip_to_bucket(self, boto_s3_client, filename):
+    def _upload_zip_to_bucket(self, boto_s3_client, bucket_name, filename):
         boto_s3_client.upload_file(
             filename,
-            self._bucket_name,
+            bucket_name,
             self._lambda_s3_key
         )
 
