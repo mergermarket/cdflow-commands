@@ -8,7 +8,7 @@ from textwrap import dedent
 from boto3.session import Session
 from botocore.exceptions import ClientError
 from cdflow_commands.state import (
-    TAG_NAME, TAG_VALUE, IncorrectSchemaError, LockTableFactory,
+    TFSTATE_TAG_NAME, TAG_VALUE, IncorrectSchemaError, LockTableFactory,
     S3BucketFactory, initialise_terraform_backend, remove_file
 )
 from hypothesis import given
@@ -36,7 +36,7 @@ class TestS3BucketFactory(unittest.TestCase):
         s3_client.get_bucket_tagging.return_value = {
             'TagSet': [
                 {
-                    'Key': TAG_NAME,
+                    'Key': TFSTATE_TAG_NAME,
                     'Value': TAG_VALUE,
                 }
             ]
@@ -78,7 +78,7 @@ class TestS3BucketFactory(unittest.TestCase):
         s3_client.get_bucket_tagging.return_value = {
             'TagSet': [
                 {
-                    'Key': TAG_NAME,
+                    'Key': TFSTATE_TAG_NAME,
                     'Value': TAG_VALUE,
                 }
             ]
@@ -113,7 +113,7 @@ class TestS3BucketFactory(unittest.TestCase):
                 return {
                     'TagSet': [
                         {
-                            'Key': TAG_NAME,
+                            'Key': TFSTATE_TAG_NAME,
                             'Value': TAG_VALUE,
                         }
                     ]
@@ -166,7 +166,7 @@ class TestS3BucketFactory(unittest.TestCase):
             Tagging={
                 'TagSet': [
                     {
-                        'Key': TAG_NAME,
+                        'Key': TFSTATE_TAG_NAME,
                         'Value': TAG_VALUE,
                     }
                 ]
@@ -203,7 +203,7 @@ class TestS3BucketFactory(unittest.TestCase):
             Tagging={
                 'TagSet': [
                     {
-                        'Key': TAG_NAME,
+                        'Key': TFSTATE_TAG_NAME,
                         'Value': TAG_VALUE,
                     }
                 ]
@@ -226,7 +226,7 @@ class TestS3BucketFactory(unittest.TestCase):
         s3_client.get_bucket_tagging.return_value = {
             'TagSet': [
                 {
-                    'Key': TAG_NAME,
+                    'Key': TFSTATE_TAG_NAME,
                     'Value': TAG_VALUE,
                 }
             ]
@@ -258,7 +258,7 @@ class TestS3BucketFactory(unittest.TestCase):
         s3_client.get_bucket_tagging.return_value = {
             'TagSet': [
                 {
-                    'Key': TAG_NAME,
+                    'Key': TFSTATE_TAG_NAME,
                     'Value': TAG_VALUE,
                 }
             ]
@@ -284,7 +284,7 @@ class TestS3BucketFactory(unittest.TestCase):
             Tagging={
                 'TagSet': [
                     {
-                        'Key': TAG_NAME,
+                        'Key': TFSTATE_TAG_NAME,
                         'Value': TAG_VALUE,
                     }
                 ]

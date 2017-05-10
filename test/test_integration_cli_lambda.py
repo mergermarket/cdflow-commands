@@ -6,6 +6,7 @@ from io import TextIOWrapper
 from datetime import datetime
 from cdflow_commands import cli
 from mock import Mock, MagicMock, patch, mock_open, ANY
+from cdflow_commands.state import S3BucketFactory
 
 
 class TestReleaseCLI(unittest.TestCase):
@@ -14,9 +15,13 @@ class TestReleaseCLI(unittest.TestCase):
     @patch('cdflow_commands.config.Session')
     @patch('cdflow_commands.cli.Session')
     @patch('cdflow_commands.plugins.aws_lambda.os')
+    @patch(
+        'cdflow_commands.plugins.aws_lambda.S3BucketFactory',
+        autospec=S3BucketFactory
+    )
     @patch('cdflow_commands.config.open', new_callable=mock_open, create=True)
     def test_release_package_is_created(
-        self, mock_open, mock_os,
+        self, mock_open, mock_lambda_s3_factory, mock_os,
         session_from_cli, session_from_config, zip_file
     ):
         # Given
@@ -85,6 +90,9 @@ class TestReleaseCLI(unittest.TestCase):
             'JOB_NAME': 'dummy-job-name'
         }
 
+        mock_lambda_s3_factory.return_value.get_bucket_name.return_value \
+            = 'lambda-bucket'
+
         component_name = 'dummy-component'
         version = '6.1.7'
         # When
@@ -92,7 +100,7 @@ class TestReleaseCLI(unittest.TestCase):
         # Then
         mock_s3_client.upload_file.assert_called_once_with(
             zip_file().__enter__().filename,
-            'lambda-releases',
+            'lambda-bucket',
             'dummy-team/dummy-component/6.1.7.zip'
         )
 

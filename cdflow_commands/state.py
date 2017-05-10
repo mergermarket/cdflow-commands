@@ -11,9 +11,11 @@ from botocore.exceptions import ClientError
 from cdflow_commands.exceptions import CDFlowError
 from cdflow_commands.logger import logger
 
-TAG_NAME = 'is-cdflow-tfstate-bucket'
+TFSTATE_NAME_PREFIX = 'cdflow-tfstate'
+LAMBDA_BUCKET_NAME = 'cdflow-lambda-releases'
+TFSTATE_TAG_NAME = 'is-cdflow-tfstate-bucket'
+LAMBDA_TAG_NAME = 'is-cdflow-lambda-bucket'
 TAG_VALUE = 'true'
-NAME_PREFIX = 'cdflow-tfstate'
 MAX_CREATION_ATTEMPTS = 10
 
 
@@ -138,7 +140,12 @@ class S3BucketFactory(object):
         self._aws_region = boto_session.region_name
         self._account_id = account_id
 
-    def get_bucket_name(self, bucket_name_prefix=NAME_PREFIX):
+    def get_bucket_name(self, bucket_name_prefix=TFSTATE_NAME_PREFIX):
+
+        if bucket_name_prefix == TFSTATE_NAME_PREFIX:
+            bucket_tag = TFSTATE_TAG_NAME
+        if bucket_name_prefix == LAMBDA_BUCKET_NAME:
+            bucket_tag = LAMBDA_TAG_NAME
 
         buckets = {
             bucket['Name']
@@ -148,24 +155,24 @@ class S3BucketFactory(object):
 
         tagged_buckets = {
             bucket_name for bucket_name in buckets
-            if self._bucket_has_tag(bucket_name)
+            if self._bucket_has_tag(bucket_name, bucket_tag)
             and self._bucket_in_current_region(bucket_name)
         }
 
         assert len(tagged_buckets) <= 1, '''
             multiple buckets with {}={} tag found
-        '''.format(TAG_NAME, TAG_VALUE).strip()
+        '''.format(bucket_tag, TAG_VALUE).strip()
 
         if len(tagged_buckets) == 1:
             return list(tagged_buckets)[0]
         else:
             bucket_name = self._create_bucket(bucket_name_prefix)
-            self._tag_bucket(bucket_name)
+            self._tag_bucket(bucket_name, bucket_tag)
             return bucket_name
 
-    def _bucket_has_tag(self, bucket_name):
+    def _bucket_has_tag(self, bucket_name, bucket_tag):
         tags = self._get_bucket_tags(bucket_name)
-        return tags.get(TAG_NAME) == TAG_VALUE
+        return tags.get(bucket_tag) == TAG_VALUE
 
     def _bucket_in_current_region(self, bucket_name):
         region_response = self._boto_s3_client.get_bucket_location(
@@ -191,9 +198,12 @@ class S3BucketFactory(object):
 
     def _create_bucket(self, bucket_name_prefix):
         for attempt in range(MAX_CREATION_ATTEMPTS):
-            bucket_name = self._generate_bucket_name(
-                attempt, bucket_name_prefix
-            )
+            if bucket_name_prefix == TFSTATE_NAME_PREFIX:
+                bucket_name = self._generate_bucket_name(
+                    attempt, bucket_name_prefix
+                )
+            else:
+                bucket_name = LAMBDA_BUCKET_NAME
             if self._attempt_to_create_bucket(bucket_name):
                 return bucket_name
         raise Exception('could not create bucket after {} attempts'.format(
@@ -224,13 +234,13 @@ class S3BucketFactory(object):
             return False
         return True
 
-    def _tag_bucket(self, bucket_name):
+    def _tag_bucket(self, bucket_name, bucket_tag):
         self._boto_s3_client.put_bucket_tagging(
             Bucket=bucket_name,
             Tagging={
                 'TagSet': [
                     {
-                        'Key': TAG_NAME,
+                        'Key': bucket_tag,
                         'Value': TAG_VALUE,
                     }
                 ]
