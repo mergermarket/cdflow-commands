@@ -8,6 +8,7 @@ from zipfile import ZipFile
 from cdflow_commands.config import (
     assume_role, get_role_session_name, get_platform_config_path
 )
+from cdflow_commands.logger import logger
 from cdflow_commands.plugins import Plugin
 from cdflow_commands.secrets import get_secrets
 from cdflow_commands.state import (
@@ -172,6 +173,7 @@ class Release():
         self._remove_zipped_folder(zipped_folder.filename)
 
     def _zip_up_component(self):
+        logger.info('Zipping up ./{} folder'.format(self._component_name))
         with ZipFile(self._component_name + '.zip', 'w') as zipped_folder:
             for dirname, subdirs, files in os.walk(self._component_name):
                 zipped_folder.write(dirname)
@@ -180,6 +182,9 @@ class Release():
         return zipped_folder
 
     def _upload_zip_to_bucket(self, boto_s3_client, bucket_name, filename):
+        logger.info('Uploading {} to s3 bucket ({}) with key: {}'.format(
+            filename, bucket_name, self._lambda_s3_key
+        ))
         boto_s3_client.upload_file(
             filename,
             bucket_name,
@@ -187,6 +192,7 @@ class Release():
         )
 
     def _remove_zipped_folder(self, filename):
+        logger.info('Removing local zipped package: {}'.format(filename))
         os.remove(filename)
 
 
