@@ -174,11 +174,13 @@ class Release():
 
     def _zip_up_component(self):
         logger.info('Zipping up ./{} folder'.format(self._component_name))
+        top_level = os.getcwd()
         with ZipFile(self._component_name + '.zip', 'w') as zipped_folder:
             for dirname, subdirs, files in os.walk(self._component_name):
-                zipped_folder.write(dirname)
+                os.chdir(dirname)
                 for filename in files:
-                    zipped_folder.write(os.path.join(dirname, filename))
+                    zipped_folder.write(filename)
+                os.chdir(top_level)
         return zipped_folder
 
     def _upload_zip_to_bucket(self, boto_s3_client, bucket_name, filename):
