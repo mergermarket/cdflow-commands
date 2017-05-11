@@ -164,6 +164,11 @@ class S3BucketFactory(object):
         '''.format(bucket_tag, TAG_VALUE).strip()
 
         if len(tagged_buckets) == 1:
+            logger.debug(
+                'Single bucket ({}) with tag: {}={} found'.format(
+                    list(tagged_buckets)[0], bucket_tag, TAG_VALUE
+                )
+            )
             return list(tagged_buckets)[0]
         else:
             bucket_name = self._create_bucket(bucket_name_prefix)
@@ -197,6 +202,7 @@ class S3BucketFactory(object):
         return {tag['Key']: tag['Value'] for tag in tags}
 
     def _create_bucket(self, bucket_name_prefix):
+        logger.debug('Creating bucket with name {}'.format(bucket_name_prefix))
         for attempt in range(MAX_CREATION_ATTEMPTS):
             if bucket_name_prefix == TFSTATE_NAME_PREFIX:
                 bucket_name = self._generate_bucket_name(
@@ -205,6 +211,9 @@ class S3BucketFactory(object):
             else:
                 bucket_name = LAMBDA_BUCKET_NAME
             if self._attempt_to_create_bucket(bucket_name):
+                logger.debug(
+                    's3 bucket with name: {} created'.format(bucket_name)
+                )
                 return bucket_name
         raise Exception('could not create bucket after {} attempts'.format(
             MAX_CREATION_ATTEMPTS
@@ -235,6 +244,9 @@ class S3BucketFactory(object):
         return True
 
     def _tag_bucket(self, bucket_name, bucket_tag):
+        logger.debug('Tagging bucket: {} with tag: {}={}'.format(
+            bucket_name, bucket_tag, TAG_VALUE
+        ))
         self._boto_s3_client.put_bucket_tagging(
             Bucket=bucket_name,
             Tagging={
