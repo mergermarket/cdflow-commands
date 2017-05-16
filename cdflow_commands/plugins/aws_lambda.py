@@ -5,6 +5,7 @@ from subprocess import check_call
 from tempfile import NamedTemporaryFile
 from collections import namedtuple
 from zipfile import ZipFile
+from contextlib import contextmanager
 from cdflow_commands.config import (
     assume_role, get_role_session_name, get_platform_config_path
 )
@@ -172,13 +173,20 @@ class Release():
         )
         self._remove_zipped_folder(zipped_folder.filename)
 
+    @contextmanager
+    def _change_dir(self, path):
+        top_level = os.getcwd()
+        os.chdir(path)
+        yield
+        os.chdir(top_level)
+
     def _zip_up_component(self):
         logger.info('Zipping up ./{} folder'.format(self._component_name))
         with ZipFile(self._component_name + '.zip', 'w') as zipped_folder:
-            for dirname, subdirs, files in os.walk(self._component_name):
-                zipped_folder.write(dirname)
-                for filename in files:
-                    zipped_folder.write(os.path.join(dirname, filename))
+            with self._change_dir(self._component_name):
+                for dirname, subdirs, files in os.walk('.'):
+                    for filename in files:
+                        zipped_folder.write(os.path.join(dirname, filename))
         return zipped_folder
 
     def _upload_zip_to_bucket(self, boto_s3_client, bucket_name, filename):
