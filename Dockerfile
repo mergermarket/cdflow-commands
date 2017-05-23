@@ -1,6 +1,6 @@
 FROM python:3-alpine
 
-ENV TERRAFORM_VERSION=0.9.4
+ENV TERRAFORM_VERSION=0.9.5
 
 RUN echo http://dl-cdn.alpinelinux.org/alpine/edge/community >> /etc/apk/repositories
 RUN apk update
