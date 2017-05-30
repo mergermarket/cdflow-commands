@@ -156,7 +156,7 @@ def build_destroy_factory(
         )
 
         return Destroy(
-            boto_session, component_name, environment_name, s3_bucket
+            boto_session, component_name, environment_name, s3_bucket, False
         )
     return _destroy_factory
 
