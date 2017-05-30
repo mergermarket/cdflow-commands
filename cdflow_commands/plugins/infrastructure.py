@@ -37,7 +37,8 @@ def build_infrastructure_plugin(
     )
 
     destroy_factory = build_destroy_factory(
-        environment_name, component_name, metadata, global_config, root_session
+        environment_name, component_name, metadata,
+        global_config, root_session, plan_only
     )
 
     return InfrastructurePlugin(
@@ -92,7 +93,8 @@ def build_deploy_factory(
 
 
 def build_destroy_factory(
-    environment_name, component_name, metadata, global_config, root_session
+    environment_name, component_name, metadata,
+    global_config, root_session, plan_only
 ):
     def _destroy_factory():
         is_prod = environment_name == 'live'
@@ -119,7 +121,11 @@ def build_destroy_factory(
         )
 
         return Destroy(
-            boto_session, component_name, environment_name, s3_bucket
+            boto_session,
+            component_name,
+            environment_name,
+            s3_bucket,
+            plan_only
         )
     return _destroy_factory
 

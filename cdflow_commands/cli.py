@@ -101,6 +101,7 @@ def build_plugin(project_type, **kwargs):
             kwargs['metadata'],
             kwargs['global_config'],
             kwargs['root_session'],
+            kwargs['plan_only']
         )
     return plugin
 
