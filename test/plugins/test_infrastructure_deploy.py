@@ -32,7 +32,7 @@ class TestDeploy(unittest.TestCase):
         )
         self._deploy = Deploy(
             self._boto_session, self._component_name, self._environment_name,
-            self._additional_variables, self._deploy_config
+            self._additional_variables, self._deploy_config, False
         )
 
     def test_terraform_modules_fetched(
@@ -106,6 +106,51 @@ class TestDeploy(unittest.TestCase):
             env=ANY
         )
 
+    def test_terraform_apply_not_called_if_plan_true(
+        self, NamedTemporaryFile, get_secrets, check_call, mock_os
+    ):
+        # Given
+        TERRAFORM_FULL_LIFECYCLE_CALL_COUNT = 3
+        planned_deploy = Deploy(
+            self._boto_session, self._component_name, self._environment_name,
+            self._additional_variables, self._deploy_config, True
+        )
+
+        # When
+        NamedTemporaryFile.return_value.__enter__.return_value.name = \
+            '/mock/file/path'
+        get_secrets.return_value = {}
+        planned_deploy.run()
+
+        base_parameters = [
+            '-var', 'component={}'.format(self._component_name),
+            '-var', 'env={}'.format(self._environment_name),
+            '-var', 'aws_region={}'.format(self._boto_session.region_name),
+            '-var', 'team={}'.format(self._deploy_config.team),
+            '-var-file', self._deploy_config.platform_config_file,
+            '-var-file', '/mock/file/path'
+        ]
+
+        extra_parameters = chain.from_iterable(
+            ('-var', ANY) for _ in self._additional_variables
+        )
+
+        ignored_parameters = base_parameters + list(extra_parameters)
+
+        # Then
+        terraform_calls = check_call.call_args_list
+        assert len(terraform_calls) < TERRAFORM_FULL_LIFECYCLE_CALL_COUNT
+        assert (
+            (
+                ['terraform', 'plan'] + ignored_parameters + ['infra'],
+            ), ANY
+        ) in terraform_calls
+        assert (
+            (
+                ['terraform', 'apply'] + ignored_parameters + ['infra'],
+            ), ANY
+        ) not in terraform_calls
+
     def test_secrets_written_to_temporary_file(
         self, NamedTemporaryFile, get_secrets, check_call, mock_os
     ):
@@ -163,7 +208,7 @@ class TestEnvironmentSpecificConfigAddedToTerraformArgs(unittest.TestCase):
         )
         deploy = Deploy(
             boto_session, 'dummy-component', env_name,
-            [], deploy_config
+            [], deploy_config, False
         )
 
         # When
