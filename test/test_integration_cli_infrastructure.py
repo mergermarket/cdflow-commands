@@ -275,7 +275,7 @@ class TestDeployCLI(unittest.TestCase):
             'deploy', 'aslive',
             '--var', 'raindrops=roses',
             '--var', 'whiskers=kittens',
-            '--plan'
+            '--plan-only'
         ])
 
         # Then

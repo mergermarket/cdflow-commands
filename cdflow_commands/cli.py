@@ -10,7 +10,7 @@ Usage:
 Options:
     -c <component_name>, --component <component_name>
     -v, --verbose
-    -p, --plan
+    -p, --plan-only
 
 """
 import logging
@@ -62,7 +62,7 @@ def _run(argv):
         metadata=metadata,
         global_config=global_config,
         root_session=root_session,
-        plan_only=args['--plan']
+        plan_only=args['--plan-only']
     )
 
     if args['release']:
