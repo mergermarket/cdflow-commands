@@ -267,23 +267,81 @@ class TestDeployCLI(unittest.TestCase):
             }
         )
 
+    def test_deploy_is_planned_with_flag(self):
+        # Given
 
+        # When
+        cli.run([
+            'deploy', 'aslive',
+            '--var', 'raindrops=roses',
+            '--var', 'whiskers=kittens',
+            '--plan-only'
+        ])
+
+        # Then
+        self.check_call_state.assert_any_call(
+            ['terraform', 'init', ANY, ANY, ANY, ANY],
+            cwd='infra'
+        )
+
+        self.check_call.assert_any_call(['terraform', 'get', 'infra'])
+
+        self.check_call.assert_any_call(
+            [
+                'terraform', 'plan',
+                '-var', 'component=dummy-component',
+                '-var', 'env=aslive',
+                '-var', 'aws_region=eu-west-12',
+                '-var', 'team=dummy-team',
+                '-var-file', 'infra/platform-config/mmg/dev/eu-west-12.json',
+                '-var-file', ANY,
+                '-var', 'raindrops=roses',
+                '-var', 'whiskers=kittens',
+                'infra'
+            ],
+            env={
+                'JOB_NAME': 'dummy-job-name',
+                'AWS_ACCESS_KEY_ID': self.aws_access_key_id,
+                'AWS_SECRET_ACCESS_KEY': self.aws_secret_access_key,
+                'AWS_SESSION_TOKEN': self.aws_session_token
+            }
+        )
+        terraform_calls = self.check_call.call_args_list
+        assert (
+            (
+                [
+                    'terraform', 'apply',
+                    '-var', 'component=dummy-component',
+                    '-var', 'env=aslive',
+                    '-var', 'aws_region=eu-west-12',
+                    '-var', 'team=dummy-team',
+                    '-var-file',
+                    'infra/platform-config/mmg/dev/eu-west-12.json',
+                    '-var-file', ANY,
+                    '-var', 'raindrops=roses',
+                    '-var', 'whiskers=kittens',
+                    'infra'
+                ],
+            ), ANY
+        ) not in terraform_calls
+
+
+@patch('cdflow_commands.cli.rmtree')
+@patch('cdflow_commands.plugins.infrastructure.S3BucketFactory')
+@patch('cdflow_commands.plugins.infrastructure.LockTableFactory')
+@patch('cdflow_commands.plugins.base.os')
+@patch('cdflow_commands.plugins.infrastructure.os')
+@patch('cdflow_commands.cli.Session')
+@patch('cdflow_commands.config.Session')
+@patch('cdflow_commands.config.open', new_callable=mock_open, create=True)
+@patch('cdflow_commands.plugins.base.check_call')
+@patch('cdflow_commands.config.check_output')
+@patch('cdflow_commands.state.check_call')
+@patch('cdflow_commands.state.NamedTemporaryFile')
+@patch('cdflow_commands.state.move')
+@patch('cdflow_commands.state.atexit')
 class TestDestroyCLI(unittest.TestCase):
 
-    @patch('cdflow_commands.cli.rmtree')
-    @patch('cdflow_commands.plugins.infrastructure.S3BucketFactory')
-    @patch('cdflow_commands.plugins.infrastructure.LockTableFactory')
-    @patch('cdflow_commands.plugins.base.os')
-    @patch('cdflow_commands.plugins.infrastructure.os')
-    @patch('cdflow_commands.cli.Session')
-    @patch('cdflow_commands.config.Session')
-    @patch('cdflow_commands.config.open', new_callable=mock_open, create=True)
-    @patch('cdflow_commands.plugins.base.check_call')
-    @patch('cdflow_commands.config.check_output')
-    @patch('cdflow_commands.state.check_call')
-    @patch('cdflow_commands.state.NamedTemporaryFile')
-    @patch('cdflow_commands.state.move')
-    @patch('cdflow_commands.state.atexit')
     def test_destroy_is_configured_and_run(
         self, _1, _2, _3, check_call_state, check_output, check_call,
         mock_open, Session_from_config, Session_from_cli, mock_os_cli,
@@ -393,3 +451,109 @@ class TestDestroyCLI(unittest.TestCase):
         )
 
         rmtree.assert_called_once_with('.terraform/')
+
+    def test_destroy_is_only_planned(
+        self, _1, _2, _3, check_call_state, check_output, check_call,
+        mock_open, Session_from_config, Session_from_cli, mock_os_cli,
+        mock_os_deploy, _4, _5, rmtree
+    ):
+        # Given
+        mock_os_cli.environ = {
+            'JOB_NAME': 'dummy-job-name'
+        }
+        mock_os_deploy.environ = {}
+
+        mock_metadata_file = MagicMock(spec=TextIOWrapper)
+        metadata = {
+            'TEAM': 'dummy-team',
+            'TYPE': 'infrastructure',
+            'REGION': 'eu-west-12',
+            'ACCOUNT_PREFIX': 'mmg'
+        }
+        mock_metadata_file.read.return_value = json.dumps(metadata)
+
+        mock_dev_file = MagicMock(spec=TextIOWrapper)
+        dev_config = {
+            'platform_config': {
+                'account_id': 123456789,
+            }
+        }
+        mock_dev_file.read.return_value = json.dumps(dev_config)
+
+        mock_prod_file = MagicMock(spec=TextIOWrapper)
+        prod_config = {
+            'platform_config': {
+                'account_id': 987654321,
+            }
+        }
+        mock_prod_file.read.return_value = json.dumps(prod_config)
+
+        mock_open.return_value.__enter__.side_effect = (
+            f for f in (mock_metadata_file, mock_dev_file, mock_prod_file)
+        )
+
+        mock_sts_client = Mock()
+        mock_sts_client.assume_role.return_value = {
+            'Credentials': {
+                'AccessKeyId': 'dummy-access-key',
+                'SecretAccessKey': 'dummy-secret-key',
+                'SessionToken': 'dummy-session-token',
+            }
+        }
+
+        mock_root_session = Mock()
+        mock_root_session.client.return_value = mock_sts_client
+        mock_root_session.region_name = 'eu-west-12'
+        Session_from_cli.return_value = mock_root_session
+
+        aws_access_key_id = 'dummy-access-key-id'
+        aws_secret_access_key = 'dummy-secret-access-key'
+        aws_session_token = 'dummy-session-token'
+        mock_assumed_session = Mock()
+        mock_assumed_session.region_name = 'eu-west-12'
+        mock_assumed_session.get_credentials.return_value = BotoCreds(
+            aws_access_key_id,
+            aws_secret_access_key,
+            aws_session_token
+        )
+
+        Session_from_config.return_value = mock_assumed_session
+
+        component_name = 'dummy-component'
+
+        check_output.return_value = 'git@github.com:org/{}.git'.format(
+            component_name
+        ).encode('utf-8')
+
+        # When
+        cli.run(['destroy', 'aslive', '--plan-only'])
+
+        # Then
+        check_call_state.assert_any_call(
+            ['terraform', 'init', ANY, ANY, ANY, ANY],
+            cwd='/cdflow/tf-destroy'
+        )
+
+        check_call.assert_any_call(
+            [
+                'terraform', 'plan', '-destroy',
+                '-var', 'aws_region=eu-west-12',
+                '/cdflow/tf-destroy'
+            ],
+            env={
+                'AWS_ACCESS_KEY_ID': aws_access_key_id,
+                'AWS_SECRET_ACCESS_KEY': aws_secret_access_key,
+                'AWS_SESSION_TOKEN': aws_session_token
+            }
+        )
+
+        terraform_calls = check_call.call_args_list
+        assert (
+            (
+                [
+                    'terraform', 'destroy', '-force',
+                    '-var', 'aws_region=eu-west-12',
+                    '/cdflow/tf-destroy'
+                ],
+            ), ANY
+        ) not in terraform_calls

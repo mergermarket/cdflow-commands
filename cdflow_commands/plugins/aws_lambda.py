@@ -19,7 +19,7 @@ from cdflow_commands.state import (
 
 def build_lambda_plugin(
     environment_name, component_name, version,
-    metadata, global_config, root_session
+    metadata, global_config, root_session, plan_only=False
 ):
     release_factory = build_release_factory(
         global_config,
@@ -34,7 +34,8 @@ def build_lambda_plugin(
         version,
         metadata,
         global_config,
-        root_session
+        root_session,
+        plan_only
     )
     return LambdaPlugin(
         release_factory,
@@ -64,7 +65,7 @@ def build_release_factory(
 
 def build_deploy_factory(
     environment_name, component_name, version,
-    metadata, global_config, root_session
+    metadata, global_config, root_session, plan_only
 ):
     def _deploy_factory():
         is_prod = environment_name == 'live'
@@ -107,7 +108,8 @@ def build_deploy_factory(
             environment_name,
             version,
             deploy_config,
-            lambda_config
+            lambda_config,
+            plan_only
         )
     return _deploy_factory
 
@@ -220,7 +222,7 @@ class Deploy(object):
 
     def __init__(
         self, boto_session, component_name, environment_name,
-        version, deploy_config, lambda_config
+        version, deploy_config, lambda_config, plan_only
     ):
         self._boto_session = boto_session
         self._aws_region = boto_session.region_name
@@ -231,6 +233,7 @@ class Deploy(object):
         self._dev_account_id = deploy_config.dev_account_id
         self._platform_config_file = deploy_config.platform_config_file
         self._lambda_config = lambda_config
+        self._plan_only = plan_only
 
     @property
     def _handler(self):
@@ -281,7 +284,8 @@ class Deploy(object):
                 ['terraform', 'plan'] + parameters,
                 env=env
             )
-            check_call(
-                ['terraform', 'apply'] + parameters,
-                env=env
-            )
+            if not self._plan_only:
+                check_call(
+                    ['terraform', 'apply'] + parameters,
+                    env=env
+                )

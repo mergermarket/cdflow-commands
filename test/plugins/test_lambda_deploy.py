@@ -30,7 +30,7 @@ class TestDeploy(unittest.TestCase):
         )
         self._deploy = Deploy(
             boto_session, 'dummy-component', 'dummy-env', 'dummy-version',
-            self._deploy_config, self._lambda_config
+            self._deploy_config, self._lambda_config, False
         )
 
     @patch('cdflow_commands.plugins.aws_lambda.check_call')
@@ -99,7 +99,7 @@ class TestDeploy(unittest.TestCase):
         )
         deploy = Deploy(
             boto_session, ANY, ANY, ANY, self._deploy_config,
-            self._lambda_config
+            self._lambda_config, False
         )
 
         with patch(
@@ -157,7 +157,7 @@ class TestDeploy(unittest.TestCase):
 
         deploy = Deploy(
             boto_session, ANY, ANY, ANY, self._deploy_config,
-            self._lambda_config
+            self._lambda_config, False
         )
 
         with patch(
@@ -208,7 +208,7 @@ class TestDeploy(unittest.TestCase):
 
         deploy = Deploy(
             boto_session, ANY, ANY, ANY, self._deploy_config,
-            self._lambda_config
+            self._lambda_config, False
         )
 
         with patch(
@@ -267,7 +267,8 @@ class TestDeploy(unittest.TestCase):
             data['environment_name'],
             data['version'],
             deploy_config,
-            lambda_config
+            lambda_config,
+            False
         )
 
         secret_file_path = '/mock/file/path'
@@ -329,7 +330,7 @@ class TestEnvironmentSpecificConfigAddedToTerraformArgs(unittest.TestCase):
         )
         deploy = Deploy(
             boto_session, 'dummy-component', env_name,
-            'dummy-version', deploy_config, lambda_config
+            'dummy-version', deploy_config, lambda_config, False
         )
 
         # When
