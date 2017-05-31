@@ -26,7 +26,7 @@ from cdflow_commands.state import (
 
 def build_ecs_plugin(
     environment_name, component_name, version,
-    metadata, global_config, root_session
+    metadata, global_config, root_session, plan_only=False
 ):
     validate_plugin_arguments(environment_name, version)
 
@@ -36,7 +36,7 @@ def build_ecs_plugin(
 
     deploy_factory = build_deploy_factory(
         environment_name, component_name, version,
-        metadata, global_config, root_session
+        metadata, global_config, root_session, plan_only
     )
 
     destroy_factory = build_destroy_factory(
@@ -88,7 +88,7 @@ def build_release_factory(
 
 def build_deploy_factory(
     environment_name, component_name, version,
-    metadata, global_config, root_session
+    metadata, global_config, root_session, plan_only
 ):
     def _deploy_factory():
         is_prod = environment_name == 'live'
@@ -123,7 +123,7 @@ def build_deploy_factory(
         )
         return Deploy(
             boto_session, component_name, environment_name, version,
-            metadata.ecs_cluster, deploy_config
+            metadata.ecs_cluster, deploy_config, plan_only
         )
     return _deploy_factory
 
@@ -299,7 +299,7 @@ class Deploy(object):
 
     def __init__(
         self, boto_session, component_name, environment_name,
-        version, ecs_cluster, config
+        version, ecs_cluster, config, plan_only
     ):
         self._boto_session = boto_session
         self._aws_region = boto_session.region_name
@@ -310,6 +310,7 @@ class Deploy(object):
         self._team = config.team
         self._dev_account_id = config.dev_account_id
         self._platform_config_file = config.platform_config_file
+        self._plan_only = plan_only
 
     @property
     def _image_name(self):
@@ -362,10 +363,11 @@ class Deploy(object):
                 ['terraform', 'plan'] + parameters,
                 env=env
             )
-            check_call(
-                ['terraform', 'apply'] + parameters,
-                env=env
-            )
+            if not self._plan_only:
+                check_call(
+                    ['terraform', 'apply'] + parameters,
+                    env=env
+                )
 
 
 class ECSPlugin(Plugin):
