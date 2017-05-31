@@ -45,7 +45,7 @@ def build_ecs_plugin(
 
     deploy_monitor_factory = build_deploy_monitor_factory(
         metadata, global_config, environment_name, component_name, version,
-        root_session
+        root_session, plan_only
     )
 
     return ECSPlugin(
@@ -163,7 +163,7 @@ def build_destroy_factory(
 
 def build_deploy_monitor_factory(
     metadata, global_config, environment_name,
-    component_name, version, root_session
+    component_name, version, root_session, plan_only
 ):
     def _deploy_monitor_factory():
         is_prod = environment_name == 'live'
@@ -181,7 +181,7 @@ def build_deploy_monitor_factory(
             metadata.ecs_cluster, environment_name,
             component_name, version, boto_session
         )
-        return ECSMonitor(events)
+        return ECSMonitor(events, plan_only)
     return _deploy_monitor_factory
 
 
@@ -410,27 +410,28 @@ class ECSMonitor:
     _TIMEOUT = 600
     _INTERVAL = 15
 
-    def __init__(self, ecs_event_iterator):
+    def __init__(self, ecs_event_iterator, plan_only=False):
         self._ecs_event_iterator = ecs_event_iterator
         self._previous_running_count = 0
+        self._plan_only = plan_only
 
     def wait(self):
-        start = time()
+        if not self._plan_only:
+            self._check_ecs_deploy_progress()
 
+    def _check_ecs_deploy_progress(self):
+        start = time()
         for event in self._ecs_event_iterator:
+            self._show_deployment_progress(event)
+            self._check_for_failed_tasks(event)
+            if event.done:
+                logger.info('Deployment complete')
+                return True
             if time() - start > self._TIMEOUT:
                 raise TimeoutError(
                     'Deployment timed out - didn\'t complete '
                     'within {} seconds'.format(self._TIMEOUT)
                 )
-
-            self._show_deployment_progress(event)
-            self._check_for_failed_tasks(event)
-
-            if event.done:
-                logger.info('Deployment complete')
-                return True
-
             sleep(self._INTERVAL)
 
     def _show_deployment_progress(self, event):
