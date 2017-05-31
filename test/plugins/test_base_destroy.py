@@ -26,7 +26,11 @@ class TestDestroy(unittest.TestCase):
         boto_session = Mock()
         boto_session.region_name = test_fixtures['region']
         destroy = Destroy(
-            boto_session, component_name, environment_name, 'dummy-bucket'
+            boto_session,
+            component_name,
+            environment_name,
+            'dummy-bucket',
+            False
         )
 
         with patch('cdflow_commands.plugins.base.check_call') as check_call:
@@ -48,7 +52,11 @@ class TestDestroy(unittest.TestCase):
         boto_session = Mock()
         boto_session.region_name = test_fixtures['region']
         destroy = Destroy(
-            boto_session, component_name, environment_name, 'dummy-bucket'
+            boto_session,
+            component_name,
+            environment_name,
+            'dummy-bucket',
+            False
         )
 
         with patch('cdflow_commands.plugins.base.check_call') as check_call:
@@ -73,8 +81,11 @@ class TestDestroy(unittest.TestCase):
             aws_config['session_token'],
         )
         destroy = Destroy(
-            boto_session, 'dummy-component',
-            'dummy-environment', 'dummy-bucket'
+            boto_session,
+            'dummy-component',
+            'dummy-environment',
+            'dummy-bucket',
+            False
         )
 
         with patch('cdflow_commands.plugins.base.check_call') as check_call:
@@ -104,8 +115,11 @@ class TestDestroy(unittest.TestCase):
             'dummy-session-token',
         )
         destroy = Destroy(
-            boto_session, 'dummy-component',
-            'dummy-environment', 'dummy-bucket'
+            boto_session,
+            'dummy-component',
+            'dummy-environment',
+            'dummy-bucket',
+            False
         )
 
         with patch(
@@ -144,7 +158,8 @@ class TestDestroy(unittest.TestCase):
             boto_session,
             test_fixtures['component_name'],
             test_fixtures['environment_name'],
-            test_fixtures['s3_bucket_name']
+            test_fixtures['s3_bucket_name'],
+            False
         )
 
         # When

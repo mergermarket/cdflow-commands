@@ -10,6 +10,7 @@ Usage:
 Options:
     -c <component_name>, --component <component_name>
     -v, --verbose
+    -p, --plan-only
 
 """
 import logging
@@ -61,6 +62,7 @@ def _run(argv):
         metadata=metadata,
         global_config=global_config,
         root_session=root_session,
+        plan_only=args['--plan-only']
     )
 
     if args['release']:
@@ -89,6 +91,7 @@ def build_plugin(project_type, **kwargs):
             kwargs['metadata'],
             kwargs['global_config'],
             kwargs['root_session'],
+            kwargs['plan_only']
         )
     elif project_type == 'lambda':
         plugin = build_lambda_plugin(
@@ -98,6 +101,7 @@ def build_plugin(project_type, **kwargs):
             kwargs['metadata'],
             kwargs['global_config'],
             kwargs['root_session'],
+            kwargs['plan_only']
         )
     return plugin
 

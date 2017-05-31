@@ -26,18 +26,19 @@ DeployConfig = namedtuple('DeployConfig', [
 
 def build_infrastructure_plugin(
     environment_name, component_name, additional_variables,
-    metadata, global_config, root_session
+    metadata, global_config, root_session, plan_only=False
 ):
     validate_plugin_arguments(environment_name)
     release_factory = None
 
     deploy_factory = build_deploy_factory(
         environment_name, component_name, additional_variables,
-        metadata, global_config, root_session
+        metadata, global_config, root_session, plan_only
     )
 
     destroy_factory = build_destroy_factory(
-        environment_name, component_name, metadata, global_config, root_session
+        environment_name, component_name, metadata,
+        global_config, root_session, plan_only
     )
 
     return InfrastructurePlugin(
@@ -52,7 +53,7 @@ def validate_plugin_arguments(environment_name):
 
 def build_deploy_factory(
     environment_name, component_name, additional_variables,
-    metadata, global_config, root_session,
+    metadata, global_config, root_session, plan_only
 ):
     def _deploy_factory():
         is_prod = environment_name == 'live'
@@ -86,13 +87,14 @@ def build_deploy_factory(
         )
         return Deploy(
             boto_session, component_name, environment_name,
-            additional_variables, deploy_config
+            additional_variables, deploy_config, plan_only
         )
     return _deploy_factory
 
 
 def build_destroy_factory(
-    environment_name, component_name, metadata, global_config, root_session
+    environment_name, component_name, metadata,
+    global_config, root_session, plan_only
 ):
     def _destroy_factory():
         is_prod = environment_name == 'live'
@@ -119,7 +121,11 @@ def build_destroy_factory(
         )
 
         return Destroy(
-            boto_session, component_name, environment_name, s3_bucket
+            boto_session,
+            component_name,
+            environment_name,
+            s3_bucket,
+            plan_only
         )
     return _destroy_factory
 
@@ -128,13 +134,14 @@ class Deploy:
 
     def __init__(
         self, boto_session, component_name, environment_name,
-        additional_variables, config
+        additional_variables, config, plan_only
     ):
         self._boto_session = boto_session
         self._component_name = component_name
         self._environment_name = environment_name
         self._additional_variables = additional_variables
         self._config = config
+        self._plan_only = plan_only
 
     def _terraform_parameters(self, secrets_file):
         parameters = [
@@ -180,9 +187,10 @@ class Deploy:
             check_call(
                 ['terraform', 'plan'] + parameters + ['infra'], env=env
             )
-            check_call(
-                ['terraform', 'apply'] + parameters + ['infra'], env=env
-            )
+            if not self._plan_only:
+                check_call(
+                    ['terraform', 'apply'] + parameters + ['infra'], env=env
+                )
 
 
 class InfrastructurePlugin(Plugin):
