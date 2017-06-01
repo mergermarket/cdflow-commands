@@ -430,6 +430,65 @@ class TestDeployCLI(unittest.TestCase):
 
         self.rmtree.assert_called_once_with('.terraform/')
 
+    def test_deploy_is_planned_with_flag(self):
+        # When
+        cli.run(['deploy', 'aslive', '1.2.3', '--plan-only'])
+
+        # Then
+        self.check_call_state.assert_any_call(
+            ['terraform', 'init', ANY, ANY, ANY, ANY],
+            cwd='infra'
+        )
+
+        self.check_call.assert_any_call(['terraform', 'get', 'infra'])
+
+        image_name = (
+            '123456789.dkr.ecr.eu-west-12.amazonaws.com/'
+            'dummy-component:1.2.3'
+        )
+
+        self.check_call.assert_any_call(
+            [
+                'terraform', 'plan',
+                '-var', 'component=dummy-component',
+                '-var', 'env=aslive',
+                '-var', 'aws_region=eu-west-12',
+                '-var', 'team=dummy-team',
+                '-var', 'image={}'.format(image_name),
+                '-var', 'version=1.2.3',
+                '-var', 'ecs_cluster=default',
+                '-var-file', 'infra/platform-config/mmg/dev/eu-west-12.json',
+                '-var-file', ANY,
+                'infra'
+            ],
+            env={
+                'JOB_NAME': 'dummy-job-name',
+                'AWS_ACCESS_KEY_ID': self.aws_access_key_id,
+                'AWS_SECRET_ACCESS_KEY': self.aws_secret_access_key,
+                'AWS_SESSION_TOKEN': self.aws_session_token
+            }
+        )
+
+        terraform_calls = self.check_call.call_args_list
+        assert (
+            (
+                [
+                    'terraform', 'apply',
+                    '-var', 'component=dummy-component',
+                    '-var', 'env=aslive',
+                    '-var', 'aws_region=eu-west-12',
+                    '-var', 'team=dummy-team',
+                    '-var', 'image={}'.format(image_name),
+                    '-var', 'version=1.2.3',
+                    '-var', 'ecs_cluster=default',
+                    '-var-file',
+                    'infra/platform-config/mmg/dev/eu-west-12.json',
+                    '-var-file', ANY,
+                    'infra'
+                ],
+            ), ANY
+        ) not in terraform_calls
+
     def test_dev_session_passed_to_non_live_deployments(self):
         # Given
         environment_name = 'aslive'

@@ -82,6 +82,7 @@ def build_plugin(project_type, **kwargs):
             kwargs['metadata'],
             kwargs['global_config'],
             kwargs['root_session'],
+            kwargs['plan_only']
         )
     elif project_type == 'infrastructure':
         plugin = build_infrastructure_plugin(

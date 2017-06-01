@@ -24,7 +24,7 @@ class TestDeploy(unittest.TestCase):
         )
         self._deploy = Deploy(
             boto_session, 'dummy-component', 'dummy-env',
-            'dummy-version', 'dummy-ecs-cluster', self._deploy_config
+            'dummy-version', 'dummy-ecs-cluster', self._deploy_config, False
         )
 
     @patch('cdflow_commands.plugins.ecs.check_call')
@@ -91,7 +91,9 @@ class TestDeploy(unittest.TestCase):
             credentials['session_token'],
             'eu-west-10'
         )
-        deploy = Deploy(boto_session, ANY, ANY, ANY, ANY, self._deploy_config)
+        deploy = Deploy(
+            boto_session, ANY, ANY, ANY, ANY, self._deploy_config, False
+        )
 
         with patch(
             'cdflow_commands.plugins.ecs.check_call'
@@ -145,7 +147,9 @@ class TestDeploy(unittest.TestCase):
             'eu-west-10'
         )
 
-        deploy = Deploy(boto_session, ANY, ANY, ANY, ANY, self._deploy_config)
+        deploy = Deploy(
+            boto_session, ANY, ANY, ANY, ANY, self._deploy_config, False
+        )
 
         with patch(
             'cdflow_commands.plugins.ecs.os'
@@ -192,7 +196,9 @@ class TestDeploy(unittest.TestCase):
             'eu-west-10'
         )
 
-        deploy = Deploy(boto_session, ANY, ANY, ANY, ANY, self._deploy_config)
+        deploy = Deploy(
+            boto_session, ANY, ANY, ANY, ANY, self._deploy_config, False
+        )
 
         with patch(
             'cdflow_commands.plugins.ecs.os'
@@ -244,7 +250,8 @@ class TestDeploy(unittest.TestCase):
             data['environment_name'],
             data['version'],
             data['ecs_cluster'],
-            deploy_config
+            deploy_config,
+            False
         )
         image_name = '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
             data['dev_account_id'],
@@ -307,7 +314,7 @@ class TestEnvironmentSpecificConfigAddedToTerraformArgs(unittest.TestCase):
         )
         deploy = Deploy(
             boto_session, 'dummy-component', env_name,
-            'dummy-version', 'dummy-ecs-cluster', deploy_config
+            'dummy-version', 'dummy-ecs-cluster', deploy_config, False
         )
 
         # When
