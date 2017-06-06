@@ -19,3 +19,7 @@ class FixedMessageError(CDFlowError):
 
 class UserFacingFixedMessageError(UserFacingError, FixedMessageError):
     pass
+
+
+class UnknownProjectTypeError(UserFacingError):
+    pass
