@@ -1,7 +1,7 @@
 import unittest
 
 from cdflow_commands import cli
-from cdflow_commands.exceptions import UserFacingError
+from cdflow_commands.exceptions import UnknownProjectTypeError, UserFacingError
 from mock import patch
 
 
@@ -81,3 +81,19 @@ class TestUserFacingErrorThrown(unittest.TestCase):
 
         message_template = 'DEBUG:cdflow_commands.logger:No path {} to remove'
         assert message_template.format('.terraform/') in logs.output
+
+
+class TestCliBuildPlugin(unittest.TestCase):
+    def test_unsupported_project_type(self):
+        # Given
+        project_type = 'unknown'
+
+        # When / Then
+        with self.assertRaises(UnknownProjectTypeError) as context:
+            cli.build_plugin(project_type)
+
+        self.assertTrue(
+            'Unsupported project type specified in service.json' in str(
+                context.exception
+            )
+        )
