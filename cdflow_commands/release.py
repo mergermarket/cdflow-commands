@@ -1,7 +1,7 @@
 from subprocess import check_call
-from tempfile import mkdtemp
-from os import getcwd, path
-from shutil import copyfile
+from tempfile import TemporaryDirectory
+from os import getcwd, path, mkdir
+from shutil import copytree, make_archive
 import json
 
 
@@ -22,31 +22,37 @@ class Release:
         ], cwd=base_dir)
 
     def _copy_platform_config_files(self, base_dir):
-        copyfile(
-            '{}/dev.json'.format(self._platform_config_path),
-            '{}/dev.json'.format(base_dir)
-        )
-        copyfile(
-            '{}/prod.json'.format(self._platform_config_path),
-            '{}/prod.json'.format(base_dir)
+        copytree(
+            self._platform_config_path,
+            '{}/platform-config'.format(base_dir)
         )
 
-    def create(self, plugin):
+    def create(self, plugin, f):
 
-        base_dir = mkdtemp()
-        cwd = getcwd()
+        with TemporaryDirectory() as temp_dir:
+            base_dir = '{}/{}-{}'.format(
+                temp_dir, self.component_name, self.version
+            )
+            mkdir(base_dir)
 
-        self._run_terraform_get(base_dir, '{}/infra'.format(cwd))
-        self._copy_platform_config_files(base_dir)
+            cwd = getcwd()
 
-        artefacts = plugin.create()
+            self._run_terraform_get(base_dir, '{}/infra'.format(cwd))
+            self._copy_platform_config_files(base_dir)
 
-        with open(path.join(base_dir, 'release.json'), 'w') as f:
-            f.write(json.dumps({
-                'release': {
-                    'commit': self._commit,
-                    'version': self.version,
-                    'component-name': self.component_name,
-                    'artefacts': artefacts
-                }
-            }))
+            artefacts = plugin.create()
+
+            with open(path.join(base_dir, 'release.json'), 'w') as f:
+                f.write(json.dumps({
+                    'release': {
+                        'commit': self._commit,
+                        'version': self.version,
+                        'component-name': self.component_name,
+                        'artefacts': artefacts
+                    }
+                }))
+
+            make_archive(
+                base_dir, 'zip', temp_dir,
+                '{}-{}'.format(self.component_name, self.version),
+            )
