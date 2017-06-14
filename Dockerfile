@@ -19,6 +19,7 @@ ADD ./requirements.txt /cdflow/requirements.txt
 RUN pip install -r /cdflow/requirements.txt
 
 ADD . /cdflow
+ADD terraformrc /root/.terraformrc
 
 ENV PYTHONPATH=/cdflow
 
