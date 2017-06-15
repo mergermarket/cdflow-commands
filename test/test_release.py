@@ -212,7 +212,7 @@ class TestReleaseArchive(unittest.TestCase):
             temp_dir,
             '{}-{}'.format(component_name, version),
         )
-    
+
     @patch('cdflow_commands.release.mkdir')
     @patch('cdflow_commands.release.check_call')
     @patch('cdflow_commands.release.copytree')
@@ -252,7 +252,7 @@ class TestReleaseArchive(unittest.TestCase):
         make_archive.return_value = make_archive_result
 
         # When
-        path_to_archive = release.create(release_plugin)
+        release.create(release_plugin)
 
         # Then
         Object = mock_session.resource.return_value.Object

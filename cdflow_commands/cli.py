@@ -10,11 +10,8 @@ Usage:
 Options:
     -c <component_name>, --component <component_name>
     -v, --verbose
-<<<<<<< HEAD
     -p, --plan-only
 
-=======
->>>>>>> Working to integrate the code in the CLI module
 """
 import logging
 import sys
@@ -22,7 +19,6 @@ from shutil import rmtree
 
 from boto3.session import Session
 
-from cdflow_commands.account import AccountScheme
 from cdflow_commands.config import (
     assume_role, get_component_name, load_manifest, build_account_scheme
 )
@@ -67,7 +63,7 @@ def _run(argv):
             root_session, account_scheme.release_account.id, 'role-name'
         )
         release = Release(
-            session=session,
+            boto_session=session,
             release_bucket=account_scheme.release_bucket,
             platform_config_path=args['--platform-config'],
             version=args['<version>'],
