@@ -33,7 +33,8 @@ class TestAccountScheme(unittest.TestCase):
 
     @given(fixed_dictionaries({
         'account': account(),
-        'region': text(min_size=1)
+        'region': text(min_size=1),
+        'release-bucket': text(),
     }))
     def test_create_account_scheme_from_json(self, fixtures):
         raw_scheme = {
@@ -43,6 +44,7 @@ class TestAccountScheme(unittest.TestCase):
                     'role': fixtures['account']['role'],
                 }
             },
+            'release-bucket': fixtures['release-bucket'],
             'release-account': fixtures['account']['alias'],
             'default-region': fixtures['region'],
         }
@@ -53,6 +55,7 @@ class TestAccountScheme(unittest.TestCase):
             fixtures['account']['role']
         assert account_scheme.default_region == fixtures['region']
         assert account_scheme.accounts == {account_scheme.release_account}
+        assert account_scheme.release_bucket == fixtures['release-bucket']
 
     @given(lists(
         elements=account(), min_size=1,
@@ -67,6 +70,7 @@ class TestAccountScheme(unittest.TestCase):
         raw_scheme = {
             'accounts': accounts,
             'release-account': fixtures[0]['alias'],
+            'release-bucket': 'releases',
             'default-region': 'eu-west-69',
         }
 

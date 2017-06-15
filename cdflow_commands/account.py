@@ -8,9 +8,12 @@ class Account:
 
 class AccountScheme:
 
-    def __init__(self, accounts, release_account, default_region):
+    def __init__(
+        self, accounts, release_account, release_bucket,  default_region
+    ):
         self.accounts = accounts
         self.release_account = release_account
+        self.release_bucket = release_bucket
         self.default_region = default_region
 
     def create(raw_scheme):
@@ -23,6 +26,7 @@ class AccountScheme:
         return AccountScheme(
             set(accounts.values()),
             accounts[raw_scheme['release-account']],
+            raw_scheme['release-bucket'],
             raw_scheme['default-region']
         )
 
