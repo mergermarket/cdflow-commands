@@ -189,11 +189,15 @@ class TestReleaseArchive(unittest.TestCase):
         mock_file = MagicMock(spec=TextIOWrapper)
         mock_open.return_value.__enter__.return_value = mock_file
 
+        make_archive_result = '/path/to/dummy.zip'
+        make_archive.return_value = make_archive_result
+
         # When
         with BytesIO() as f:
-            release.create(release_plugin, f)
+            path_to_archive = release.create(release_plugin, f)
 
         # Then
+        assert path_to_archive == make_archive_result
         make_archive.assert_called_once_with(
             '{}/{}-{}'.format(temp_dir, component_name, version),
             'zip',

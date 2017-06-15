@@ -52,7 +52,7 @@ class Release:
                     }
                 }))
 
-            make_archive(
+            return make_archive(
                 base_dir, 'zip', temp_dir,
                 '{}-{}'.format(self.component_name, self.version),
             )
