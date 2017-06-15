@@ -30,10 +30,6 @@ def build_ecs_plugin(
 ):
     validate_plugin_arguments(environment_name, version)
 
-    release_factory = build_release_factory(
-        component_name, version, metadata, global_config, root_session
-    )
-
     deploy_factory = build_deploy_factory(
         environment_name, component_name, version,
         metadata, global_config, root_session, plan_only
@@ -49,7 +45,6 @@ def build_ecs_plugin(
     )
 
     return ECSPlugin(
-        release_factory,
         deploy_factory,
         destroy_factory,
         deploy_monitor_factory
@@ -62,28 +57,6 @@ def validate_plugin_arguments(environment_name, version):
 
     if version == '':
         raise MissingArgumentError('Version is missing')
-
-
-def build_release_factory(
-    component_name, version, metadata, global_config, root_session
-):
-    def _release_factory():
-        boto_session = assume_role(
-            root_session,
-            global_config.dev_account_id,
-            get_role_session_name(os.environ)
-        )
-        ecr_client = boto_session.client('ecr')
-        release_config = ReleaseConfig(
-            global_config.dev_account_id,
-            global_config.prod_account_id,
-            metadata.aws_region
-        )
-
-        return Release(
-            release_config, ecr_client, component_name, version
-        )
-    return _release_factory
 
 
 def build_deploy_factory(
@@ -189,35 +162,24 @@ class Destroy(BaseDestroy):
     pass
 
 
-ReleaseConfig = namedtuple('ReleaseConfig', [
-    'dev_account_id',
-    'prod_account_id',
-    'aws_region',
-])
-
-
 class OnDockerBuildError(UserFacingError):
     pass
 
 
-class Release(object):
+class ReleasePlugin(object):
 
     ON_BUILD_HOOK = './on-docker-build'
 
-    def __init__(self, config, boto_ecr_client, component_name, version=None):
-        self._dev_account_id = config.dev_account_id
-        self._prod_account_id = config.prod_account_id
-        self._aws_region = config.aws_region
-        self._boto_ecr_client = boto_ecr_client
-        self._component_name = component_name
-        self._version = version
+    def __init__(self, release, account_scheme):
+        self._release = release
+        self._account_scheme = account_scheme
 
     def create(self):
         check_call(['docker', 'build', '-t', self._image_name, '.'])
 
         self._on_docker_build()
 
-        if self._version:
+        if self._release.version:
             self._ensure_ecr_repo_exists()
             self._ensure_ecr_policy_set()
             self._docker_login()
@@ -231,43 +193,55 @@ class Release(object):
                 raise OnDockerBuildError(str(e))
 
     @property
+    def _boto_ecr_client(self):
+        return self._release.boto_session.client('ecr')
+
+    @property
     def _image_name(self):
         return '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
-            self._dev_account_id,
-            self._aws_region,
-            self._component_name,
-            self._version or 'dev'
+            self._account_scheme.release_account.id,
+            self._account_scheme.default_region,
+            self._release.component_name,
+            self._release.version or 'dev'
         )
 
     def _ensure_ecr_repo_exists(self):
         try:
             self._boto_ecr_client.describe_repositories(
-                repositoryNames=[self._component_name]
+                repositoryNames=[self._release.component_name]
             )
         except ClientError as e:
             if e.response['Error']['Code'] != 'RepositoryNotFoundException':
                 raise
             self._boto_ecr_client.create_repository(
-                repositoryName=self._component_name
+                repositoryName=self._release.component_name
             )
 
     def _ensure_ecr_policy_set(self):
+        account_ids = [
+            account_id
+            for account_id
+            in self._account_scheme.account_ids
+            if account_id != self._account_scheme.release_account.id
+        ]
+        if len(account_ids) == 0:
+            return
         self._boto_ecr_client.set_repository_policy(
-            repositoryName=self._component_name,
+            repositoryName=self._release.component_name,
             policyText=json.dumps({
                 'Version': '2008-10-17',
                 'Statement': [{
-                    'Sid': 'allow production',
+                    'Sid': 'allow {}'.format(account_id),
                     'Effect': 'Allow',
-                    'Principal': {'AWS': 'arn:aws:iam::{}:root'.format(
-                        self._prod_account_id
-                    )},
+                    'Principal': {
+                        'AWS': 'arn:aws:iam::{}:root'.format(account_id)
+                    },
                     'Action': [
                         'ecr:GetDownloadUrlForLayer',
                         'ecr:BatchGetImage',
                         'ecr:BatchCheckLayerAvailability'
                     ]
-                }]
+                } for account_id in sorted(account_ids)]
             }, sort_keys=True)
         )
 
@@ -372,17 +346,12 @@ class Deploy(object):
 
 class ECSPlugin(Plugin):
     def __init__(
-        self, release_factory, deploy_factory,
+        self, deploy_factory,
         destroy_factory, deploy_monitor_factory
     ):
-        self.release_factory = release_factory
         self.deploy_factory = deploy_factory
         self.destroy_factory = destroy_factory
         self.deploy_monitor_factory = deploy_monitor_factory
-
-    def release(self):
-        release = self.release_factory()
-        release.create()
 
     def deploy(self):
         deploy = self.deploy_factory()
