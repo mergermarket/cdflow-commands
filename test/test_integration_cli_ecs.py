@@ -7,8 +7,11 @@ from io import TextIOWrapper
 from cdflow_commands import cli
 from cdflow_commands.plugins.ecs import DoneEvent, ECSMonitor, InProgressEvent
 from mock import ANY, MagicMock, Mock, mock_open, patch
+import yaml
 
 
+@patch('cdflow_commands.release.make_archive')
+@patch('cdflow_commands.release.open', new_callable=mock_open, create=True)
 @patch('cdflow_commands.cli.rmtree')
 @patch('cdflow_commands.plugins.ecs.os')
 @patch('cdflow_commands.cli.Session')
@@ -19,41 +22,41 @@ from mock import ANY, MagicMock, Mock, mock_open, patch
 class TestReleaseCLI(unittest.TestCase):
 
     def test_release_is_configured_and_created(
-        self, check_call, _1, mock_open,
-        Session_from_config, Session_from_cli, mock_os, _2
+        self, check_call, _1, mock_open, Session_from_config,
+        Session_from_cli, mock_os, _2, mock_open_release, make_archive,
     ):
         mock_metadata_file = MagicMock(spec=TextIOWrapper)
         metadata = {
-            'TEAM': 'dummy-team',
-            'TYPE': 'docker',
-            'REGION': 'eu-west-12',
-            'ACCOUNT_PREFIX': 'mmg'
+            'account-scheme-url': 's3://bucket/key',
+            'team': 'your-team',
+            'type': 'docker',
         }
-        mock_metadata_file.read.return_value = json.dumps(metadata)
+        mock_metadata_file.read.return_value = yaml.dump(metadata)
 
-        mock_dev_file = MagicMock(spec=TextIOWrapper)
-        dev_config = {
-            'platform_config': {
-                'account_id': 123456789,
-            }
-        }
-        mock_dev_file.read.return_value = json.dumps(dev_config)
-
-        mock_prod_file = MagicMock(spec=TextIOWrapper)
-        prod_config = {
-            'platform_config': {
-                'account_id': 987654321,
-            }
-        }
-        mock_prod_file.read.return_value = json.dumps(prod_config)
-
-        mock_open.return_value.__enter__.side_effect = (
-            f for f in (mock_metadata_file, mock_dev_file, mock_prod_file)
-        )
+        mock_open.return_value.__enter__.return_value = mock_metadata_file
 
         mock_root_session = Mock()
-        mock_root_session.region_name = 'eu-west-12'
+        mock_root_session.region_name = 'us-east-1'
         Session_from_cli.return_value = mock_root_session
+
+        mock_s3_body = Mock()
+        mock_s3_body.read.return_value = json.dumps({
+            'accounts': {
+                'foodev': {
+                    'id': '123456789',
+                    'role': 'admon',
+                }
+            },
+            'release-account': 'foodev',
+            'release-bucket': 'releases',
+            'default-region': 'us-north-4',
+        })
+
+        mock_s3_resource = Mock()
+        mock_s3_resource.Object.return_value.get.return_value = {
+            'Body': mock_s3_body,
+        }
+        mock_root_session.resource.return_value = mock_s3_resource
 
         mock_ecr_client = Mock()
         mock_ecr_client.get_authorization_token.return_value = {
@@ -89,13 +92,25 @@ class TestReleaseCLI(unittest.TestCase):
             'JOB_NAME': 'dummy-job-name'
         }
 
+        mock_release_file = MagicMock(spec=TextIOWrapper)
+        mock_open_release.return_value.__enter__.return_value = \
+            mock_release_file
+
         component_name = 'dummy-component'
         version = '1.2.3'
-        cli.run(['release', version, '-c', component_name])
+
+        make_archive.return_value = '/tmp/tmpvyzXQB/{}-{}.zip'.format(
+            component_name, version
+        )
+
+        cli.run([
+            'release', '--platform-config', 'path/to/config',
+            version, '-c', component_name
+        ])
 
         image_name = '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
             123456789,
-            'eu-west-12',
+            'us-north-4',
             component_name,
             version
         )
@@ -103,9 +118,17 @@ class TestReleaseCLI(unittest.TestCase):
         check_call.assert_any_call(['docker', 'build', '-t', image_name, '.'])
         check_call.assert_any_call(['docker', 'push', image_name])
 
+        mock_session.resource.return_value.Object.assert_called_once_with(
+            'releases',
+            '{}/{}-{}.zip'.format(component_name, component_name, version)
+        )
+
+        mock_session.resource.return_value.Object.return_value\
+            .upload_file.assert_called_once_with(make_archive.return_value) 
+
     def test_release_uses_component_name_from_origin(
         self, check_call, check_output, mock_open,
-        Session_from_config, Session_from_cli, mock_os, _
+        Session_from_config, Session_from_cli, mock_os, _, _1
     ):
         mock_metadata_file = MagicMock(spec=TextIOWrapper)
         metadata = {
