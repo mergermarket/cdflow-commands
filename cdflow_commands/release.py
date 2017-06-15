@@ -8,9 +8,11 @@ import json
 class Release:
 
     def __init__(
-        self, platform_config_path, commit,
+        self, boto_session, release_bucket, platform_config_path, commit,
         version, component_name
     ):
+        self.boto_session = boto_session
+        self._release_bucket = release_bucket
         self._platform_config_path = platform_config_path
         self._commit = commit
         self.version = version
@@ -27,7 +29,18 @@ class Release:
             '{}/platform-config'.format(base_dir)
         )
 
-    def create(self, plugin, f):
+    def create(self, plugin):
+        release_archive = self.create_archive(plugin)
+        s3_resource = self.boto_session.resource('s3')
+        s3_object = s3_resource.Object(
+            self._release_bucket,
+            '{}/{}-{}.zip'.format(
+                self.component_name, self.component_name, self.version
+            )
+        )
+        s3_object.upload_file(release_archive)
+
+    def create_archive(self, plugin):
 
         with TemporaryDirectory() as temp_dir:
             base_dir = '{}/{}-{}'.format(
