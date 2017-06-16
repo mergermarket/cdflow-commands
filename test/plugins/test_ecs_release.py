@@ -8,9 +8,10 @@ from botocore.exceptions import ClientError
 from cdflow_commands.exceptions import UserFacingError
 from cdflow_commands.plugins.ecs import ReleasePlugin
 from cdflow_commands.account import AccountScheme
+from cdflow_commands.release import Release
 from hypothesis import assume, given, settings
 from hypothesis.strategies import text, lists
-from mock import Mock, patch
+from mock import MagicMock, Mock, patch
 
 from test.test_account import account
 
@@ -38,7 +39,7 @@ class TestRelease(unittest.TestCase):
         self._ecr_client = Mock()
         boto_session.client.return_value = self._ecr_client
         self._set_mock_get_authorization_token()
-        self._release = Mock()
+        self._release = MagicMock(spec=Release)
 
         self._release.boto_session = boto_session
 
