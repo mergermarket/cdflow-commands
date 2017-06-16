@@ -59,6 +59,7 @@ class TestRelease(unittest.TestCase):
             },
             'release-account': 'dummy',
             'default-region': self._region,
+            'release-bucket': 'dummy',
         })
 
         self._plugin = ReleasePlugin(self._release, account_scheme)
@@ -84,6 +85,7 @@ class TestRelease(unittest.TestCase):
             },
             'release-account': 'dummy',
             'default-region': region,
+            'release-bucket': 'dummy',
         })
 
         plugin = ReleasePlugin(release, account_scheme)
@@ -230,6 +232,7 @@ class TestRelease(unittest.TestCase):
             },
             'release-account': accounts[0]['alias'],
             'default-region': self._region,
+            'release-bucket': 'dummy',
         })
         plugin = ReleasePlugin(self._release, account_scheme)
         self._ecr_client.set_repository_policy = Mock()
