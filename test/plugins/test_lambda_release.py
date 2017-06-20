@@ -1,7 +1,7 @@
 import unittest
 
-# from datetime import datetime
 from mock import Mock, patch, MagicMock
+
 from cdflow_commands.account import AccountScheme
 from cdflow_commands.plugins.aws_lambda import ReleasePlugin
 from cdflow_commands.release import Release
