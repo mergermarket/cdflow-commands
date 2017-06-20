@@ -3,7 +3,7 @@
 Commands for managing the software lifecycle.
 
 Usage:
-    cdflow release --platform-config <platform_config> [<version>] [options]
+    cdflow release --platform-config <platform_config> <version> [options]
     cdflow deploy <environment>  [(--var <key=value>)...] [<version>] [options]
     cdflow destroy <environment> [options]
 
@@ -48,6 +48,12 @@ def run(argv):
             logger.debug('No path .terraform/ to remove')
 
 
+class NoopReleasePlugin:
+
+    def create(*args):
+        pass
+
+
 def _run(argv):
     args = docopt(__doc__, argv=argv)
 
@@ -77,6 +83,8 @@ def _run(argv):
             plugin = ECSReleasePlugin(release, account_scheme)
         elif manifest.type == 'lambda':
             plugin = LambdaReleasePlugin(release, account_scheme)
+        else:
+            plugin = NoopReleasePlugin()
 
         release.create(plugin)
 

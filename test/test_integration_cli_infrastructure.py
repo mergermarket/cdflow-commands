@@ -1,64 +1,103 @@
 import json
 import unittest
 from collections import namedtuple
+from datetime import datetime
 from io import TextIOWrapper
 
-from cdflow_commands import cli
 from mock import ANY, MagicMock, Mock, mock_open, patch
+import yaml
+
+from cdflow_commands import cli
 
 BotoCreds = namedtuple('BotoCreds', ['access_key', 'secret_key', 'token'])
 
 
 class TestReleaseCLI(unittest.TestCase):
 
+    @patch('cdflow_commands.release.copytree')
+    @patch('cdflow_commands.release.check_call')
+    @patch('cdflow_commands.release.make_archive')
+    @patch('cdflow_commands.release.open', new_callable=mock_open, create=True)
     @patch('cdflow_commands.cli.rmtree')
     @patch('cdflow_commands.cli.Session')
+    @patch('cdflow_commands.config.Session')
     @patch('cdflow_commands.config.open', new_callable=mock_open, create=True)
     @patch('cdflow_commands.config.check_output')
     def test_release_is_a_no_op(
-        self, check_output, mock_open, Session_from_cli, _
+        self, check_output, mock_open, Session_from_config, Session_from_cli,
+        rmtree, mock_open_release, make_archive, check_call_release, copytree
     ):
         mock_metadata_file = MagicMock(spec=TextIOWrapper)
         metadata = {
-            'TEAM': 'dummy-team',
-            'TYPE': 'infrastructure',
-            'REGION': 'eu-west-12',
-            'ACCOUNT_PREFIX': 'mmg'
+            'account-scheme-url': 's3://bucket/key',
+            'team': 'your-team',
+            'type': 'infrastructure',
         }
-        mock_metadata_file.read.return_value = json.dumps(metadata)
+        mock_metadata_file.read.return_value = yaml.dump(metadata)
 
-        mock_dev_file = MagicMock(spec=TextIOWrapper)
-        dev_config = {
-            'platform_config': {
-                'account_id': 123456789,
-            }
-        }
-        mock_dev_file.read.return_value = json.dumps(dev_config)
-
-        mock_prod_file = MagicMock(spec=TextIOWrapper)
-        prod_config = {
-            'platform_config': {
-                'account_id': 987654321,
-            }
-        }
-        mock_prod_file.read.return_value = json.dumps(prod_config)
-
-        mock_open.return_value.__enter__.side_effect = (
-            f for f in (mock_metadata_file, mock_dev_file, mock_prod_file)
-        )
+        mock_open.return_value.__enter__.return_value = mock_metadata_file
 
         mock_root_session = Mock()
-        mock_root_session.region_name = 'eu-west-12'
+        mock_root_session.region_name = 'us-east-1'
         Session_from_cli.return_value = mock_root_session
 
-        with self.assertLogs('cdflow_commands.logger', level='INFO') as logs:
-            cli.run(['release'])
+        mock_s3_body = Mock()
+        mock_s3_body.read.return_value = json.dumps({
+            'accounts': {
+                'foodev': {
+                    'id': '123456789',
+                    'role': 'admon',
+                }
+            },
+            'release-account': 'foodev',
+            'release-bucket': 'releases',
+            'default-region': 'us-north-4',
+        })
 
-        message = (
-            'INFO:cdflow_commands.logger:'
-            'Release takes no action on infrastructure type project'
+        mock_s3_resource = Mock()
+        mock_s3_resource.Object.return_value.get.return_value = {
+            'Body': mock_s3_body,
+        }
+        mock_root_session.resource.return_value = mock_s3_resource
+
+        mock_sts = Mock()
+        mock_sts.assume_role.return_value = {
+            'Credentials': {
+                'AccessKeyId': 'dummy-access-key-id',
+                'SecretAccessKey': 'dummy-secret-access-key',
+                'SessionToken': 'dummy-session-token',
+                'Expiration': datetime(2015, 1, 1)
+            },
+            'AssumedRoleUser': {
+                'AssumedRoleId': 'dummy-assumed-role-id',
+                'Arn': 'dummy-arn'
+            },
+            'PackedPolicySize': 123
+        }
+        mock_root_session.client.return_value = mock_sts
+
+        component_name = 'dummy-component'
+        version = '1.2.3'
+
+        make_archive.return_value = '/tmp/tmpvyzXQB/{}-{}.zip'.format(
+            component_name, version
         )
-        assert message in logs.output
+
+        cli.run([
+            'release', '--platform-config', 'path/to/config',
+            version, '-c', component_name
+        ])
+
+        Session_from_config.return_value.resource.return_value.Object\
+            .assert_called_once_with(
+                'releases',
+                '{}/{}-{}.zip'.format(component_name, component_name, version)
+            )
+
+        Session_from_config.return_value.resource.return_value.Object.\
+            return_value.upload_file.assert_called_once_with(
+                make_archive.return_value
+            )
 
 
 class TestDeployCLI(unittest.TestCase):
