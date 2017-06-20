@@ -28,7 +28,9 @@ from cdflow_commands.plugins.ecs import (
     build_ecs_plugin, ReleasePlugin as ECSReleasePlugin
 )
 from cdflow_commands.plugins.infrastructure import build_infrastructure_plugin
-from cdflow_commands.plugins.aws_lambda import build_lambda_plugin
+from cdflow_commands.plugins.aws_lambda import (
+    build_lambda_plugin, ReleasePlugin as LambdaReleasePlugin
+)
 from cdflow_commands.release import Release
 from docopt import docopt
 
@@ -70,7 +72,12 @@ def _run(argv):
             commit='hello',
             component_name=get_component_name(args['--component']),
         )
-        plugin = ECSReleasePlugin(release, account_scheme)
+
+        if manifest.type == 'docker':
+            plugin = ECSReleasePlugin(release, account_scheme)
+        elif manifest.type == 'lambda':
+            plugin = LambdaReleasePlugin(release, account_scheme)
+
         release.create(plugin)
 
     else:
