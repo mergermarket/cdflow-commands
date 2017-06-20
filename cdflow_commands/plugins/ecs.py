@@ -166,7 +166,7 @@ class OnDockerBuildError(UserFacingError):
     pass
 
 
-class ReleasePlugin(object):
+class ReleasePlugin:
 
     ON_BUILD_HOOK = './on-docker-build'
 
@@ -269,7 +269,7 @@ DeployConfig = namedtuple('DeployConfig', [
 ])
 
 
-class Deploy(object):
+class Deploy:
 
     def __init__(
         self, boto_session, component_name, environment_name,

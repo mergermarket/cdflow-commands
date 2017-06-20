@@ -218,7 +218,7 @@ LambdaConfig = namedtuple('LambdaConfig', [
 ])
 
 
-class Deploy(object):
+class Deploy:
 
     def __init__(
         self, boto_session, component_name, environment_name,

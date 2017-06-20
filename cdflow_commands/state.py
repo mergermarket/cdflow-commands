@@ -133,7 +133,7 @@ class LockTableFactory:
                 raise e
 
 
-class S3BucketFactory(object):
+class S3BucketFactory:
 
     def __init__(self, boto_session, account_id):
         self._boto_s3_client = boto_session.client('s3')

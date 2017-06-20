@@ -2,7 +2,7 @@ import os
 from subprocess import check_call
 
 
-class Destroy(object):
+class Destroy:
 
     def __init__(
         self,
