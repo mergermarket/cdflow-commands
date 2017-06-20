@@ -8,7 +8,7 @@ from cdflow_commands.release import Release
 from cdflow_commands.state import S3BucketFactory
 
 
-class TestLambdaRelease(unittest.TestCase):
+class TestLambdaReleasePlugin(unittest.TestCase):
 
     def setUp(self):
         boto_session = Mock()

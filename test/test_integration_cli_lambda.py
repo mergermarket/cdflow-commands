@@ -1,61 +1,73 @@
 import unittest
 import json
-
 from collections import namedtuple
 from io import TextIOWrapper
 from datetime import datetime
-from cdflow_commands import cli
+
 from mock import Mock, MagicMock, patch, mock_open, ANY
+import yaml
+
+from cdflow_commands import cli
 from cdflow_commands.state import S3BucketFactory
 
 
 class TestReleaseCLI(unittest.TestCase):
 
     @patch('cdflow_commands.plugins.aws_lambda.ZipFile')
-    @patch('cdflow_commands.config.Session')
-    @patch('cdflow_commands.cli.Session')
     @patch('cdflow_commands.plugins.aws_lambda.os')
     @patch(
         'cdflow_commands.plugins.aws_lambda.S3BucketFactory',
         autospec=S3BucketFactory
     )
+    @patch('cdflow_commands.release.copytree')
+    @patch('cdflow_commands.release.check_call')
+    @patch('cdflow_commands.release.make_archive')
+    @patch('cdflow_commands.release.open', new_callable=mock_open, create=True)
+    @patch('cdflow_commands.cli.rmtree')
+    @patch('cdflow_commands.cli.Session')
+    @patch('cdflow_commands.config.Session')
     @patch('cdflow_commands.config.open', new_callable=mock_open, create=True)
+    @patch('cdflow_commands.config.check_output')
     def test_release_package_is_created(
-        self, mock_open, mock_lambda_s3_factory, mock_os,
-        session_from_cli, session_from_config, zip_file
+        self, check_output, mock_open_config, Session_from_config,
+        Session_from_cli, rmtree, mock_open_release, make_archive, check_call,
+        copytree, S3BucketFactory, mock_os, ZipFile,
     ):
         # Given
         mock_metadata_file = MagicMock(spec=TextIOWrapper)
         metadata = {
-            'TEAM': 'dummy-team',
-            'TYPE': 'lambda',
-            'REGION': 'eu-west-12',
-            'ACCOUNT_PREFIX': 'mmg'
+            'account-scheme-url': 's3://bucket/key',
+            'team': 'your-team',
+            'type': 'lambda',
         }
-        mock_metadata_file.read.return_value = json.dumps(metadata)
-        mock_dev_file = MagicMock(spec=TextIOWrapper)
-        dev_config = {
-            'platform_config': {
-                'account_id': 123456789,
-            }
-        }
-        mock_dev_file.read.return_value = json.dumps(dev_config)
+        mock_metadata_file.read.return_value = yaml.dump(metadata)
 
-        mock_prod_file = MagicMock(spec=TextIOWrapper)
-        prod_config = {
-            'platform_config': {
-                'account_id': 987654321,
-            }
-        }
-        mock_prod_file.read.return_value = json.dumps(prod_config)
-
-        mock_open.return_value.__enter__.side_effect = (
-            f for f in (mock_metadata_file, mock_dev_file, mock_prod_file)
-        )
+        mock_open_config.return_value.__enter__.return_value = \
+            mock_metadata_file
 
         mock_root_session = Mock()
-        mock_root_session.region_name = 'eu-west-12'
-        session_from_cli.return_value = mock_root_session
+        mock_root_session.region_name = 'us-east-1'
+
+        mock_s3_body = Mock()
+        mock_s3_body.read.return_value = json.dumps({
+            'accounts': {
+                'foodev': {
+                    'id': '123456789',
+                    'role': 'admon',
+                }
+            },
+            'release-account': 'foodev',
+            'release-bucket': 'releases',
+            'default-region': 'us-north-4',
+        })
+
+        mock_s3_resource = Mock()
+        mock_s3_resource.Object.return_value.get.return_value = {
+            'Body': mock_s3_body,
+        }
+        mock_root_session.resource.return_value = mock_s3_resource
+
+        Session_from_cli.return_value = mock_root_session
 
         mock_s3_client = Mock()
         mock_s3_client.list_buckets.return_value = {
@@ -68,7 +80,7 @@ class TestReleaseCLI(unittest.TestCase):
 
         mock_session = Mock()
         mock_session.client.return_value = mock_s3_client
-        session_from_config.return_value = mock_session
+        Session_from_config.return_value = mock_session
 
         mock_sts = Mock()
         mock_sts.assume_role.return_value = {
@@ -90,19 +102,36 @@ class TestReleaseCLI(unittest.TestCase):
             'JOB_NAME': 'dummy-job-name'
         }
 
-        mock_lambda_s3_factory.return_value.get_bucket_name.return_value \
+        S3BucketFactory.return_value.get_bucket_name.return_value \
             = 'lambda-bucket'
 
         component_name = 'dummy-component'
         version = '6.1.7'
+
+        make_archive.return_value = '/tmp/tmpvyzXQB/{}-{}.zip'.format(
+            component_name, version
+        )
+
         # When
-        cli.run(['release', version, '-c', component_name])
+        cli.run([
+            'release', '--platform-config', 'path/to/config',
+            version, '-c', component_name
+        ])
+
         # Then
         mock_s3_client.upload_file.assert_called_once_with(
-            zip_file().__enter__().filename,
+            ZipFile.return_value.__enter__.return_value.filename,
             'lambda-bucket',
-            'dummy-team/dummy-component/6.1.7.zip'
+            'dummy-component/dummy-component-6.1.7.zip'
         )
+
+        mock_session.resource.return_value.Object.assert_called_once_with(
+            'releases',
+            '{}/{}-{}.zip'.format(component_name, component_name, version)
+        )
+
+        mock_session.resource.return_value.Object.return_value\
+            .upload_file.assert_called_once_with(make_archive.return_value)
 
 
 BotoCreds = namedtuple('BotoCreds', ['access_key', 'secret_key', 'token'])
