@@ -83,8 +83,12 @@ def _run(argv):
             plugin = ECSReleasePlugin(release, account_scheme)
         elif manifest.type == 'lambda':
             plugin = LambdaReleasePlugin(release, account_scheme)
-        else:
+        elif manifest.type == 'infrastructure':
             plugin = NoopReleasePlugin()
+        else:
+            raise UnknownProjectTypeError('Unknown project type: {}'.format(
+                manifest.type
+            ))
 
         release.create(plugin)
 
