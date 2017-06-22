@@ -3,7 +3,7 @@
 Commands for managing the software lifecycle.
 
 Usage:
-    cdflow release [<version>] [options]
+    cdflow release --platform-config <platform_config> <version> [options]
     cdflow deploy <environment>  [(--var <key=value>)...] [<version>] [options]
     cdflow destroy <environment> [options]
 
@@ -20,13 +20,18 @@ from shutil import rmtree
 from boto3.session import Session
 
 from cdflow_commands.config import (
-    get_component_name, load_global_config, load_service_metadata
+    assume_role, get_component_name, load_manifest, build_account_scheme
 )
 from cdflow_commands.exceptions import UnknownProjectTypeError, UserFacingError
 from cdflow_commands.logger import logger
-from cdflow_commands.plugins.aws_lambda import build_lambda_plugin
-from cdflow_commands.plugins.ecs import build_ecs_plugin
+from cdflow_commands.plugins.ecs import (
+    build_ecs_plugin, ReleasePlugin as ECSReleasePlugin
+)
 from cdflow_commands.plugins.infrastructure import build_infrastructure_plugin
+from cdflow_commands.plugins.aws_lambda import (
+    build_lambda_plugin, ReleasePlugin as LambdaReleasePlugin
+)
+from cdflow_commands.release import Release
 from docopt import docopt
 
 
@@ -43,35 +48,66 @@ def run(argv):
             logger.debug('No path .terraform/ to remove')
 
 
+class NoopReleasePlugin:
+
+    def create(*args):
+        pass
+
+
 def _run(argv):
     args = docopt(__doc__, argv=argv)
 
     conditionally_set_debug(args['--verbose'])
 
-    metadata = load_service_metadata()
-    global_config = load_global_config(
-        metadata.account_prefix, metadata.aws_region
-    )
-    root_session = Session(region_name=metadata.aws_region)
+    manifest = load_manifest()
+    root_session = Session()
 
-    plugin = build_plugin(
-        metadata.type,
-        component_name=get_component_name(args['--component']),
-        version=args['<version>'],
-        environment_name=args['<environment>'],
-        additional_variables=args['<key=value>'],
-        metadata=metadata,
-        global_config=global_config,
-        root_session=root_session,
-        plan_only=args['--plan-only']
+    account_scheme = build_account_scheme(
+        root_session.resource('s3'), manifest.account_scheme_url
     )
 
     if args['release']:
-        plugin.release()
-    elif args['deploy']:
-        plugin.deploy()
-    elif args['destroy']:
-        plugin.destroy()
+        session=assume_role(
+            root_session, account_scheme.release_account.id, 'role-name'
+        )
+        release = Release(
+            boto_session=session,
+            release_bucket=account_scheme.release_bucket,
+            platform_config_path=args['--platform-config'],
+            version=args['<version>'],
+            commit='hello',
+            component_name=get_component_name(args['--component']),
+        )
+
+        if manifest.type == 'docker':
+            plugin = ECSReleasePlugin(release, account_scheme)
+        elif manifest.type == 'lambda':
+            plugin = LambdaReleasePlugin(release, account_scheme)
+        elif manifest.type == 'infrastructure':
+            plugin = NoopReleasePlugin()
+        else:
+            raise UnknownProjectTypeError('Unknown project type: {}'.format(
+                manifest.type
+            ))
+
+        release.create(plugin)
+
+    else:
+        plugin = build_plugin(
+            metadata.type,
+            component_name=get_component_name(args['--component']),
+            version=args['<version>'],
+            environment_name=args['<environment>'],
+            additional_variables=args['<key=value>'],
+            metadata=metadata,
+            global_config=global_config,
+            root_session=root_session,
+        )
+
+        if args['deploy']:
+            plugin.deploy()
+        elif args['destroy']:
+            plugin.destroy()
 
 
 def build_plugin(project_type, **kwargs):

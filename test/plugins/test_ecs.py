@@ -2,29 +2,11 @@ import unittest
 
 from cdflow_commands.exceptions import MissingArgumentError
 from cdflow_commands.plugins.ecs import ECSPlugin, build_ecs_plugin
+
 from mock import ANY, Mock
 
 
 class TestECSPlugin(unittest.TestCase):
-
-    def test_plugin_runs_release(self):
-        # Given
-        release = Mock()
-
-        def release_factory():
-            return release
-
-        ecs_plugin = ECSPlugin(
-            release_factory,
-            deploy_factory=ANY,
-            destroy_factory=ANY,
-            deploy_monitor_factory=ANY
-        )
-        # When
-        ecs_plugin.release()
-
-        # Then
-        release.create.assert_called_once()
 
     def test_plugin_runs_deploy(self):
         # Given
