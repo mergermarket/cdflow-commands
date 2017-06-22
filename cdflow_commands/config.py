@@ -7,6 +7,8 @@ from boto3.session import Session
 from cdflow_commands.exceptions import (
     UserFacingError, UserFacingFixedMessageError
 )
+from cdflow_commands.account import AccountScheme
+import yaml
 
 PLATFORM_CONFIG_PATH_TEMPLATE = 'infra/platform-config/{}/{}/{}.json'
 
@@ -16,6 +18,10 @@ class JobNameTooShortError(UserFacingError):
 
 
 class InvalidEmailError(UserFacingError):
+    pass
+
+
+class InvalidURLError(UserFacingError):
     pass
 
 
@@ -46,6 +52,24 @@ GlobalConfig = namedtuple(
         'prod_account_id'
     ]
 )
+
+
+Manifest = namedtuple('Manifest', [
+        'account_scheme_url',
+        'team',
+        'type',
+    ]
+)
+
+
+def load_manifest():
+    with open('cdflow.yml') as f:
+        manifest_data = yaml.load(f.read())
+        return Manifest(
+            manifest_data['account-scheme-url'],
+            manifest_data['team'],
+            manifest_data['type'],
+        )
 
 
 def load_service_metadata():
@@ -145,3 +169,25 @@ def get_platform_config_path(account_prefix, aws_region, is_prod):
     return 'infra/platform-config/{}/{}/{}.json'.format(
         account_prefix, account_postfix, aws_region
     )
+
+
+def parse_s3_url(s3_url):
+    if not s3_url.startswith('s3://'):
+        raise InvalidURLError('URL must start with s3:// - {}'.format(s3_url))
+    bucket_and_key = s3_url[5:].split('/', 1)
+    if len(bucket_and_key) != 2:
+        raise InvalidURLError(
+            'URL must contain a bucket and a key - {}'.format(s3_url)
+        )
+    return bucket_and_key
+
+
+def fetch_account_scheme(s3_resource, bucket, key):
+    s3_object = s3_resource.Object(bucket, key)
+    f = s3_object.get()['Body']
+    return json.loads(f.read())
+
+
+def build_account_scheme(s3_resource, s3_url):
+    bucket, key = parse_s3_url(s3_url)
+    return AccountScheme.create(fetch_account_scheme(s3_resource, bucket, key))
