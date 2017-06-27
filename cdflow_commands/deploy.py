@@ -1,3 +1,4 @@
+from datetime import datetime
 import json
 import os
 from os import path
@@ -21,14 +22,27 @@ class Deploy:
         self._account_scheme = account_scheme
         self._boto_session = boto_session
 
-    def run(self, plugin):
+    def run(self, plugin, plan_only=False):
         with NamedTemporaryFile() as secrets_file_path:
             json.dump(get_secrets(), secrets_file_path)
             check_call(
-                self._build_terraform_parameters('plan', secrets_file_path),
+                self._build_parameters('plan', secrets_file_path),
                 cwd=self._release_path,
                 env=self._env()
             )
+        if not plan_only:
+            check_call(
+                self._build_parameters('apply'),
+                cwd=self._release_path,
+                env=self._env()
+            )
+
+    @property
+    def plan_path(self):
+        if not hasattr(self, '__plan_path'):
+            plan_time = datetime.utcnow().strftime('%s')
+            self.__plan_path = 'plan-{}'.format(plan_time)
+        return self.__plan_path
 
     @property
     def _platform_config_file_path(self):
@@ -39,9 +53,19 @@ class Deploy:
             account, self._boto_session.region_name
         )
 
-    def _build_terraform_parameters(self, command, secrets_file_path):
-        parameters = [
-            'terraform', command, 'infra',
+    def _build_parameters(self, command, secrets_file_path=None):
+        parameters = ['terraform', command]
+        if command == 'plan':
+            parameters = self._add_plan_parameters(
+                parameters, secrets_file_path
+            )
+        else:
+            parameters.append(self.plan_path)
+        return parameters
+
+    def _add_plan_parameters(self, parameters, secrets_file_path):
+        parameters += [
+            'infra',
             '-var', 'component={}'.format(self._component),
             '-var', 'env={}'.format(self._environment),
             '-var', 'aws_region={}'.format(self._boto_session.region_name),
@@ -49,6 +73,7 @@ class Deploy:
             '-var', 'version={}'.format(self._version),
             '-var-file', self._platform_config_file_path,
             '-var-file', secrets_file_path,
+            '-out', self.plan_path
         ]
         environment_config_path = 'config/{}.json'.format(self._environment)
         if path.exists(environment_config_path):
