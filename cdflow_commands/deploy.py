@@ -26,19 +26,28 @@ class Deploy:
         self._boto_session = boto_session
 
     def run(self, plugin, plan_only=False):
+        self._plan(plugin)
+        if not plan_only:
+            self._apply()
+
+    def _plan(self, plugin):
         with NamedTemporaryFile() as secrets_file_path:
             json.dump(get_secrets(), secrets_file_path)
+            plugin_specific_parameters = plugin.parameters()
             check_call(
-                self._build_parameters('plan', secrets_file_path),
+                self._build_parameters(
+                    'plan', secrets_file_path, plugin_specific_parameters
+                ),
                 cwd=self._release_path,
                 env=self._env()
             )
-        if not plan_only:
-            check_call(
-                self._build_parameters('apply'),
-                cwd=self._release_path,
-                env=self._env()
-            )
+
+    def _apply(self):
+        check_call(
+            self._build_parameters('apply'),
+            cwd=self._release_path,
+            env=self._env()
+        )
 
     @property
     def _plan_path(self):
@@ -56,12 +65,16 @@ class Deploy:
             account, self._boto_session.region_name
         )
 
-    def _build_parameters(self, command, secrets_file_path=None):
+    def _build_parameters(
+        self, command, secrets_file_path=None, plugin_specific_parameters=None
+    ):
         parameters = ['terraform', command]
         if command == 'plan':
             parameters = self._add_plan_parameters(
                 parameters, secrets_file_path
             )
+            if plugin_specific_parameters:
+                parameters += plugin_specific_parameters
         else:
             parameters.append(self._plan_path)
         return parameters
