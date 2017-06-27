@@ -10,6 +10,9 @@ from cdflow_commands.secrets import get_secrets
 
 class Deploy:
 
+    CONFIG_BASE_PATH = 'config'
+    GLOBAL_CONFIG_FILE = 'all.json'
+
     def __init__(
         self, component, version, environment, team,
         release_path, account_scheme, boto_session,
@@ -38,7 +41,7 @@ class Deploy:
             )
 
     @property
-    def plan_path(self):
+    def _plan_path(self):
         if not hasattr(self, '__plan_path'):
             plan_time = datetime.utcnow().strftime('%s')
             self.__plan_path = 'plan-{}'.format(plan_time)
@@ -60,7 +63,7 @@ class Deploy:
                 parameters, secrets_file_path
             )
         else:
-            parameters.append(self.plan_path)
+            parameters.append(self._plan_path)
         return parameters
 
     def _add_plan_parameters(self, parameters, secrets_file_path):
@@ -73,11 +76,25 @@ class Deploy:
             '-var', 'version={}'.format(self._version),
             '-var-file', self._platform_config_file_path,
             '-var-file', secrets_file_path,
-            '-out', self.plan_path
+            '-out', self._plan_path
         ]
-        environment_config_path = 'config/{}.json'.format(self._environment)
+        parameters = self._add_environment_config_parameters(parameters)
+        return parameters
+
+    def _add_environment_config_parameters(self, parameters):
+        environment_config_path = path.join(
+            self.CONFIG_BASE_PATH, '{}.json'.format(self._environment)
+        )
+        global_config_path = path.join(
+            self.CONFIG_BASE_PATH, self.GLOBAL_CONFIG_FILE
+        )
+
         if path.exists(environment_config_path):
             parameters += ['-var-file', environment_config_path]
+
+        if path.exists(global_config_path):
+            parameters += ['-var-file', global_config_path]
+
         return parameters
 
     def _env(self):
