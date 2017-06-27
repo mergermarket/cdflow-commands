@@ -4,7 +4,7 @@ from contextlib import ExitStack
 from string import digits
 
 from hypothesis import given
-from hypothesis.strategies import fixed_dictionaries, text
+from hypothesis.strategies import fixed_dictionaries, lists, text
 from mock import patch, Mock, MagicMock
 
 from cdflow_commands.account import AccountScheme
@@ -472,6 +472,101 @@ class TestDeploy(unittest.TestCase):
                     '-out', 'plan-{}'.format(utcnow),
                     '-var-file', 'config/all.json',
                 ],
+                cwd=release_path,
+                env={
+                    'AWS_ACCESS_KEY_ID': credentials.access_key,
+                    'AWS_SECRET_ACCESS_KEY': credentials.secret_key,
+                    'AWS_SESSION_TOKEN': credentials.token,
+                }
+            )
+
+    @given(fixed_dictionaries({
+        'component': text(),
+        'version': text(),
+        'environment': text(),
+        'team': text(),
+        'release_path': text(),
+        'account': text(),
+        'utcnow': text(alphabet=digits),
+        'access_key': text(),
+        'secret_key': text(),
+        'token': text(),
+        'parameters': lists(elements=text()),
+    }))
+    def test_parameters_from_plugin_are_added(self, fixtures):
+        component = fixtures['component']
+        version = fixtures['version']
+        environment = fixtures['environment']
+        team = fixtures['team']
+        release_path = fixtures['release_path']
+        account = fixtures['account']
+        utcnow = fixtures['utcnow']
+        access_key = fixtures['access_key']
+        secret_key = fixtures['secret_key']
+        token = fixtures['token']
+        parameters = fixtures['parameters']
+
+        account_scheme = MagicMock(spec=AccountScheme)
+        account_scheme.account_for_environment.return_value = account
+
+        boto_session = Mock()
+        boto_session.region_name = 'us-north-4'
+        credentials = BotoCredentials(access_key, secret_key, token)
+        boto_session.get_credentials.return_value = credentials
+
+        deploy = Deploy(
+            component, version, environment, team,
+            release_path, account_scheme, boto_session,
+        )
+
+        with ExitStack() as stack:
+            path_exists = stack.enter_context(
+                patch('cdflow_commands.deploy.path.exists')
+            )
+            check_call = stack.enter_context(
+                patch('cdflow_commands.deploy.check_call')
+            )
+            NamedTemporaryFile = stack.enter_context(
+                patch('cdflow_commands.deploy.NamedTemporaryFile')
+            )
+            mock_os = stack.enter_context(patch('cdflow_commands.deploy.os'))
+            get_secrets = stack.enter_context(
+                patch('cdflow_commands.deploy.get_secrets')
+            )
+            datetime = stack.enter_context(
+                patch('cdflow_commands.deploy.datetime')
+            )
+
+            datetime.utcnow.return_value.strftime.return_value = utcnow
+
+            get_secrets.return_value = {}
+
+            secret_file_path = NamedTemporaryFile.return_value.__enter__\
+                .return_value
+
+            mock_os.environ = {}
+
+            dummy_plugin = Mock()
+            dummy_plugin.parameters.return_value = parameters
+
+            path_exists.return_value = False
+
+            deploy.run(dummy_plugin)
+
+            check_call.assert_any_call(
+                [
+                    'terraform', 'plan', 'infra',
+                    '-var', 'component={}'.format(component),
+                    '-var', 'env={}'.format(environment),
+                    '-var', 'aws_region={}'.format(boto_session.region_name),
+                    '-var', 'team={}'.format(team),
+                    '-var', 'version={}'.format(version),
+                    '-var-file', 'platform-config/{}/{}.json'.format(
+                        account, boto_session.region_name
+                    ),
+                    '-var-file', secret_file_path,
+                    '-out', 'plan-{}'.format(utcnow),
+                ] + parameters,
                 cwd=release_path,
                 env={
                     'AWS_ACCESS_KEY_ID': credentials.access_key,
