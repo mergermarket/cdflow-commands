@@ -185,6 +185,8 @@ class ReleasePlugin:
             self._docker_login()
             self._docker_push()
 
+        return {'image_id': self._image_name}
+
     def _on_docker_build(self):
         if path.exists(self.ON_BUILD_HOOK):
             try:

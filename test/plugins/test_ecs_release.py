@@ -9,8 +9,8 @@ from cdflow_commands.exceptions import UserFacingError
 from cdflow_commands.plugins.ecs import ReleasePlugin
 from cdflow_commands.account import AccountScheme
 from cdflow_commands.release import Release
-from hypothesis import assume, given, settings
-from hypothesis.strategies import text, lists
+from hypothesis import assume, given
+from hypothesis.strategies import fixed_dictionaries, text, lists
 from mock import MagicMock, Mock, patch
 
 from test.test_account import account
@@ -61,18 +61,26 @@ class TestRelease(unittest.TestCase):
             'release-account': 'dummy',
             'default-region': self._region,
             'release-bucket': 'dummy',
+            'environments': {
+                'live': 'dummy'
+            }
         })
 
         self._plugin = ReleasePlugin(self._release, account_scheme)
 
-    @given(text(alphabet=digits, min_size=12, max_size=12))
-    @given(text(alphabet=IDENTIFIER_ALPHABET, min_size=1, max_size=10))
-    @given(text(alphabet=IDENTIFIER_ALPHABET, min_size=1, max_size=10))
-    @settings(max_examples=10)
-    def test_builds_container(
-        self, component_name, region, account_id
-    ):
+    @given(fixed_dictionaries({
+        'component_name': text(
+            alphabet=IDENTIFIER_ALPHABET, min_size=1, max_size=10
+        ),
+        'region': text(alphabet=IDENTIFIER_ALPHABET, min_size=1, max_size=10),
+        'account_id': text(alphabet=digits, min_size=12, max_size=12),
+    }))
+    def test_builds_container(self, fixtures):
         # Given
+        component_name = fixtures['component_name']
+        region = fixtures['region']
+        account_id = fixtures['account_id']
+
         release = self._release
         release.component_name = component_name
         release.version = None
@@ -87,18 +95,23 @@ class TestRelease(unittest.TestCase):
             'release-account': 'dummy',
             'default-region': region,
             'release-bucket': 'dummy',
+            'environments': {
+                'live': 'dummy',
+            },
         })
+
+        image_name = '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
+            account_id, region, component_name, 'dev'
+        )
 
         plugin = ReleasePlugin(release, account_scheme)
 
         with patch('cdflow_commands.plugins.ecs.check_call') as check_call:
             # When
-            plugin.create()
+            plugin_data = plugin.create()
 
             # Then
-            image_name = '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
-                account_id, region, component_name, 'dev'
-            )
+            assert plugin_data == {'image_id': image_name}
 
             check_call.assert_called_once_with(
                 ['docker', 'build', '-t', image_name, '.']
@@ -123,14 +136,23 @@ class TestRelease(unittest.TestCase):
                 ['docker', 'build', '-t', image_name, '.']
             )
 
-    @given(text(alphabet=IDENTIFIER_ALPHABET + ':/', min_size=8, max_size=16))
-    @given(text(alphabet=IDENTIFIER_ALPHABET, min_size=8, max_size=16))
-    @given(text(alphabet=IDENTIFIER_ALPHABET, min_size=8, max_size=16))
-    @settings(max_examples=10)
-    def test_build_with_version_pushes_to_ecr_repo(
-        self, proxy_endpoint, username, password
-    ):
+    @given(fixed_dictionaries({
+        'proxy_endpoint': text(
+            alphabet=IDENTIFIER_ALPHABET + ':/', min_size=8, max_size=16
+        ),
+        'username': text(
+            alphabet=IDENTIFIER_ALPHABET, min_size=8, max_size=16
+        ),
+        'password': text(
+            alphabet=IDENTIFIER_ALPHABET, min_size=8, max_size=16
+        )
+    }))
+    def test_build_with_version_pushes_to_ecr_repo(self, fixtures):
         # Given
+        proxy_endpoint = fixtures['proxy_endpoint']
+        username = fixtures['username']
+        password = fixtures['password']
+
         self._ecr_client.describe_repositories = Mock()
         self._set_mock_get_authorization_token(
             username, password, proxy_endpoint
@@ -208,17 +230,23 @@ class TestRelease(unittest.TestCase):
             # Then
             assert not self._ecr_client.set_repository_policy.called
 
-    @given(text(alphabet=IDENTIFIER_ALPHABET, min_size=8, max_size=16))
-    @given(lists(
-        elements=account(), min_size=2, max_size=4,
-        unique_by=lambda account: account['alias']
-    ))
-    @settings(max_examples=50)
-    def test_policy_set_on_repo(self, component_name, accounts):
+    @given(fixed_dictionaries({
+        'component_name': text(
+            alphabet=IDENTIFIER_ALPHABET, min_size=8, max_size=16
+        ),
+        'accounts': lists(
+            elements=account(), min_size=2, max_size=4,
+            unique_by=lambda account: account['alias']
+        ),
+    }))
+    def test_policy_set_on_repo(self, fixtures):
         # unique_by above only supports a single hashable type, so we have to
         # ensure uniqueness of account ids here - this is needed because the
         # under test should only creates one statement for each unique account
         # id
+        component_name = fixtures['component_name']
+        accounts = fixtures['accounts']
+
         account_ids = [account['id'] for account in accounts]
         assume(len(set(account_ids)) == len(account_ids))
 
@@ -234,6 +262,9 @@ class TestRelease(unittest.TestCase):
             'release-account': accounts[0]['alias'],
             'default-region': self._region,
             'release-bucket': 'dummy',
+            'environments': {
+                'live': accounts[0]['alias'],
+            },
         })
         plugin = ReleasePlugin(self._release, account_scheme)
         self._ecr_client.set_repository_policy = Mock()
