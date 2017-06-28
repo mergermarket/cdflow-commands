@@ -24,6 +24,11 @@ class TestLambdaReleasePlugin(unittest.TestCase):
         self._version = '1.2.3'
         self._release.version = self._version
 
+        self._release.all_environment_config = {
+            'lambda_handler': 'handler',
+            'lambda_runtime': 'python36',
+        }
+
         self._region = 'dummy-region'
         self._account_id = 'dummy-account-id'
         account_scheme = AccountScheme.create({
@@ -36,9 +41,31 @@ class TestLambdaReleasePlugin(unittest.TestCase):
             'release-account': 'dummy',
             'default-region': self._region,
             'release-bucket': 'dummy',
+            'environments': {
+                'live': 'dummy',
+            },
         })
 
         self._plugin = ReleasePlugin(self._release, account_scheme)
+
+    @patch('cdflow_commands.plugins.aws_lambda.os')
+    @patch('cdflow_commands.plugins.aws_lambda.ZipFile')
+    @patch('cdflow_commands.plugins.aws_lambda.S3BucketFactory')
+    def test_release_returns_release_data(
+        self, S3BucketFactory, zip_file, mock_os
+    ):
+        S3BucketFactory.return_value.get_bucket_name.return_value = 'bucket'
+
+        plugin_data = self._plugin.create()
+
+        assert plugin_data == {
+            'handler': 'handler',
+            'runtime': 'python36',
+            's3_bucket': 'bucket',
+            's3_key': '{}/{}-{}.zip'.format(
+                self._component_name, self._component_name, self._version
+            ),
+        }
 
     @patch('cdflow_commands.plugins.aws_lambda.os')
     @patch('cdflow_commands.plugins.aws_lambda.ZipFile')
