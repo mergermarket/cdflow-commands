@@ -1,12 +1,17 @@
-import unittest
-
-from cdflow_commands.release import Release
-from mock import MagicMock, Mock, mock_open, patch, ANY
+from contextlib import ExitStack
 from io import TextIOWrapper
 import json
+from string import ascii_letters, digits
+import unittest
 
 from hypothesis import given
-from hypothesis.strategies import text
+from hypothesis.strategies import dictionaries, fixed_dictionaries, text
+from mock import MagicMock, Mock, mock_open, patch, ANY
+
+from cdflow_commands.release import Release
+
+
+ALNUM = ascii_letters + digits
 
 
 class TestRelease(unittest.TestCase):
@@ -18,7 +23,7 @@ class TestRelease(unittest.TestCase):
             boto_session=Mock(),
             release_bucket=ANY,
             platform_config_path=ANY, commit=ANY, version=version,
-            component_name=ANY
+            component_name=ANY, team=ANY
         )
 
         # When/Then
@@ -31,7 +36,7 @@ class TestRelease(unittest.TestCase):
             boto_session=Mock(),
             release_bucket=ANY,
             platform_config_path=ANY, commit=ANY, version=ANY,
-            component_name=component_name
+            component_name=component_name, team=ANY
         )
 
         # When/Then
@@ -53,7 +58,7 @@ class TestReleaseArchive(unittest.TestCase):
 
         # Given
         release_plugin = Mock()
-        release_plugin.create.return_value = []
+        release_plugin.create.return_value = {}
         release = Release(
             boto_session=Mock(),
             release_bucket=ANY,
@@ -61,6 +66,7 @@ class TestReleaseArchive(unittest.TestCase):
             commit='dummy',
             version='dummy-version',
             component_name='dummy-component',
+            team='dummy-team',
         )
         temp_dir = 'test-tmp-dir'
         TemporaryDirectory.return_value.__enter__.return_value = temp_dir
@@ -90,13 +96,14 @@ class TestReleaseArchive(unittest.TestCase):
 
         # Given
         release_plugin = Mock()
-        release_plugin.create.return_value = []
+        release_plugin.create.return_value = {}
         platform_config_path = 'test-platform-config-path'
         release = Release(
             boto_session=Mock(),
             release_bucket=ANY,
             platform_config_path=platform_config_path, commit='dummy',
             version='dummy-version', component_name='dummy-component',
+            team='dummy-team',
         )
         temp_dir = 'test-temp-dir'
         TemporaryDirectory.return_value.__enter__.return_value = temp_dir
@@ -111,58 +118,76 @@ class TestReleaseArchive(unittest.TestCase):
             )
         )
 
-    @patch('cdflow_commands.release.mkdir')
-    @patch('cdflow_commands.release.check_call')
-    @patch('cdflow_commands.release.copytree')
-    @patch('cdflow_commands.release.make_archive')
-    @patch('cdflow_commands.release.TemporaryDirectory')
-    @patch('cdflow_commands.release.open', new_callable=mock_open, create=True)
-    def test_release_added_to_release_bundle(
-        self, mock_open, TemporaryDirectory, _, _1, _2, _3
-    ):
-
+    @given(fixed_dictionaries({
+        'plugin_data': dictionaries(keys=text(), values=text()),
+        'commit': text(),
+        'version': text(alphabet=ALNUM),
+        'component_name': text(alphabet=ALNUM),
+        'team': text(),
+        'temp_dir': text(),
+    }))
+    def test_release_added_to_release_bundle(self, fixtures):
         # Given
-        release_plugin = Mock()
-        artefacts = [
-            {'test': 'artefact'}
-        ]
-        release_plugin.create.return_value = artefacts
+        component_name = fixtures['component_name']
+        commit = fixtures['commit']
+        version = fixtures['version']
+        team = fixtures['team']
+        plugin_data = fixtures['plugin_data']
+        temp_dir = fixtures['temp_dir']
 
-        commit = 'test-git-commit'
-        version = 'test-version'
-        component_name = 'test-component'
+        release_plugin = Mock()
+        release_plugin.create.return_value = plugin_data
+
         release = Release(
             boto_session=Mock(),
             release_bucket=ANY,
-            platform_config_path='test-platform-config-path',
+            platform_config_path='platform-config',
             commit=commit,
             version=version,
             component_name=component_name,
+            team=team
         )
-        temp_dir = 'test-temp-dir'
-        TemporaryDirectory.return_value.__enter__.return_value = temp_dir
 
-        mock_file = MagicMock(spec=TextIOWrapper)
-        mock_open.return_value.__enter__.return_value = mock_file
+        with ExitStack() as stack:
+            stack.enter_context(patch('cdflow_commands.release.mkdir'))
+            stack.enter_context(patch('cdflow_commands.release.check_call'))
+            stack.enter_context(patch('cdflow_commands.release.copytree'))
+            stack.enter_context(patch('cdflow_commands.release.make_archive'))
+            TemporaryDirectory = stack.enter_context(
+                patch('cdflow_commands.release.TemporaryDirectory')
+            )
+            _open = stack.enter_context(
+                patch(
+                    'cdflow_commands.release.open',
+                    new_callable=mock_open, create=True
+                )
+            )
 
-        # When
-        release.create_archive(release_plugin)
+            TemporaryDirectory.return_value.__enter__.return_value = temp_dir
 
-        # Then
-        release_plugin.create.assert_called_once_with()
-        mock_open.assert_called_once_with(
-            '{}/{}-{}/release.json'.format(
-                temp_dir, component_name, version
-            ), 'w'
-        )
-        mock_file.write.assert_called_once_with(json.dumps({
-            'release': {
+            mock_file = MagicMock(spec=TextIOWrapper)
+            _open.return_value.__enter__.return_value = mock_file
+
+            base_release_metadata = {
                 'commit': commit,
                 'version': version,
                 'component-name': component_name,
-                'artefacts': artefacts
+                'team': team,
             }
-        }))
+
+            # When
+            release.create_archive(release_plugin)
+
+            # Then
+            release_plugin.create.assert_called_once_with()
+            _open.assert_called_once_with(
+                '{}/{}-{}/release.json'.format(
+                    temp_dir, component_name, version
+                ), 'w'
+            )
+            mock_file.write.assert_called_once_with(json.dumps({
+                'release': dict(**base_release_metadata, **plugin_data)
+            }))
 
     @patch('cdflow_commands.release.mkdir')
     @patch('cdflow_commands.release.check_call')
@@ -176,10 +201,7 @@ class TestReleaseArchive(unittest.TestCase):
 
         # Given
         release_plugin = Mock()
-        artefacts = [
-            {'test': 'artefact'}
-        ]
-        release_plugin.create.return_value = artefacts
+        release_plugin.create.return_value = {}
 
         commit = 'test-git-commit'
         version = 'test-version'
@@ -191,6 +213,7 @@ class TestReleaseArchive(unittest.TestCase):
             commit=commit,
             version=version,
             component_name=component_name,
+            team='dummy-team',
         )
         temp_dir = 'test-temp-dir'
         TemporaryDirectory.return_value.__enter__.return_value = temp_dir
@@ -224,10 +247,7 @@ class TestReleaseArchive(unittest.TestCase):
     ):
         # Given
         release_plugin = Mock()
-        artefacts = [
-            {'test': 'artefact'}
-        ]
-        release_plugin.create.return_value = artefacts
+        release_plugin.create.return_value = {}
 
         commit = 'test-git-commit'
         version = 'test-version'
@@ -241,6 +261,7 @@ class TestReleaseArchive(unittest.TestCase):
             commit=commit,
             version=version,
             component_name=component_name,
+            team='dummy-team',
         )
         temp_dir = 'test-temp-dir'
         TemporaryDirectory.return_value.__enter__.return_value = temp_dir

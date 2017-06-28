@@ -9,12 +9,13 @@ class Release:
 
     def __init__(
         self, boto_session, release_bucket, platform_config_path, commit,
-        version, component_name
+        version, component_name, team
     ):
         self.boto_session = boto_session
         self._release_bucket = release_bucket
         self._platform_config_path = platform_config_path
         self._commit = commit
+        self._team = team
         self.version = version
         self.component_name = component_name
 
@@ -53,16 +54,18 @@ class Release:
             self._run_terraform_get(base_dir, '{}/infra'.format(cwd))
             self._copy_platform_config_files(base_dir)
 
-            artefacts = plugin.create()
+            extra_data = plugin.create()
+
+            base_data = {
+                'commit': self._commit,
+                'version': self.version,
+                'component': self.component_name,
+                'team': self._team,
+            }
 
             with open(path.join(base_dir, 'release.json'), 'w') as f:
                 f.write(json.dumps({
-                    'release': {
-                        'commit': self._commit,
-                        'version': self.version,
-                        'component-name': self.component_name,
-                        'artefacts': artefacts
-                    }
+                    'release': dict(**base_data, **extra_data)
                 }))
 
             return make_archive(
