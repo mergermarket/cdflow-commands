@@ -42,6 +42,33 @@ class TestRelease(unittest.TestCase):
         # When/Then
         assert release.component_name == component_name
 
+    @given(dictionaries(keys=text(), values=text()))
+    def test_gets_global_environment_config(self, config):
+        release = Release(
+            boto_session=Mock(),
+            release_bucket=ANY,
+            platform_config_path=ANY, commit=ANY, version=ANY,
+            component_name=ANY, team=ANY
+        )
+
+        with ExitStack() as stack:
+            exists = stack.enter_context(
+                patch('cdflow_commands.release.path.exists')
+            )
+            _open = stack.enter_context(
+                patch(
+                    'cdflow_commands.release.open',
+                    new_callable=mock_open, create=True
+                )
+            )
+
+            exists.return_value = True
+
+            _open.return_value.__enter__.return_value.read.return_value = \
+                json.dumps(config)
+
+            assert release.all_environment_config == config
+
 
 class TestReleaseArchive(unittest.TestCase):
 
@@ -118,6 +145,40 @@ class TestReleaseArchive(unittest.TestCase):
             )
         )
 
+    @patch('cdflow_commands.release.mkdir')
+    @patch('cdflow_commands.release.open', new_callable=mock_open, create=True)
+    @patch('cdflow_commands.release.check_call')
+    @patch('cdflow_commands.release.make_archive')
+    @patch('cdflow_commands.release.copytree')
+    @patch('cdflow_commands.release.TemporaryDirectory')
+    def test_app_config_added_to_release_bundle(
+        self, TemporaryDirectory, copytree, _, _1, _2, _3
+    ):
+
+        # Given
+        release_plugin = Mock()
+        release_plugin.create.return_value = {}
+        platform_config_path = 'test-platform-config-path'
+        release = Release(
+            boto_session=Mock(),
+            release_bucket=ANY,
+            platform_config_path=platform_config_path, commit='dummy',
+            version='dummy-version', component_name='dummy-component',
+            team='dummy-team',
+        )
+        temp_dir = 'test-temp-dir'
+        TemporaryDirectory.return_value.__enter__.return_value = temp_dir
+
+        # When
+        release.create_archive(release_plugin)
+
+        # Then
+        copytree.assert_any_call(
+            'config', '{}/{}-{}/config'.format(
+                temp_dir, 'dummy-component', 'dummy-version'
+            )
+        )
+
     @given(fixed_dictionaries({
         'plugin_data': dictionaries(keys=text(), values=text()),
         'commit': text(),
@@ -171,7 +232,7 @@ class TestReleaseArchive(unittest.TestCase):
             base_release_metadata = {
                 'commit': commit,
                 'version': version,
-                'component-name': component_name,
+                'component': component_name,
                 'team': team,
             }
 
