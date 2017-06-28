@@ -14,13 +14,9 @@ class Deploy:
     GLOBAL_CONFIG_FILE = 'all.json'
 
     def __init__(
-        self, component, version, environment, team,
-        release_path, account_scheme, boto_session,
+        self, environment, release_path, account_scheme, boto_session,
     ):
-        self._component = component
-        self._version = version
         self._environment = environment
-        self._team = team
         self._release_path = release_path
         self._account_scheme = account_scheme
         self._boto_session = boto_session
@@ -75,11 +71,11 @@ class Deploy:
     def _add_plan_parameters(self, parameters, secrets_file_path):
         parameters += [
             'infra',
-            '-var', 'component={}'.format(self._component),
             '-var', 'env={}'.format(self._environment),
-            '-var', 'aws_region={}'.format(self._boto_session.region_name),
-            '-var', 'team={}'.format(self._team),
-            '-var', 'version={}'.format(self._version),
+            '-var', 'aws_region={}'.format(
+                self._account_scheme.default_region
+            ),
+            '-var-file', 'release.json',
             '-var-file', self._platform_config_file_path,
             '-var-file', secrets_file_path,
             '-out', self._plan_path

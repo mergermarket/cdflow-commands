@@ -22,30 +22,27 @@ ALNUM = ascii_letters + digits
 class TestDeploy(unittest.TestCase):
 
     @given(fixed_dictionaries({
-        'component': text(alphabet=ALNUM),
-        'version': text(alphabet=ALNUM),
         'environment': text(alphabet=ALNUM),
-        'team': text(alphabet=ALNUM),
         'release_path': text(alphabet=ALNUM),
         'account': text(alphabet=ALNUM),
         'utcnow': text(alphabet=digits),
         'access_key': text(alphabet=ALNUM),
         'secret_key': text(alphabet=ALNUM),
         'token': text(alphabet=ALNUM),
+        'aws_region': text(alphabet=ALNUM),
     }))
     def test_deploy_runs_terraform_plan(self, fixtures):
-        component = fixtures['component']
-        version = fixtures['version']
         environment = fixtures['environment']
-        team = fixtures['team']
         release_path = fixtures['release_path']
         account = fixtures['account']
         utcnow = fixtures['utcnow']
         access_key = fixtures['access_key']
         secret_key = fixtures['secret_key']
         token = fixtures['token']
+        aws_region = fixtures['aws_region']
 
         account_scheme = MagicMock(spec=AccountScheme)
+        account_scheme.default_region = aws_region
         account_scheme.account_for_environment.return_value = account
 
         boto_session = Mock()
@@ -54,8 +51,7 @@ class TestDeploy(unittest.TestCase):
         boto_session.get_credentials.return_value = credentials
 
         deploy = Deploy(
-            component, version, environment, team,
-            release_path, account_scheme, boto_session,
+            environment, release_path, account_scheme, boto_session,
         )
 
         with ExitStack() as stack:
@@ -99,11 +95,9 @@ class TestDeploy(unittest.TestCase):
             check_call.assert_any_call(
                 [
                     'terraform', 'plan', 'infra',
-                    '-var', 'component={}'.format(component),
                     '-var', 'env={}'.format(environment),
-                    '-var', 'aws_region={}'.format(boto_session.region_name),
-                    '-var', 'team={}'.format(team),
-                    '-var', 'version={}'.format(version),
+                    '-var', 'aws_region={}'.format(aws_region),
+                    '-var-file', 'release.json',
                     '-var-file', 'platform-config/{}/{}.json'.format(
                         account, boto_session.region_name
                     ),
@@ -120,30 +114,27 @@ class TestDeploy(unittest.TestCase):
             )
 
     @given(fixed_dictionaries({
-        'component': text(alphabet=ALNUM),
-        'version': text(alphabet=ALNUM),
         'environment': text(alphabet=ALNUM),
-        'team': text(alphabet=ALNUM),
         'release_path': text(alphabet=ALNUM),
         'account': text(alphabet=ALNUM),
         'utcnow': text(alphabet=digits),
         'access_key': text(alphabet=ALNUM),
         'secret_key': text(alphabet=ALNUM),
         'token': text(alphabet=ALNUM),
+        'aws_region': text(alphabet=ALNUM),
     }))
     def test_deploy_runs_terraform_apply(self, fixtures):
-        component = fixtures['component']
-        version = fixtures['version']
         environment = fixtures['environment']
-        team = fixtures['team']
         release_path = fixtures['release_path']
         account = fixtures['account']
         utcnow = fixtures['utcnow']
         access_key = fixtures['access_key']
         secret_key = fixtures['secret_key']
         token = fixtures['token']
+        aws_region = fixtures['aws_region']
 
         account_scheme = MagicMock(spec=AccountScheme)
+        account_scheme.default_region = aws_region
         account_scheme.account_for_environment.return_value = account
 
         boto_session = Mock()
@@ -152,8 +143,7 @@ class TestDeploy(unittest.TestCase):
         boto_session.get_credentials.return_value = credentials
 
         deploy = Deploy(
-            component, version, environment, team,
-            release_path, account_scheme, boto_session,
+            environment, release_path, account_scheme, boto_session,
         )
 
         with ExitStack() as stack:
@@ -194,30 +184,27 @@ class TestDeploy(unittest.TestCase):
             )
 
     @given(fixed_dictionaries({
-        'component': text(alphabet=ALNUM),
-        'version': text(alphabet=ALNUM),
         'environment': text(alphabet=ALNUM),
-        'team': text(alphabet=ALNUM),
         'release_path': text(alphabet=ALNUM),
         'account': text(alphabet=ALNUM),
         'utcnow': text(alphabet=digits),
         'access_key': text(alphabet=ALNUM),
         'secret_key': text(alphabet=ALNUM),
         'token': text(alphabet=ALNUM),
+        'aws_region': text(alphabet=ALNUM),
     }))
     def test_plan_only_does_not_apply(self, fixtures):
-        component = fixtures['component']
-        version = fixtures['version']
         environment = fixtures['environment']
-        team = fixtures['team']
         release_path = fixtures['release_path']
         account = fixtures['account']
         utcnow = fixtures['utcnow']
         access_key = fixtures['access_key']
         secret_key = fixtures['secret_key']
         token = fixtures['token']
+        aws_region = fixtures['aws_region']
 
         account_scheme = MagicMock(spec=AccountScheme)
+        account_scheme.default_region = aws_region
         account_scheme.account_for_environment.return_value = account
 
         boto_session = Mock()
@@ -226,8 +213,7 @@ class TestDeploy(unittest.TestCase):
         boto_session.get_credentials.return_value = credentials
 
         deploy = Deploy(
-            component, version, environment, team,
-            release_path, account_scheme, boto_session,
+            environment, release_path, account_scheme, boto_session,
         )
 
         with ExitStack() as stack:
@@ -271,11 +257,9 @@ class TestDeploy(unittest.TestCase):
             check_call.assert_called_once_with(
                 [
                     'terraform', 'plan', 'infra',
-                    '-var', 'component={}'.format(component),
                     '-var', 'env={}'.format(environment),
-                    '-var', 'aws_region={}'.format(boto_session.region_name),
-                    '-var', 'team={}'.format(team),
-                    '-var', 'version={}'.format(version),
+                    '-var', 'aws_region={}'.format(aws_region),
+                    '-var-file', 'release.json',
                     '-var-file', 'platform-config/{}/{}.json'.format(
                         account, boto_session.region_name
                     ),
@@ -292,30 +276,27 @@ class TestDeploy(unittest.TestCase):
             )
 
     @given(fixed_dictionaries({
-        'component': text(alphabet=ALNUM),
-        'version': text(alphabet=ALNUM),
         'environment': text(alphabet=ALNUM),
-        'team': text(alphabet=ALNUM),
         'release_path': text(alphabet=ALNUM),
         'account': text(alphabet=ALNUM),
         'utcnow': text(alphabet=digits),
         'access_key': text(alphabet=ALNUM),
         'secret_key': text(alphabet=ALNUM),
         'token': text(alphabet=ALNUM),
+        'aws_region': text(alphabet=ALNUM),
     }))
     def test_environment_config_not_added_if_not_present(self, fixtures):
-        component = fixtures['component']
-        version = fixtures['version']
         environment = fixtures['environment']
-        team = fixtures['team']
         release_path = fixtures['release_path']
         account = fixtures['account']
         utcnow = fixtures['utcnow']
         access_key = fixtures['access_key']
         secret_key = fixtures['secret_key']
         token = fixtures['token']
+        aws_region = fixtures['aws_region']
 
         account_scheme = MagicMock(spec=AccountScheme)
+        account_scheme.default_region = aws_region
         account_scheme.account_for_environment.return_value = account
 
         boto_session = Mock()
@@ -324,8 +305,7 @@ class TestDeploy(unittest.TestCase):
         boto_session.get_credentials.return_value = credentials
 
         deploy = Deploy(
-            component, version, environment, team,
-            release_path, account_scheme, boto_session,
+            environment, release_path, account_scheme, boto_session,
         )
 
         with ExitStack() as stack:
@@ -365,11 +345,9 @@ class TestDeploy(unittest.TestCase):
             check_call.assert_any_call(
                 [
                     'terraform', 'plan', 'infra',
-                    '-var', 'component={}'.format(component),
                     '-var', 'env={}'.format(environment),
-                    '-var', 'aws_region={}'.format(boto_session.region_name),
-                    '-var', 'team={}'.format(team),
-                    '-var', 'version={}'.format(version),
+                    '-var', 'aws_region={}'.format(aws_region),
+                    '-var-file', 'release.json',
                     '-var-file', 'platform-config/{}/{}.json'.format(
                         account, boto_session.region_name
                     ),
@@ -385,30 +363,27 @@ class TestDeploy(unittest.TestCase):
             )
 
     @given(fixed_dictionaries({
-        'component': text(alphabet=ALNUM),
-        'version': text(alphabet=ALNUM),
         'environment': text(alphabet=ALNUM),
-        'team': text(alphabet=ALNUM),
         'release_path': text(alphabet=ALNUM),
         'account': text(alphabet=ALNUM),
         'utcnow': text(alphabet=digits),
         'access_key': text(alphabet=ALNUM),
         'secret_key': text(alphabet=ALNUM),
         'token': text(alphabet=ALNUM),
+        'aws_region': text(alphabet=ALNUM),
     }))
     def test_global_environment_config_added_if_present(self, fixtures):
-        component = fixtures['component']
-        version = fixtures['version']
         environment = fixtures['environment']
-        team = fixtures['team']
         release_path = fixtures['release_path']
         account = fixtures['account']
         utcnow = fixtures['utcnow']
         access_key = fixtures['access_key']
         secret_key = fixtures['secret_key']
         token = fixtures['token']
+        aws_region = fixtures['aws_region']
 
         account_scheme = MagicMock(spec=AccountScheme)
+        account_scheme.default_region = aws_region
         account_scheme.account_for_environment.return_value = account
 
         boto_session = Mock()
@@ -417,8 +392,7 @@ class TestDeploy(unittest.TestCase):
         boto_session.get_credentials.return_value = credentials
 
         deploy = Deploy(
-            component, version, environment, team,
-            release_path, account_scheme, boto_session,
+            environment, release_path, account_scheme, boto_session,
         )
 
         with ExitStack() as stack:
@@ -463,11 +437,9 @@ class TestDeploy(unittest.TestCase):
             check_call.assert_any_call(
                 [
                     'terraform', 'plan', 'infra',
-                    '-var', 'component={}'.format(component),
                     '-var', 'env={}'.format(environment),
-                    '-var', 'aws_region={}'.format(boto_session.region_name),
-                    '-var', 'team={}'.format(team),
-                    '-var', 'version={}'.format(version),
+                    '-var', 'aws_region={}'.format(aws_region),
+                    '-var-file', 'release.json',
                     '-var-file', 'platform-config/{}/{}.json'.format(
                         account, boto_session.region_name
                     ),
