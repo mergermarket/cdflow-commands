@@ -5,13 +5,14 @@ from os import path
 from subprocess import check_call
 from tempfile import NamedTemporaryFile
 
+from cdflow_commands.constants import (
+    CONFIG_BASE_PATH, GLOBAL_CONFIG_FILE, INFRASTRUCTURE_DEFINITIONS_PATH,
+    PLATFORM_CONFIG_BASE_PATH, RELEASE_METADATA_FILE, TERRAFORM_BINARY
+)
 from cdflow_commands.secrets import get_secrets
 
 
 class Deploy:
-
-    CONFIG_BASE_PATH = 'config'
-    GLOBAL_CONFIG_FILE = 'all.json'
 
     def __init__(
         self, environment, release_path, account_scheme, boto_session,
@@ -54,12 +55,12 @@ class Deploy:
         account = self._account_scheme.account_for_environment(
             self._environment
         )
-        return 'platform-config/{}/{}.json'.format(
-            account, self._boto_session.region_name
+        return '{}/{}/{}.json'.format(
+            PLATFORM_CONFIG_BASE_PATH, account, self._boto_session.region_name
         )
 
     def _build_parameters(self, command, secrets_file_path=None):
-        parameters = ['terraform', command]
+        parameters = [TERRAFORM_BINARY, command]
         if command == 'plan':
             parameters = self._add_plan_parameters(
                 parameters, secrets_file_path
@@ -70,12 +71,12 @@ class Deploy:
 
     def _add_plan_parameters(self, parameters, secrets_file_path):
         parameters += [
-            'infra',
+            INFRASTRUCTURE_DEFINITIONS_PATH,
             '-var', 'env={}'.format(self._environment),
             '-var', 'aws_region={}'.format(
                 self._account_scheme.default_region
             ),
-            '-var-file', 'release.json',
+            '-var-file', RELEASE_METADATA_FILE,
             '-var-file', self._platform_config_file_path,
             '-var-file', secrets_file_path,
             '-out', self._plan_path
@@ -85,17 +86,14 @@ class Deploy:
 
     def _add_environment_config_parameters(self, parameters):
         environment_config_path = path.join(
-            self.CONFIG_BASE_PATH, '{}.json'.format(self._environment)
-        )
-        global_config_path = path.join(
-            self.CONFIG_BASE_PATH, self.GLOBAL_CONFIG_FILE
+            CONFIG_BASE_PATH, '{}.json'.format(self._environment)
         )
 
         if path.exists(environment_config_path):
             parameters += ['-var-file', environment_config_path]
 
-        if path.exists(global_config_path):
-            parameters += ['-var-file', global_config_path]
+        if path.exists(GLOBAL_CONFIG_FILE):
+            parameters += ['-var-file', GLOBAL_CONFIG_FILE]
 
         return parameters
 
