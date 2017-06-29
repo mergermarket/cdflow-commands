@@ -8,7 +8,7 @@ from hypothesis import given
 from hypothesis.strategies import dictionaries, fixed_dictionaries, text
 from mock import MagicMock, Mock, mock_open, patch, ANY
 
-from cdflow_commands.release import Release
+from cdflow_commands.release import fetch_release, Release
 
 
 ALNUM = ascii_letters + digits
@@ -346,3 +346,58 @@ class TestReleaseArchive(unittest.TestCase):
                 component_name, component_name, version
             )
         )
+
+
+class TestFetchRelease(unittest.TestCase):
+
+    @given(fixed_dictionaries({
+        'release_bucket': text(alphabet=ALNUM),
+        'version': text(alphabet=ALNUM),
+        'component_name': text(alphabet=ALNUM),
+    }))
+    def test_release_is_fetched_from_s3(self, fixtures):
+        release_bucket = fixtures['release_bucket']
+        component_name = fixtures['component_name']
+        version = fixtures['version']
+        boto_session = Mock()
+
+        mock_object = Mock()
+        boto_session.resource.return_value.Object.return_value = mock_object
+
+        with ExitStack() as stack:
+            ZipFile = stack.enter_context(
+                patch('cdflow_commands.release.ZipFile')
+            )
+            BytesIO = stack.enter_context(
+                patch('cdflow_commands.release.BytesIO')
+            )
+            getcwd = stack.enter_context(
+                patch('cdflow_commands.release.getcwd')
+            )
+            TemporaryDirectory = stack.enter_context(
+                patch('cdflow_commands.release.TemporaryDirectory')
+            )
+            time = stack.enter_context(patch('cdflow_commands.release.time'))
+
+            with fetch_release(
+                boto_session, release_bucket, component_name, version
+            ) as path_to_release:
+
+                assert path_to_release.startswith('{}/release-{}'.format(
+                    getcwd.return_value, time.return_value,
+                ))
+
+            boto_session.resource.return_value.Object.assert_called_once_with(
+                release_bucket,
+                '{}/{}-{}.zip'.format(component_name, component_name, version),
+            )
+
+            mock_object.download_fileobj.assert_called_once_with(
+                BytesIO.return_value
+            )
+
+            ZipFile.assert_called_once_with(BytesIO.return_value)
+
+            ZipFile.return_value.extractall.assert_called_once_with(
+                TemporaryDirectory.return_value.__enter__.return_value
+            )
