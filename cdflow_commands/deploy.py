@@ -22,12 +22,12 @@ class Deploy:
         self._account_scheme = account_scheme
         self._boto_session = boto_session
 
-    def run(self, plugin, plan_only=False):
-        self._plan(plugin)
+    def run(self, plan_only=False):
+        self._plan()
         if not plan_only:
             self._apply()
 
-    def _plan(self, plugin):
+    def _plan(self):
         with NamedTemporaryFile() as secrets_file_path:
             json.dump(get_secrets(), secrets_file_path)
             check_call(

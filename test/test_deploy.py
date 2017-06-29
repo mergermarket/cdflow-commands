@@ -81,16 +81,13 @@ class TestDeploy(unittest.TestCase):
 
             mock_os.environ = {}
 
-            dummy_plugin = Mock()
-            dummy_plugin.parameters.return_value = []
-
             def mock_path_exists(path):
                 if path == 'config/{}.json'.format(environment):
                     return True
 
             path_exists.side_effect = mock_path_exists
 
-            deploy.run(dummy_plugin)
+            deploy.run()
 
             check_call.assert_any_call(
                 [
@@ -168,10 +165,7 @@ class TestDeploy(unittest.TestCase):
 
             mock_os.environ = {}
 
-            dummy_plugin = Mock()
-            dummy_plugin.parameters.return_value = []
-
-            deploy.run(dummy_plugin)
+            deploy.run()
 
             check_call.assert_any_call(
                 ['terraform', 'apply', 'plan-{}'.format(utcnow)],
@@ -249,10 +243,7 @@ class TestDeploy(unittest.TestCase):
 
             mock_os.environ = {}
 
-            dummy_plugin = Mock()
-            dummy_plugin.parameters.return_value = []
-
-            deploy.run(dummy_plugin, plan_only=True)
+            deploy.run(plan_only=True)
 
             check_call.assert_called_once_with(
                 [
@@ -335,12 +326,9 @@ class TestDeploy(unittest.TestCase):
 
             mock_os.environ = {}
 
-            dummy_plugin = Mock()
-            dummy_plugin.parameters.return_value = []
-
             path_exists.return_value = False
 
-            deploy.run(dummy_plugin)
+            deploy.run()
 
             check_call.assert_any_call(
                 [
@@ -422,9 +410,6 @@ class TestDeploy(unittest.TestCase):
 
             mock_os.environ = {}
 
-            dummy_plugin = Mock()
-            dummy_plugin.parameters.return_value = []
-
             def mock_path_exists(path):
                 if path == 'config/all.json':
                     return True
@@ -432,7 +417,7 @@ class TestDeploy(unittest.TestCase):
                     return False
             path_exists.side_effect = mock_path_exists
 
-            deploy.run(dummy_plugin)
+            deploy.run()
 
             check_call.assert_any_call(
                 [
