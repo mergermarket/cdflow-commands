@@ -1,9 +1,9 @@
-from datetime import datetime
 import json
 import os
 from os import path
 from subprocess import check_call
 from tempfile import NamedTemporaryFile
+from time import time
 
 from cdflow_commands.constants import (
     CONFIG_BASE_PATH, GLOBAL_CONFIG_FILE, INFRASTRUCTURE_DEFINITIONS_PATH,
@@ -46,8 +46,7 @@ class Deploy:
     @property
     def _plan_path(self):
         if not hasattr(self, '__plan_path'):
-            plan_time = datetime.utcnow().strftime('%s')
-            self.__plan_path = 'plan-{}'.format(plan_time)
+            self.__plan_path = 'plan-{}'.format(time())
         return self.__plan_path
 
     @property
