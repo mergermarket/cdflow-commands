@@ -68,11 +68,11 @@ class TestDeploy(unittest.TestCase):
             get_secrets = stack.enter_context(
                 patch('cdflow_commands.deploy.get_secrets')
             )
-            datetime = stack.enter_context(
-                patch('cdflow_commands.deploy.datetime')
+            time = stack.enter_context(
+                patch('cdflow_commands.deploy.time')
             )
 
-            datetime.utcnow.return_value.strftime.return_value = utcnow
+            time.return_value = utcnow
 
             get_secrets.return_value = {}
 
@@ -158,11 +158,11 @@ class TestDeploy(unittest.TestCase):
             get_secrets = stack.enter_context(
                 patch('cdflow_commands.deploy.get_secrets')
             )
-            datetime = stack.enter_context(
-                patch('cdflow_commands.deploy.datetime')
+            time = stack.enter_context(
+                patch('cdflow_commands.deploy.time')
             )
 
-            datetime.utcnow.return_value.strftime.return_value = utcnow
+            time.return_value = utcnow
 
             get_secrets.return_value = {}
 
@@ -230,11 +230,11 @@ class TestDeploy(unittest.TestCase):
             get_secrets = stack.enter_context(
                 patch('cdflow_commands.deploy.get_secrets')
             )
-            datetime = stack.enter_context(
-                patch('cdflow_commands.deploy.datetime')
+            time = stack.enter_context(
+                patch('cdflow_commands.deploy.time')
             )
 
-            datetime.utcnow.return_value.strftime.return_value = utcnow
+            time.return_value = utcnow
 
             get_secrets.return_value = {}
 
@@ -322,11 +322,11 @@ class TestDeploy(unittest.TestCase):
             get_secrets = stack.enter_context(
                 patch('cdflow_commands.deploy.get_secrets')
             )
-            datetime = stack.enter_context(
-                patch('cdflow_commands.deploy.datetime')
+            time = stack.enter_context(
+                patch('cdflow_commands.deploy.time')
             )
 
-            datetime.utcnow.return_value.strftime.return_value = utcnow
+            time.return_value = utcnow
 
             get_secrets.return_value = {}
 
@@ -409,11 +409,11 @@ class TestDeploy(unittest.TestCase):
             get_secrets = stack.enter_context(
                 patch('cdflow_commands.deploy.get_secrets')
             )
-            datetime = stack.enter_context(
-                patch('cdflow_commands.deploy.datetime')
+            time = stack.enter_context(
+                patch('cdflow_commands.deploy.time')
             )
 
-            datetime.utcnow.return_value.strftime.return_value = utcnow
+            time.return_value = utcnow
 
             get_secrets.return_value = {}
 
