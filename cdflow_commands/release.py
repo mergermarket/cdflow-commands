@@ -73,9 +73,7 @@ class Release:
         s3_resource = self.boto_session.resource('s3')
         s3_object = s3_resource.Object(
             self._release_bucket,
-            '{}/{}-{}.zip'.format(
-                self.component_name, self.component_name, self.version
-            )
+            format_release_key(self.component_name, self.version)
         )
         s3_object.upload_file(release_archive)
 
