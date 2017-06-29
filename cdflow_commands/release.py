@@ -1,13 +1,43 @@
-from subprocess import check_call
-from tempfile import TemporaryDirectory
+from contextlib import contextmanager
+from io import BytesIO
+import json
 from os import getcwd, path, mkdir
 from shutil import copytree, make_archive
-import json
+from subprocess import check_call
+from tempfile import TemporaryDirectory
+from time import time
+from zipfile import ZipFile
 
 from cdflow_commands.constants import (
     CONFIG_BASE_PATH, GLOBAL_CONFIG_FILE, INFRASTRUCTURE_DEFINITIONS_PATH,
     PLATFORM_CONFIG_BASE_PATH, RELEASE_METADATA_FILE, TERRAFORM_BINARY
 )
+
+
+@contextmanager
+def fetch_release(boto_session, release_bucket, component_name, version):
+    release_archive = download_release(
+        boto_session, release_bucket,
+        format_release_key(component_name, version)
+    )
+    with TemporaryDirectory(
+        prefix='{}/release-{}'.format(getcwd(), time())
+    ) as path_to_release:
+        release_archive.extractall(path_to_release)
+        yield path_to_release
+
+
+def download_release(boto_session, release_bucket, key):
+    s3_resource = boto_session.resource('s3')
+    f = BytesIO()
+    s3_object = s3_resource.Object(release_bucket, key)
+    s3_object.download_fileobj(f)
+    f.seek(0)
+    return ZipFile(f)
+
+
+def format_release_key(component_name, version):
+    return '{}/{}-{}.zip'.format(component_name, component_name, version)
 
 
 class Release:
