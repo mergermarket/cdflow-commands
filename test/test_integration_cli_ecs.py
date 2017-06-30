@@ -272,7 +272,7 @@ BotoCreds = namedtuple('BotoCreds', ['access_key', 'secret_key', 'token'])
 @patch('cdflow_commands.state.atexit')
 class TestDeployCLI(unittest.TestCase):
 
-    def test_deploy_is_configured_and_run(
+    def setup_mocks(
         self, atexit, move, check_call_state, NamedTemporaryFile_state,
         check_output, _open, Session_from_config, Session_from_cli, rmtree,
         get_secrets, NamedTemporaryFile_deploy, time, check_call_deploy,
@@ -371,6 +371,19 @@ class TestDeployCLI(unittest.TestCase):
 
         get_secrets.return_value = {}
 
+        return (
+            check_call_state, check_call_deploy, TemporaryDirectory,
+            mock_assumed_session, NamedTemporaryFile_deploy, time,
+            aws_access_key_id, aws_secret_access_key, aws_session_token,
+            rmtree,
+        )
+
+    def test_deploy_is_configured_and_run(self, *args):
+        check_call_state, check_call_deploy, TemporaryDirectory, \
+            mock_assumed_session, NamedTemporaryFile_deploy, time, \
+            aws_access_key_id, aws_secret_access_key, aws_session_token, \
+            rmtree = self.setup_mocks(*args)
+
         # When
         cli.run(['deploy', 'live', '1.2.3'])
 
@@ -419,89 +432,35 @@ class TestDeployCLI(unittest.TestCase):
 
         rmtree.assert_called_once_with('.terraform/')
 
-    def test_deploy_is_planned_with_flag(self):
+    def test_deploy_is_planned_with_flag(self, *args):
+        check_call_state, check_call_deploy, TemporaryDirectory, \
+            mock_assumed_session, NamedTemporaryFile_deploy, time, \
+            aws_access_key_id, aws_secret_access_key, aws_session_token, \
+            rmtree = self.setup_mocks(*args)
         # When
-        cli.run(['deploy', 'aslive', '1.2.3', '--plan-only'])
+        cli.run(['deploy', 'live', '1.2.3', '--plan-only'])
 
         # Then
-        self.check_call_state.assert_any_call(
-            ['terraform', 'init', ANY, ANY, ANY, ANY],
-            cwd='infra'
-        )
-
-        self.check_call.assert_any_call(['terraform', 'get', 'infra'])
-
-        image_name = (
-            '123456789.dkr.ecr.eu-west-12.amazonaws.com/'
-            'dummy-component:1.2.3'
-        )
-
-        self.check_call.assert_any_call(
+        check_call_deploy.assert_called_once_with(
             [
-                'terraform', 'plan',
-                '-var', 'component=dummy-component',
-                '-var', 'env=aslive',
-                '-var', 'aws_region=eu-west-12',
-                '-var', 'team=dummy-team',
-                '-var', 'image={}'.format(image_name),
-                '-var', 'version=1.2.3',
-                '-var', 'ecs_cluster=default',
-                '-var-file', 'infra/platform-config/mmg/dev/eu-west-12.json',
+                'terraform', 'plan', 'infra',
+                '-var', 'env=live',
+                '-var', 'aws_region={}'.format(
+                    mock_assumed_session.region_name
+                ),
+                '-var-file', 'release.json',
                 '-var-file', ANY,
-                'infra'
+                '-var-file',
+                NamedTemporaryFile_deploy.return_value.__enter__.return_value,
+                '-out', 'plan-{}'.format(time.return_value),
             ],
             env={
                 'JOB_NAME': 'dummy-job-name',
-                'AWS_ACCESS_KEY_ID': self.aws_access_key_id,
-                'AWS_SECRET_ACCESS_KEY': self.aws_secret_access_key,
-                'AWS_SESSION_TOKEN': self.aws_session_token
-            }
-        )
-
-        terraform_calls = self.check_call.call_args_list
-        assert (
-            (
-                [
-                    'terraform', 'apply',
-                    '-var', 'component=dummy-component',
-                    '-var', 'env=aslive',
-                    '-var', 'aws_region=eu-west-12',
-                    '-var', 'team=dummy-team',
-                    '-var', 'image={}'.format(image_name),
-                    '-var', 'version=1.2.3',
-                    '-var', 'ecs_cluster=default',
-                    '-var-file',
-                    'infra/platform-config/mmg/dev/eu-west-12.json',
-                    '-var-file', ANY,
-                    'infra'
-                ],
-            ), ANY
-        ) not in terraform_calls
-
-    def test_dev_session_passed_to_non_live_deployments(self):
-        # Given
-        environment_name = 'aslive'
-
-        # When
-        cli.run(['deploy', environment_name, '1.2.3'])
-
-        # Then
-        self.mock_sts_client.assume_role.assert_called_with(
-            RoleArn='arn:aws:iam::123456789:role/admin',
-            RoleSessionName=self.mock_os_deploy.environ['JOB_NAME']
-        )
-
-    def test_prod_session_passed_to_live_deployments(self):
-        # Given
-        environment_name = 'live'
-
-        # When
-        cli.run(['deploy', environment_name, '1.2.3'])
-
-        # Then
-        self.mock_sts_client.assume_role.assert_called_with(
-            RoleArn='arn:aws:iam::987654321:role/admin',
-            RoleSessionName=self.mock_os_deploy.environ['JOB_NAME']
+                'AWS_ACCESS_KEY_ID': aws_access_key_id,
+                'AWS_SECRET_ACCESS_KEY': aws_secret_access_key,
+                'AWS_SESSION_TOKEN': aws_session_token
+            },
+            cwd=TemporaryDirectory.return_value.__enter__.return_value,
         )
 
 
