@@ -26,12 +26,10 @@ from cdflow_commands.config import (
 from cdflow_commands.deploy import Deploy
 from cdflow_commands.exceptions import UnknownProjectTypeError, UserFacingError
 from cdflow_commands.logger import logger
-from cdflow_commands.plugins.ecs import (
-    build_ecs_plugin, ReleasePlugin as ECSReleasePlugin
-)
+from cdflow_commands.plugins.ecs import  ReleasePlugin as ECSReleasePlugin
 from cdflow_commands.plugins.infrastructure import build_infrastructure_plugin
 from cdflow_commands.plugins.aws_lambda import (
-    build_lambda_plugin, ReleasePlugin as LambdaReleasePlugin
+    ReleasePlugin as LambdaReleasePlugin
 )
 from cdflow_commands.release import Release, fetch_release
 from cdflow_commands.state import initialise_terraform
@@ -124,44 +122,6 @@ def _run(argv):
                 account_scheme, deploy_account_session
             )
             deploy.run(args['--plan-only'])
-
-
-def build_plugin(project_type, **kwargs):
-    if project_type == 'docker':
-        plugin = build_ecs_plugin(
-            kwargs['environment_name'],
-            kwargs['component_name'],
-            kwargs['version'],
-            kwargs['metadata'],
-            kwargs['global_config'],
-            kwargs['root_session'],
-            kwargs['plan_only']
-        )
-    elif project_type == 'infrastructure':
-        plugin = build_infrastructure_plugin(
-            kwargs['environment_name'],
-            kwargs['component_name'],
-            kwargs['additional_variables'],
-            kwargs['metadata'],
-            kwargs['global_config'],
-            kwargs['root_session'],
-            kwargs['plan_only']
-        )
-    elif project_type == 'lambda':
-        plugin = build_lambda_plugin(
-            kwargs['environment_name'],
-            kwargs['component_name'],
-            kwargs['version'],
-            kwargs['metadata'],
-            kwargs['global_config'],
-            kwargs['root_session'],
-            kwargs['plan_only']
-        )
-    else:
-        raise UnknownProjectTypeError(
-            'Unsupported project type specified in service.json'
-        )
-    return plugin
 
 
 def conditionally_set_debug(verbose):

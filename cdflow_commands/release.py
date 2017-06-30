@@ -60,12 +60,12 @@ class Release:
 
     @property
     def all_environment_config(self):
-        if (
-            not hasattr(self, '__all_environment_config')
-            and self.global_config_present
-        ):
-            with open(GLOBAL_CONFIG_FILE) as f:
-                self.__all_environment_config = json.loads(f.read())
+        if not hasattr(self, '__all_environment_config'):
+            if self.global_config_present:
+                with open(GLOBAL_CONFIG_FILE) as f:
+                    self.__all_environment_config = json.loads(f.read())
+            else:
+                self.__all_environment_config = {}
         return self.__all_environment_config
 
     def create(self, plugin):
