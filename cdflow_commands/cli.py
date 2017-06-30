@@ -123,7 +123,7 @@ def _run(argv):
                 environment, path_to_release,
                 account_scheme, deploy_account_session
             )
-            deploy.run()
+            deploy.run(args['--plan-only'])
 
 
 def build_plugin(project_type, **kwargs):
