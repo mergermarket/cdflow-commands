@@ -5,11 +5,11 @@ from datetime import datetime
 from io import TextIOWrapper
 
 from cdflow_commands import cli
-from cdflow_commands.plugins.ecs import DoneEvent, ECSMonitor, InProgressEvent
 from mock import ANY, MagicMock, Mock, mock_open, patch
 import yaml
 
 
+@patch('cdflow_commands.cli.check_output')
 @patch('cdflow_commands.release.copytree')
 @patch('cdflow_commands.release.check_call')
 @patch('cdflow_commands.release.make_archive')
@@ -26,7 +26,7 @@ class TestReleaseCLI(unittest.TestCase):
     def test_release_is_configured_and_created(
         self, check_call, check_output, mock_open, Session_from_config,
         Session_from_cli, mock_os, rmtree, mock_open_release, make_archive,
-        check_call_release, copytree
+        check_call_release, copytree, check_output_cli
     ):
         mock_metadata_file = MagicMock(spec=TextIOWrapper)
         metadata = {
@@ -53,6 +53,9 @@ class TestReleaseCLI(unittest.TestCase):
             'release-account': 'foodev',
             'release-bucket': 'releases',
             'default-region': 'us-north-4',
+            'environments': {
+                'live': 'foodev',
+            }
         })
 
         mock_s3_resource = Mock()
@@ -106,10 +109,7 @@ class TestReleaseCLI(unittest.TestCase):
             component_name, version
         )
 
-        cli.run([
-            'release', '--platform-config', 'path/to/config',
-            version, '-c', component_name
-        ])
+        check_output_cli.return_value = 'hash\n'.encode('utf-8')
 
         image_name = '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
             123456789,
@@ -117,6 +117,13 @@ class TestReleaseCLI(unittest.TestCase):
             component_name,
             version
         )
+
+        cli.run([
+            'release', '--platform-config', 'path/to/config',
+            version, '-c', component_name
+        ])
+
+        check_output_cli.assert_called_once_with(['git', 'rev-parse', 'HEAD'])
 
         check_call.assert_any_call(['docker', 'build', '-t', image_name, '.'])
         check_call.assert_any_call(['docker', 'push', image_name])
@@ -132,7 +139,7 @@ class TestReleaseCLI(unittest.TestCase):
     def test_release_uses_component_name_from_origin(
         self, check_call, check_output, mock_open, Session_from_config,
         Session_from_cli, mock_os, rmtree, mock_open_release, make_archive,
-        check_call_release, copytree
+        check_call_release, copytree, check_output_cli
     ):
         mock_metadata_file = MagicMock(spec=TextIOWrapper)
         metadata = {
@@ -159,6 +166,9 @@ class TestReleaseCLI(unittest.TestCase):
             'release-account': 'foodev',
             'release-bucket': 'releases',
             'default-region': 'us-north-4',
+            'environments': {
+                'live': 'foodev',
+            }
         })
 
         mock_s3_resource = Mock()
@@ -211,6 +221,8 @@ class TestReleaseCLI(unittest.TestCase):
         make_archive.return_value = '/tmp/tmpvyzXQB/{}-{}.zip'.format(
             component_name, version
         )
+
+        check_output_cli.return_value = 'hash\n'.encode('utf-8')
 
         check_output.return_value = 'git@github.com:org/{}.git'.format(
             component_name
@@ -242,105 +254,42 @@ class TestReleaseCLI(unittest.TestCase):
 BotoCreds = namedtuple('BotoCreds', ['access_key', 'secret_key', 'token'])
 
 
+@patch('cdflow_commands.release.ZipFile')
+@patch('cdflow_commands.release.TemporaryDirectory')
+@patch('cdflow_commands.deploy.os')
+@patch('cdflow_commands.deploy.check_call')
+@patch('cdflow_commands.deploy.time')
+@patch('cdflow_commands.deploy.NamedTemporaryFile')
+@patch('cdflow_commands.deploy.get_secrets')
+@patch('cdflow_commands.cli.rmtree')
+@patch('cdflow_commands.cli.Session')
+@patch('cdflow_commands.config.Session')
+@patch('cdflow_commands.config.open')
+@patch('cdflow_commands.config.check_output')
+@patch('cdflow_commands.state.NamedTemporaryFile')
+@patch('cdflow_commands.state.check_call')
+@patch('cdflow_commands.state.move')
+@patch('cdflow_commands.state.atexit')
 class TestDeployCLI(unittest.TestCase):
 
-    def setUp(self):
-        self._original_interval = ECSMonitor._INTERVAL
-        ECSMonitor._INTERVAL = 0.1
-
-        self.rmtree_patcher = patch('cdflow_commands.cli.rmtree')
-        self.ECSEventIterator_patcher = patch(
-            'cdflow_commands.plugins.ecs.ECSEventIterator'
-        )
-        self.S3BucketFactory_patcher = patch(
-            'cdflow_commands.plugins.ecs.S3BucketFactory'
-        )
-        self.LockTableFactory_patcher = patch(
-            'cdflow_commands.plugins.ecs.LockTableFactory'
-        )
-        self.mock_os_deploy_patcher = patch('cdflow_commands.plugins.ecs.os')
-        self.Session_from_cli_patcher = patch('cdflow_commands.cli.Session')
-        self.Session_from_config_patcher = patch(
-            'cdflow_commands.config.Session'
-        )
-        self.mock_open_patcher = patch('cdflow_commands.config.open')
-        self.check_call_patcher = patch(
-            'cdflow_commands.plugins.ecs.check_call'
-        )
-        self.check_output_patcher = patch(
-            'cdflow_commands.config.check_output'
-        )
-        self.get_secrets_patcher = patch(
-            'cdflow_commands.plugins.ecs.get_secrets'
-        )
-        self.NamedTemporaryFile_patcher = patch(
-            'cdflow_commands.plugins.ecs.NamedTemporaryFile'
-        )
-        self.NamedTemporaryFile_state_patcher = patch(
-            'cdflow_commands.state.NamedTemporaryFile'
-        )
-        self.check_call_state_patcher = patch(
-            'cdflow_commands.state.check_call'
-        )
-        self.move_patcher = patch(
-            'cdflow_commands.state.move'
-        )
-        self.atexit_patcher = patch(
-            'cdflow_commands.state.atexit'
-        )
-        self.rmtree = self.rmtree_patcher.start()
-        self.ECSEventIterator = self.ECSEventIterator_patcher.start()
-        self.S3BucketFactory = self.S3BucketFactory_patcher.start()
-        self.LockTableFactory = self.LockTableFactory_patcher.start()
-        self.mock_os_deploy = self.mock_os_deploy_patcher.start()
-        self.Session_from_cli = self.Session_from_cli_patcher.start()
-        self.Session_from_config = self.Session_from_config_patcher.start()
-        self.mock_open = self.mock_open_patcher.start()
-        self.check_call = self.check_call_patcher.start()
-        self.check_output = self.check_output_patcher.start()
-        self.get_secrets = self.get_secrets_patcher.start()
-        self.NamedTemporaryFile = self.NamedTemporaryFile_patcher.start()
-        self.NamedTemporaryFile_state = \
-            self.NamedTemporaryFile_state_patcher.start()
-        self.check_call_state = self.check_call_state_patcher.start()
-        self.move = self.move_patcher.start()
-        self.atexit_patcher.start()
-
-        self.mock_os_deploy.environ = {
-            'JOB_NAME': 'dummy-job-name'
-        }
-
+    def test_deploy_is_configured_and_run(
+        self, atexit, move, check_call_state, NamedTemporaryFile_state,
+        check_output, _open, Session_from_config, Session_from_cli, rmtree,
+        get_secrets, NamedTemporaryFile_deploy, time, check_call_deploy,
+        mock_os, TemporaryDirectory, ZipFile,
+    ):
         mock_metadata_file = MagicMock(spec=TextIOWrapper)
         metadata = {
-            'TEAM': 'dummy-team',
-            'TYPE': 'docker',
-            'REGION': 'eu-west-12',
-            'ACCOUNT_PREFIX': 'mmg'
+            'account-scheme-url': 's3://bucket/key',
+            'team': 'your-team',
+            'type': 'docker',
         }
-        mock_metadata_file.read.return_value = json.dumps(metadata)
+        mock_metadata_file.read.return_value = yaml.dump(metadata)
 
-        mock_dev_file = MagicMock(spec=TextIOWrapper)
-        dev_config = {
-            'platform_config': {
-                'account_id': 123456789,
-            }
-        }
-        mock_dev_file.read.return_value = json.dumps(dev_config)
+        _open.return_value.__enter__.return_value = mock_metadata_file
 
-        mock_prod_file = MagicMock(spec=TextIOWrapper)
-        prod_config = {
-            'platform_config': {
-                'account_id': 987654321,
-            }
-        }
-        mock_prod_file.read.return_value = json.dumps(prod_config)
-
-        self.mock_open.return_value.__enter__.side_effect = (
-            f for f in (mock_metadata_file, mock_dev_file, mock_prod_file)
-        )
-
-        self.mock_sts_client = Mock()
-        self.mock_sts_client.assume_role.return_value = {
+        mock_sts_client = Mock()
+        mock_sts_client.assume_role.return_value = {
             'Credentials': {
                 'AccessKeyId': 'dummy-access-key',
                 'SecretAccessKey': 'dummy-secret-key',
@@ -349,131 +298,126 @@ class TestDeployCLI(unittest.TestCase):
         }
 
         mock_root_session = Mock()
-        mock_root_session.client.return_value = self.mock_sts_client
+        mock_root_session.client.return_value = mock_sts_client
         mock_root_session.region_name = 'eu-west-12'
-        self.Session_from_cli.return_value = mock_root_session
 
-        self.aws_access_key_id = 'dummy-access-key-id'
-        self.aws_secret_access_key = 'dummy-secret-access-key'
-        self.aws_session_token = 'dummy-session-token'
+        mock_s3_body = Mock()
+        mock_s3_body.read.return_value = json.dumps({
+            'accounts': {
+                'foodev': {
+                    'id': '123456789',
+                    'role': 'admon',
+                }
+            },
+            'release-account': 'foodev',
+            'release-bucket': 'releases',
+            'default-region': 'us-north-4',
+            'environments': {
+                'live': 'foodev',
+            }
+        })
+
+        mock_s3_resource = Mock()
+        mock_s3_resource.Object.return_value.get.return_value = {
+            'Body': mock_s3_body,
+        }
+        mock_root_session.resource.return_value = mock_s3_resource
+        Session_from_cli.return_value = mock_root_session
+
+        aws_access_key_id = 'dummy-access-key-id'
+        aws_secret_access_key = 'dummy-secret-access-key'
+        aws_session_token = 'dummy-session-token'
 
         mock_assumed_session = Mock()
-        mock_assumed_session.region_name = 'eu-west-12'
+        mock_assumed_session.region_name = 'us-north-4'
         mock_assumed_session.get_credentials.return_value = BotoCreds(
-            self.aws_access_key_id,
-            self.aws_secret_access_key,
-            self.aws_session_token
+            aws_access_key_id,
+            aws_secret_access_key,
+            aws_session_token
         )
 
-        self.Session_from_config.return_value = mock_assumed_session
+        mock_db_client = Mock()
+        mock_db_client.describe_table.return_value = {
+            'Table': {
+                'TableName': 'terraform_locks',
+                'AttributeDefinitions': [{'AttributeName': 'LockID'}]
+            }
+        }
+
+        mock_s3_client = Mock()
+        mock_s3_client.list_buckets.return_value = {
+            'Buckets': [{'Name': 'tfstate'}]
+        }
+        mock_s3_client.get_bucket_tagging.return_value = {
+            'TagSet': [{'Key': 'is-cdflow-tfstate-bucket', 'Value': 'true'}],
+        }
+        mock_s3_client.get_bucket_location.return_value = {
+            'LocationConstraint': mock_assumed_session.region_name,
+        }
+
+        mock_assumed_session.client.side_effect = (
+            mock_db_client, mock_s3_client,
+        )
+
+        Session_from_config.return_value = mock_assumed_session
+
+        mock_os.environ = {'JOB_NAME': 'dummy-job-name'}
 
         component_name = 'dummy-component'
 
-        self.check_output.return_value = 'git@github.com:org/{}.git'.format(
+        check_output.return_value = 'git@github.com:org/{}.git'.format(
             component_name
         ).encode('utf-8')
 
-        self.NamedTemporaryFile.return_value.__enter__.return_value.name = ANY
-        self.get_secrets.return_value = {}
+        get_secrets.return_value = {}
 
-        self.ECSEventIterator.return_value = [
-            InProgressEvent(0, 0, 2, 0, []),
-            InProgressEvent(1, 0, 2, 0, []),
-            DoneEvent(2, 0, 2, 0, [])
-        ]
-
-    def tearDown(self):
-        ECSMonitor._INTERVAL = self._original_interval
-        self.rmtree_patcher.stop()
-        self.ECSEventIterator_patcher.stop()
-        self.S3BucketFactory_patcher.stop()
-        self.LockTableFactory_patcher.stop()
-        self.mock_os_deploy_patcher.stop()
-        self.Session_from_cli_patcher.stop()
-        self.Session_from_config_patcher.stop()
-        self.mock_open_patcher.stop()
-        self.check_call_patcher.stop()
-        self.check_output_patcher.stop()
-        self.get_secrets_patcher.stop()
-        self.NamedTemporaryFile_patcher.stop()
-        self.NamedTemporaryFile_state_patcher.stop()
-        self.check_call_state_patcher.stop()
-        self.move_patcher.stop()
-        self.atexit_patcher.stop()
-
-    def test_deploy_is_configured_and_run(self):
         # When
-        with self.assertLogs('cdflow_commands.logger', level='INFO') as logs:
-            cli.run(['deploy', 'aslive', '1.2.3'])
+        cli.run(['deploy', 'live', '1.2.3'])
 
         # Then
-        self.check_call_state.assert_any_call(
+        check_call_state.assert_any_call(
             ['terraform', 'init', ANY, ANY, ANY, ANY],
-            cwd='infra'
+            cwd='{}/infra'.format(
+                TemporaryDirectory.return_value.__enter__.return_value
+            )
         )
 
-        self.check_call.assert_any_call(['terraform', 'get', 'infra'])
-
-        image_name = (
-            '123456789.dkr.ecr.eu-west-12.amazonaws.com/'
-            'dummy-component:1.2.3'
-        )
-
-        self.check_call.assert_any_call(
+        check_call_deploy.assert_any_call(
             [
-                'terraform', 'plan',
-                '-var', 'component=dummy-component',
-                '-var', 'env=aslive',
-                '-var', 'aws_region=eu-west-12',
-                '-var', 'team=dummy-team',
-                '-var', 'image={}'.format(image_name),
-                '-var', 'version=1.2.3',
-                '-var', 'ecs_cluster=default',
-                '-var-file', 'infra/platform-config/mmg/dev/eu-west-12.json',
+                'terraform', 'plan', 'infra',
+                '-var', 'env=live',
+                '-var', 'aws_region={}'.format(
+                    mock_assumed_session.region_name
+                ),
+                '-var-file', 'release.json',
                 '-var-file', ANY,
-                'infra'
+                '-var-file',
+                NamedTemporaryFile_deploy.return_value.__enter__.return_value,
+                '-out', 'plan-{}'.format(time.return_value),
             ],
             env={
                 'JOB_NAME': 'dummy-job-name',
-                'AWS_ACCESS_KEY_ID': self.aws_access_key_id,
-                'AWS_SECRET_ACCESS_KEY': self.aws_secret_access_key,
-                'AWS_SESSION_TOKEN': self.aws_session_token
-            }
+                'AWS_ACCESS_KEY_ID': aws_access_key_id,
+                'AWS_SECRET_ACCESS_KEY': aws_secret_access_key,
+                'AWS_SESSION_TOKEN': aws_session_token
+            },
+            cwd=TemporaryDirectory.return_value.__enter__.return_value,
         )
 
-        self.check_call.assert_any_call(
+        check_call_deploy.assert_any_call(
             [
-                'terraform', 'apply',
-                '-var', 'component=dummy-component',
-                '-var', 'env=aslive',
-                '-var', 'aws_region=eu-west-12',
-                '-var', 'team=dummy-team',
-                '-var', 'image={}'.format(image_name),
-                '-var', 'version=1.2.3',
-                '-var', 'ecs_cluster=default',
-                '-var-file', 'infra/platform-config/mmg/dev/eu-west-12.json',
-                '-var-file', ANY,
-                'infra'
+                'terraform', 'apply', 'plan-{}'.format(time.return_value),
             ],
             env={
                 'JOB_NAME': 'dummy-job-name',
-                'AWS_ACCESS_KEY_ID': self.aws_access_key_id,
-                'AWS_SECRET_ACCESS_KEY': self.aws_secret_access_key,
-                'AWS_SESSION_TOKEN': self.aws_session_token
-            }
+                'AWS_ACCESS_KEY_ID': aws_access_key_id,
+                'AWS_SECRET_ACCESS_KEY': aws_secret_access_key,
+                'AWS_SESSION_TOKEN': aws_session_token
+            },
+            cwd=TemporaryDirectory.return_value.__enter__.return_value,
         )
 
-        assert logs.output == [
-            ('INFO:cdflow_commands.logger:ECS service tasks - '
-             'desired: 2 pending: 0 running: 0 previous: 0'),
-            ('INFO:cdflow_commands.logger:ECS service tasks - '
-             'desired: 2 pending: 0 running: 1 previous: 0'),
-            ('INFO:cdflow_commands.logger:ECS service tasks - '
-             'desired: 2 pending: 0 running: 2 previous: 0'),
-            'INFO:cdflow_commands.logger:Deployment complete'
-        ]
-
-        self.rmtree.assert_called_once_with('.terraform/')
+        rmtree.assert_called_once_with('.terraform/')
 
     def test_deploy_is_planned_with_flag(self):
         # When
