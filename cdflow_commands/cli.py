@@ -16,12 +16,14 @@ Options:
 import logging
 import sys
 from shutil import rmtree
+from subprocess import check_output
 
 from boto3.session import Session
 
 from cdflow_commands.config import (
     assume_role, get_component_name, load_manifest, build_account_scheme
 )
+from cdflow_commands.deploy import Deploy
 from cdflow_commands.exceptions import UnknownProjectTypeError, UserFacingError
 from cdflow_commands.logger import logger
 from cdflow_commands.plugins.ecs import (
@@ -31,7 +33,8 @@ from cdflow_commands.plugins.infrastructure import build_infrastructure_plugin
 from cdflow_commands.plugins.aws_lambda import (
     build_lambda_plugin, ReleasePlugin as LambdaReleasePlugin
 )
-from cdflow_commands.release import Release
+from cdflow_commands.release import Release, fetch_release
+from cdflow_commands.state import initialise_terraform
 from docopt import docopt
 
 
@@ -66,17 +69,23 @@ def _run(argv):
         root_session.resource('s3'), manifest.account_scheme_url
     )
 
+    release_account_session = assume_role(
+        root_session, account_scheme.release_account.id, 'role-name'
+    )
+
     if args['release']:
-        session=assume_role(
-            root_session, account_scheme.release_account.id, 'role-name'
-        )
+        commit = check_output(
+            ['git', 'rev-parse', 'HEAD']
+        ).decode('utf-8').strip()
+
         release = Release(
-            boto_session=session,
+            boto_session=release_account_session,
             release_bucket=account_scheme.release_bucket,
             platform_config_path=args['--platform-config'],
             version=args['<version>'],
-            commit='hello',
+            commit=commit,
             component_name=get_component_name(args['--component']),
+            team=manifest.team,
         )
 
         if manifest.type == 'docker':
@@ -91,23 +100,30 @@ def _run(argv):
             ))
 
         release.create(plugin)
+    elif args['deploy']:
+        environment = args['<environment>']
+        component_name = get_component_name(args['--component'])
+        version = args['<version>']
+        account_id = account_scheme.account_for_environment(environment).id
 
-    else:
-        plugin = build_plugin(
-            metadata.type,
-            component_name=get_component_name(args['--component']),
-            version=args['<version>'],
-            environment_name=args['<environment>'],
-            additional_variables=args['<key=value>'],
-            metadata=metadata,
-            global_config=global_config,
-            root_session=root_session,
+        deploy_account_session = assume_role(
+            root_session, account_id, 'role-name'
         )
 
-        if args['deploy']:
-            plugin.deploy()
-        elif args['destroy']:
-            plugin.destroy()
+        with fetch_release(
+            release_account_session, account_scheme.release_bucket,
+            component_name, version,
+        ) as path_to_release:
+            initialise_terraform(
+                '{}/infra'.format(path_to_release), deploy_account_session,
+                environment, component_name
+            )
+
+            deploy = Deploy(
+                environment, path_to_release,
+                account_scheme, deploy_account_session
+            )
+            deploy.run()
 
 
 def build_plugin(project_type, **kwargs):
