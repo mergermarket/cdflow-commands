@@ -16,7 +16,6 @@ import yaml
 @patch('cdflow_commands.release.make_archive')
 @patch('cdflow_commands.release.open', new_callable=mock_open, create=True)
 @patch('cdflow_commands.cli.rmtree')
-@patch('cdflow_commands.plugins.ecs.os')
 @patch('cdflow_commands.cli.Session')
 @patch('cdflow_commands.config.Session')
 @patch('cdflow_commands.config.open', new_callable=mock_open, create=True)
@@ -26,7 +25,7 @@ class TestReleaseCLI(unittest.TestCase):
 
     def test_release_is_configured_and_created(
         self, check_call, check_output, mock_open, Session_from_config,
-        Session_from_cli, mock_os, rmtree, mock_open_release, make_archive,
+        Session_from_cli, rmtree, mock_open_release, make_archive,
         check_call_release, copytree, check_output_cli
     ):
         mock_metadata_file = MagicMock(spec=TextIOWrapper)
@@ -94,10 +93,6 @@ class TestReleaseCLI(unittest.TestCase):
             'PackedPolicySize': 123
         }
         mock_root_session.client.return_value = mock_sts
-
-        mock_os.environ = {
-            'JOB_NAME': 'dummy-job-name'
-        }
 
         mock_release_file = MagicMock(spec=TextIOWrapper)
         mock_open_release.return_value.__enter__.return_value = \
@@ -139,7 +134,7 @@ class TestReleaseCLI(unittest.TestCase):
 
     def test_release_uses_component_name_from_origin(
         self, check_call, check_output, mock_open, Session_from_config,
-        Session_from_cli, mock_os, rmtree, mock_open_release, make_archive,
+        Session_from_cli, rmtree, mock_open_release, make_archive,
         check_call_release, copytree, check_output_cli
     ):
         mock_metadata_file = MagicMock(spec=TextIOWrapper)
@@ -207,10 +202,6 @@ class TestReleaseCLI(unittest.TestCase):
             'PackedPolicySize': 123
         }
         mock_root_session.client.return_value = mock_sts
-
-        mock_os.environ = {
-            'JOB_NAME': 'dummy-job-name'
-        }
 
         mock_release_file = MagicMock(spec=TextIOWrapper)
         mock_open_release.return_value.__enter__.return_value = \

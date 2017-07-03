@@ -1,27 +1,11 @@
 import json
-import os
 from base64 import b64decode
-from collections import namedtuple
-from functools import lru_cache
-from hashlib import sha1
 from os import path
 from subprocess import CalledProcessError, check_call
-from tempfile import NamedTemporaryFile
-from time import sleep, time
+
 from botocore.exceptions import ClientError
-from cdflow_commands.config import (
-    assume_role, get_platform_config_path, get_role_session_name
-)
-from cdflow_commands.exceptions import (
-    UserFacingError, UserFacingFixedMessageError, MissingArgumentError
-)
-from cdflow_commands.logger import logger
-from cdflow_commands.plugins import Plugin
-from cdflow_commands.plugins.base import Destroy as BaseDestroy
-from cdflow_commands.secrets import get_secrets
-from cdflow_commands.state import (
-    LockTableFactory, S3BucketFactory, initialise_terraform_backend
-)
+
+from cdflow_commands.exceptions import UserFacingError
 
 
 class OnDockerBuildError(UserFacingError):

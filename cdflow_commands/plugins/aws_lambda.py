@@ -1,20 +1,9 @@
-import json
 import os
-from os import path
-from subprocess import check_call
-from tempfile import NamedTemporaryFile
-from collections import namedtuple
 from zipfile import ZipFile
 from contextlib import contextmanager
-from cdflow_commands.config import (
-    assume_role, get_role_session_name, get_platform_config_path
-)
+
 from cdflow_commands.logger import logger
-from cdflow_commands.plugins import Plugin
-from cdflow_commands.secrets import get_secrets
-from cdflow_commands.state import (
-    LockTableFactory, S3BucketFactory, initialise_terraform_backend
-)
+from cdflow_commands.state import S3BucketFactory
 
 
 class ReleasePlugin:
