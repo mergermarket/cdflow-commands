@@ -58,16 +58,6 @@ class Release:
     def global_config_present(self):
         return path.exists(GLOBAL_CONFIG_FILE)
 
-    @property
-    def all_environment_config(self):
-        if not hasattr(self, '__all_environment_config'):
-            if self.global_config_present:
-                with open(GLOBAL_CONFIG_FILE) as f:
-                    self.__all_environment_config = json.loads(f.read())
-            else:
-                self.__all_environment_config = {}
-        return self.__all_environment_config
-
     def create(self, plugin):
         release_archive = self.create_archive(plugin)
         s3_resource = self.boto_session.resource('s3')

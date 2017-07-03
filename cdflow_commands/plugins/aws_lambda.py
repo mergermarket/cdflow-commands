@@ -26,7 +26,6 @@ class ReleasePlugin:
         self._component_name = release.component_name
         self._version = release.version
         self._account_scheme = account_scheme
-        self._all_environment_config = release.all_environment_config
 
     @property
     def _lambda_s3_key(self):
@@ -52,8 +51,6 @@ class ReleasePlugin:
         self._remove_zipped_folder(zipped_folder.filename)
 
         return {
-            'handler': self._all_environment_config['lambda_handler'],
-            'runtime': self._all_environment_config['lambda_runtime'],
             's3_bucket': created_bucket_name,
             's3_key': self._lambda_s3_key,
         }

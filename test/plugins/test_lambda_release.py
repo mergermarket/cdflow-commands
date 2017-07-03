@@ -24,11 +24,6 @@ class TestLambdaReleasePlugin(unittest.TestCase):
         self._version = '1.2.3'
         self._release.version = self._version
 
-        self._release.all_environment_config = {
-            'lambda_handler': 'handler',
-            'lambda_runtime': 'python36',
-        }
-
         self._region = 'dummy-region'
         self._account_id = 'dummy-account-id'
         account_scheme = AccountScheme.create({
@@ -59,8 +54,6 @@ class TestLambdaReleasePlugin(unittest.TestCase):
         plugin_data = self._plugin.create()
 
         assert plugin_data == {
-            'handler': 'handler',
-            'runtime': 'python36',
             's3_bucket': 'bucket',
             's3_key': '{}/{}-{}.zip'.format(
                 self._component_name, self._component_name, self._version

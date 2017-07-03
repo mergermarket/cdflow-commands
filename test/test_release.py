@@ -42,33 +42,6 @@ class TestRelease(unittest.TestCase):
         # When/Then
         assert release.component_name == component_name
 
-    @given(dictionaries(keys=text(), values=text()))
-    def test_gets_global_environment_config(self, config):
-        release = Release(
-            boto_session=Mock(),
-            release_bucket=ANY,
-            platform_config_path=ANY, commit=ANY, version=ANY,
-            component_name=ANY, team=ANY
-        )
-
-        with ExitStack() as stack:
-            exists = stack.enter_context(
-                patch('cdflow_commands.release.path.exists')
-            )
-            _open = stack.enter_context(
-                patch(
-                    'cdflow_commands.release.open',
-                    new_callable=mock_open, create=True
-                )
-            )
-
-            exists.return_value = True
-
-            _open.return_value.__enter__.return_value.read.return_value = \
-                json.dumps(config)
-
-            assert release.all_environment_config == config
-
 
 class TestReleaseArchive(unittest.TestCase):
 
