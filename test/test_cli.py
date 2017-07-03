@@ -96,6 +96,7 @@ class TestUserFacingErrorThrown(unittest.TestCase):
 
 class TestCliBuildPlugin(unittest.TestCase):
 
+    @patch('cdflow_commands.cli.os')
     @patch('cdflow_commands.cli.check_output')
     @patch('cdflow_commands.cli.rmtree')
     @patch('cdflow_commands.cli.sys')
@@ -106,9 +107,11 @@ class TestCliBuildPlugin(unittest.TestCase):
     @patch('cdflow_commands.cli.get_component_name')
     def test_unsupported_project_type(
         self, get_component_name, Release, assume_role, build_account_scheme,
-        load_manifest, sys, rmtree, check_output,
+        load_manifest, sys, rmtree, check_output, os,
     ):
         # Given
+        os.environ = {'JOB_NAME': 'dummy-job-name'}
+
         check_output.return_value = 'hash\n'.encode('utf-8')
 
         # When / Then

@@ -16,6 +16,7 @@ class TestReleaseCLI(unittest.TestCase):
     @patch('cdflow_commands.release.make_archive')
     @patch('cdflow_commands.release.open', new_callable=mock_open, create=True)
     @patch('cdflow_commands.cli.check_output')
+    @patch('cdflow_commands.cli.os')
     @patch('cdflow_commands.cli.rmtree')
     @patch('cdflow_commands.cli.Session')
     @patch('cdflow_commands.config.Session')
@@ -23,7 +24,7 @@ class TestReleaseCLI(unittest.TestCase):
     @patch('cdflow_commands.config.check_output')
     def test_release_is_a_no_op(
         self, check_output, mock_open, Session_from_config, Session_from_cli,
-        rmtree, check_output_cli, mock_open_release, make_archive,
+        rmtree, mock_os, check_output_cli, mock_open_release, make_archive,
         check_call_release, copytree,
     ):
         mock_metadata_file = MagicMock(spec=TextIOWrapper)
@@ -63,6 +64,8 @@ class TestReleaseCLI(unittest.TestCase):
             'Body': mock_s3_body,
         }
         mock_root_session.resource.return_value = mock_s3_resource
+
+        mock_os.environ = {'JOB_NAME': 'dummy-job-name'}
 
         mock_sts = Mock()
         mock_sts.assume_role.return_value = {

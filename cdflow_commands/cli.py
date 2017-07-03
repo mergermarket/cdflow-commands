@@ -4,7 +4,7 @@ Commands for managing the software lifecycle.
 
 Usage:
     cdflow release --platform-config <platform_config> <version> [options]
-    cdflow deploy <environment>  [(--var <key=value>)...] [<version>] [options]
+    cdflow deploy <environment> <version> [options]
     cdflow destroy <environment> [options]
 
 Options:
@@ -13,6 +13,7 @@ Options:
     -p, --plan-only
 
 """
+import os
 import logging
 import sys
 from shutil import rmtree
@@ -21,7 +22,8 @@ from subprocess import check_output
 from boto3.session import Session
 
 from cdflow_commands.config import (
-    assume_role, get_component_name, load_manifest, build_account_scheme
+    assume_role, get_component_name, get_role_session_name,
+    load_manifest, build_account_scheme
 )
 from cdflow_commands.deploy import Deploy
 from cdflow_commands.exceptions import UnknownProjectTypeError, UserFacingError
@@ -66,8 +68,10 @@ def _run(argv):
         root_session.resource('s3'), manifest.account_scheme_url
     )
 
+    role_session_name = get_role_session_name(os.environ)
+
     release_account_session = assume_role(
-        root_session, account_scheme.release_account.id, 'role-name'
+        root_session, account_scheme.release_account.id, role_session_name
     )
 
     if args['release']:
@@ -109,10 +113,11 @@ def run_deploy(root_session, release_account_session, account_scheme, args):
     environment = args['<environment>']
     component_name = get_component_name(args['--component'])
     version = args['<version>']
+    role_session_name = get_role_session_name(os.environ)
     account_id = account_scheme.account_for_environment(environment).id
 
     deploy_account_session = assume_role(
-        root_session, account_id, 'role-name'
+        root_session, account_id, role_session_name
     )
 
     with fetch_release(
