@@ -9,7 +9,7 @@ from time import time
 from zipfile import ZipFile
 
 from cdflow_commands.constants import (
-    CONFIG_BASE_PATH, GLOBAL_CONFIG_FILE, INFRASTRUCTURE_DEFINITIONS_PATH,
+    CONFIG_BASE_PATH, INFRASTRUCTURE_DEFINITIONS_PATH,
     PLATFORM_CONFIG_BASE_PATH, RELEASE_METADATA_FILE, TERRAFORM_BINARY
 )
 
@@ -53,10 +53,6 @@ class Release:
         self._team = team
         self.version = version
         self.component_name = component_name
-
-    @property
-    def global_config_present(self):
-        return path.exists(GLOBAL_CONFIG_FILE)
 
     def create(self, plugin):
         release_archive = self.create_archive(plugin)
