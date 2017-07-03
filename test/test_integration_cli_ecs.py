@@ -9,6 +9,7 @@ import yaml
 
 
 @patch('cdflow_commands.cli.check_output')
+@patch('cdflow_commands.release.os')
 @patch('cdflow_commands.release.copytree')
 @patch('cdflow_commands.release.check_call')
 @patch('cdflow_commands.release.make_archive')
@@ -25,7 +26,7 @@ class TestReleaseCLI(unittest.TestCase):
     def test_release_is_configured_and_created(
         self, check_call, check_output, mock_open, Session_from_config,
         Session_from_cli, rmtree, mock_os, mock_open_release, make_archive,
-        check_call_release, copytree, check_output_cli
+        check_call_release, copytree, mock_os_release, check_output_cli,
     ):
         mock_metadata_file = MagicMock(spec=TextIOWrapper)
         metadata = {
@@ -106,6 +107,8 @@ class TestReleaseCLI(unittest.TestCase):
             component_name, version
         )
 
+        mock_os_release.environ = {'CDFLOW_IMAGE_DIGEST': 'hash'}
+
         check_output_cli.return_value = 'hash\n'.encode('utf-8')
 
         image_name = '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
@@ -136,12 +139,15 @@ class TestReleaseCLI(unittest.TestCase):
         )
 
         mock_session.resource.return_value.Object.return_value\
-            .upload_file.assert_called_once_with(make_archive.return_value)
+            .upload_file.assert_called_once_with(
+                make_archive.return_value,
+                ExtraArgs={'Metadata': {'cdflow_image_digest': 'hash'}},
+            )
 
     def test_release_uses_component_name_from_origin(
         self, check_call, check_output, mock_open, Session_from_config,
         Session_from_cli, rmtree, mock_os, mock_open_release, make_archive,
-        check_call_release, copytree, check_output_cli
+        check_call_release, copytree, mock_os_release, check_output_cli,
     ):
         mock_metadata_file = MagicMock(spec=TextIOWrapper)
         metadata = {
@@ -228,6 +234,8 @@ class TestReleaseCLI(unittest.TestCase):
             component_name
         ).encode('utf-8')
 
+        mock_os_release.environ = {'CDFLOW_IMAGE_DIGEST': 'hash'}
+
         cli.run([
             'release', '--platform-config', 'path/to/config', version,
         ])
@@ -248,4 +256,7 @@ class TestReleaseCLI(unittest.TestCase):
         )
 
         mock_session.resource.return_value.Object.return_value\
-            .upload_file.assert_called_once_with(make_archive.return_value)
+            .upload_file.assert_called_once_with(
+                make_archive.return_value,
+                ExtraArgs={'Metadata': {'cdflow_image_digest': 'hash'}},
+            )

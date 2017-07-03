@@ -11,6 +11,7 @@ from cdflow_commands import cli
 
 class TestReleaseCLI(unittest.TestCase):
 
+    @patch('cdflow_commands.release.os')
     @patch('cdflow_commands.release.copytree')
     @patch('cdflow_commands.release.check_call')
     @patch('cdflow_commands.release.make_archive')
@@ -25,7 +26,7 @@ class TestReleaseCLI(unittest.TestCase):
     def test_release_is_a_no_op(
         self, check_output, mock_open, Session_from_config, Session_from_cli,
         rmtree, mock_os, check_output_cli, mock_open_release, make_archive,
-        check_call_release, copytree,
+        check_call_release, copytree, mock_os_release,
     ):
         mock_metadata_file = MagicMock(spec=TextIOWrapper)
         metadata = {
@@ -86,6 +87,8 @@ class TestReleaseCLI(unittest.TestCase):
         component_name = 'dummy-component'
         version = '1.2.3'
 
+        mock_os_release.environ = {'CDFLOW_IMAGE_DIGEST': 'hash'}
+
         make_archive.return_value = '/tmp/tmpvyzXQB/{}-{}.zip'.format(
             component_name, version
         )
@@ -103,5 +106,6 @@ class TestReleaseCLI(unittest.TestCase):
 
         Session_from_config.return_value.resource.return_value.Object.\
             return_value.upload_file.assert_called_once_with(
-                make_archive.return_value
+                make_archive.return_value,
+                ExtraArgs={'Metadata': {'cdflow_image_digest': 'hash'}},
             )

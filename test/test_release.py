@@ -270,6 +270,7 @@ class TestReleaseArchive(unittest.TestCase):
             '{}-{}'.format(component_name, version),
         )
 
+    @patch('cdflow_commands.release.os')
     @patch('cdflow_commands.release.mkdir')
     @patch('cdflow_commands.release.check_call')
     @patch('cdflow_commands.release.copytree')
@@ -277,7 +278,8 @@ class TestReleaseArchive(unittest.TestCase):
     @patch('cdflow_commands.release.TemporaryDirectory')
     @patch('cdflow_commands.release.open', new_callable=mock_open, create=True)
     def test_create_uploads_archive(
-        self, mock_open, TemporaryDirectory, make_archive, _, _1, _2
+        self, mock_open, TemporaryDirectory, make_archive, copytree,
+        check_call, mkdir, mock_os,
     ):
         # Given
         release_plugin = Mock()
@@ -306,13 +308,18 @@ class TestReleaseArchive(unittest.TestCase):
         make_archive_result = '/path/to/dummy.zip'
         make_archive.return_value = make_archive_result
 
+        mock_os.environ = {'CDFLOW_IMAGE_DIGEST': 'hash'}
+
         # When
         release.create(release_plugin)
 
         # Then
         Object = mock_session.resource.return_value.Object
         Object.return_value.upload_file.assert_called_once_with(
-            make_archive_result
+            make_archive_result,
+            ExtraArgs={'Metadata': {
+                'cdflow_image_digest': mock_os.environ['CDFLOW_IMAGE_DIGEST'],
+            }},
         )
         Object.assert_called_once_with(
             release_bucket, '{}/{}-{}.zip'.format(

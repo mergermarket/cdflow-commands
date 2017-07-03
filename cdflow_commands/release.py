@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 from io import BytesIO
 import json
+import os
 from os import getcwd, path, mkdir
 from shutil import copytree, make_archive
 from subprocess import check_call
@@ -61,7 +62,12 @@ class Release:
             self._release_bucket,
             format_release_key(self.component_name, self.version)
         )
-        s3_object.upload_file(release_archive)
+        s3_object.upload_file(
+            release_archive,
+            ExtraArgs={'Metadata': {
+                'cdflow_image_digest': os.environ['CDFLOW_IMAGE_DIGEST'],
+            }},
+        )
 
     def create_archive(self, plugin):
 
