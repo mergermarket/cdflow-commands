@@ -1,10 +1,9 @@
 import unittest
 import json
-from collections import namedtuple
 from io import TextIOWrapper
 from datetime import datetime
 
-from mock import Mock, MagicMock, patch, mock_open, ANY
+from mock import Mock, MagicMock, patch, mock_open
 import yaml
 
 from cdflow_commands import cli

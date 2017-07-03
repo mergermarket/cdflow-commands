@@ -26,8 +26,7 @@ from cdflow_commands.config import (
 from cdflow_commands.deploy import Deploy
 from cdflow_commands.exceptions import UnknownProjectTypeError, UserFacingError
 from cdflow_commands.logger import logger
-from cdflow_commands.plugins.ecs import  ReleasePlugin as ECSReleasePlugin
-from cdflow_commands.plugins.infrastructure import build_infrastructure_plugin
+from cdflow_commands.plugins.ecs import ReleasePlugin as ECSReleasePlugin
 from cdflow_commands.plugins.aws_lambda import (
     ReleasePlugin as LambdaReleasePlugin
 )
@@ -72,56 +71,64 @@ def _run(argv):
     )
 
     if args['release']:
-        commit = check_output(
-            ['git', 'rev-parse', 'HEAD']
-        ).decode('utf-8').strip()
-
-        release = Release(
-            boto_session=release_account_session,
-            release_bucket=account_scheme.release_bucket,
-            platform_config_path=args['--platform-config'],
-            version=args['<version>'],
-            commit=commit,
-            component_name=get_component_name(args['--component']),
-            team=manifest.team,
-        )
-
-        if manifest.type == 'docker':
-            plugin = ECSReleasePlugin(release, account_scheme)
-        elif manifest.type == 'lambda':
-            plugin = LambdaReleasePlugin(release, account_scheme)
-        elif manifest.type == 'infrastructure':
-            plugin = NoopReleasePlugin()
-        else:
-            raise UnknownProjectTypeError('Unknown project type: {}'.format(
-                manifest.type
-            ))
-
-        release.create(plugin)
+        run_release(release_account_session, account_scheme, manifest, args)
     elif args['deploy']:
-        environment = args['<environment>']
-        component_name = get_component_name(args['--component'])
-        version = args['<version>']
-        account_id = account_scheme.account_for_environment(environment).id
+        run_deploy(root_session, release_account_session, account_scheme, args)
 
-        deploy_account_session = assume_role(
-            root_session, account_id, 'role-name'
+
+def run_release(release_account_session, account_scheme, manifest, args):
+    commit = check_output(
+        ['git', 'rev-parse', 'HEAD']
+    ).decode('utf-8').strip()
+
+    release = Release(
+        boto_session=release_account_session,
+        release_bucket=account_scheme.release_bucket,
+        platform_config_path=args['--platform-config'],
+        version=args['<version>'],
+        commit=commit,
+        component_name=get_component_name(args['--component']),
+        team=manifest.team,
+    )
+
+    if manifest.type == 'docker':
+        plugin = ECSReleasePlugin(release, account_scheme)
+    elif manifest.type == 'lambda':
+        plugin = LambdaReleasePlugin(release, account_scheme)
+    elif manifest.type == 'infrastructure':
+        plugin = NoopReleasePlugin()
+    else:
+        raise UnknownProjectTypeError('Unknown project type: {}'.format(
+            manifest.type
+        ))
+
+    release.create(plugin)
+
+
+def run_deploy(root_session, release_account_session, account_scheme, args):
+    environment = args['<environment>']
+    component_name = get_component_name(args['--component'])
+    version = args['<version>']
+    account_id = account_scheme.account_for_environment(environment).id
+
+    deploy_account_session = assume_role(
+        root_session, account_id, 'role-name'
+    )
+
+    with fetch_release(
+        release_account_session, account_scheme.release_bucket,
+        component_name, version,
+    ) as path_to_release:
+        initialise_terraform(
+            '{}/infra'.format(path_to_release), deploy_account_session,
+            environment, component_name
         )
 
-        with fetch_release(
-            release_account_session, account_scheme.release_bucket,
-            component_name, version,
-        ) as path_to_release:
-            initialise_terraform(
-                '{}/infra'.format(path_to_release), deploy_account_session,
-                environment, component_name
-            )
-
-            deploy = Deploy(
-                environment, path_to_release,
-                account_scheme, deploy_account_session
-            )
-            deploy.run(args['--plan-only'])
+        deploy = Deploy(
+            environment, path_to_release,
+            account_scheme, deploy_account_session
+        )
+        deploy.run(args['--plan-only'])
 
 
 def conditionally_set_debug(verbose):

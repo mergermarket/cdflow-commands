@@ -106,7 +106,7 @@ class TestCliBuildPlugin(unittest.TestCase):
     @patch('cdflow_commands.cli.get_component_name')
     def test_unsupported_project_type(
         self, get_component_name, Release, assume_role, build_account_scheme,
-        load_manifest, sys, rmtree, check_output, 
+        load_manifest, sys, rmtree, check_output,
     ):
         # Given
         check_output.return_value = 'hash\n'.encode('utf-8')
