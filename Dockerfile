@@ -1,9 +1,9 @@
 FROM python:3-alpine
 
-ENV TERRAFORM_VERSION=0.9.5
+ENV TERRAFORM_VERSION=0.9.10
 ENV ACME_VERSION=0.3.0
 
-RUN echo http://dl-cdn.alpinelinux.org/alpine/edge/community >> /etc/apk/repositories
+RUN echo http://dl-cdn.alpinelinux.org/alpine/latest-stable/community >> /etc/apk/repositories
 RUN apk update
 RUN apk add gcc musl-dev libffi-dev openssl-dev docker curl git
 
