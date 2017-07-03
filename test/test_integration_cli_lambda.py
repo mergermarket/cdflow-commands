@@ -19,6 +19,7 @@ class TestReleaseCLI(unittest.TestCase):
         'cdflow_commands.plugins.aws_lambda.S3BucketFactory',
         autospec=S3BucketFactory
     )
+    @patch('cdflow_commands.release.os')
     @patch('cdflow_commands.release.copytree')
     @patch('cdflow_commands.release.check_call')
     @patch('cdflow_commands.release.make_archive')
@@ -32,8 +33,8 @@ class TestReleaseCLI(unittest.TestCase):
     def test_release_package_is_created(
         self, check_output, mock_open_config, Session_from_config,
         Session_from_cli, rmtree, mock_os, mock_open_release, make_archive,
-        check_call, copytree, S3BucketFactory, mock_os_lambda, ZipFile,
-        check_output_cli,
+        check_call, copytree, mock_os_release, S3BucketFactory, mock_os_lambda,
+        ZipFile, check_output_cli,
     ):
         # Given
         mock_metadata_file = MagicMock(spec=TextIOWrapper)
@@ -119,6 +120,8 @@ class TestReleaseCLI(unittest.TestCase):
             component_name, version
         )
 
+        mock_os_release.environ = {'CDFLOW_IMAGE_DIGEST': 'hash'}
+
         # When
         cli.run([
             'release', '--platform-config', 'path/to/config',
@@ -138,4 +141,7 @@ class TestReleaseCLI(unittest.TestCase):
         )
 
         mock_session.resource.return_value.Object.return_value\
-            .upload_file.assert_called_once_with(make_archive.return_value)
+            .upload_file.assert_called_once_with(
+                make_archive.return_value,
+                ExtraArgs={'Metadata': {'cdflow_image_digest': 'hash'}},
+            )

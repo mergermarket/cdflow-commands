@@ -12,6 +12,7 @@ import yaml
 BotoCreds = namedtuple('BotoCreds', ['access_key', 'secret_key', 'token'])
 
 
+@patch('cdflow_commands.release.os')
 @patch('cdflow_commands.release.ZipFile')
 @patch('cdflow_commands.release.TemporaryDirectory')
 @patch('cdflow_commands.deploy.os')
@@ -36,6 +37,7 @@ class TestDeployCLI(unittest.TestCase):
         check_output, _open, Session_from_config, Session_from_cli, rmtree,
         mock_os, get_secrets, NamedTemporaryFile_deploy, time,
         check_call_deploy, mock_os_deploy, TemporaryDirectory, ZipFile,
+        mock_os_release,
     ):
         mock_metadata_file = MagicMock(spec=TextIOWrapper)
         metadata = {
@@ -123,6 +125,8 @@ class TestDeployCLI(unittest.TestCase):
         Session_from_config.return_value = mock_assumed_session
 
         mock_os_deploy.environ = {'foo': 'bar'}
+
+        mock_os_release.environ = {'CDFLOW_IMAGE_DIGEST': 'hash'}
 
         component_name = 'dummy-component'
 
