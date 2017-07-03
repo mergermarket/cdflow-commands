@@ -52,7 +52,7 @@ def run(argv):
 class NoopReleasePlugin:
 
     def create(*args):
-        pass
+        return {}
 
 
 def _run(argv):

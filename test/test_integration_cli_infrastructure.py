@@ -16,6 +16,7 @@ class TestReleaseCLI(unittest.TestCase):
     @patch('cdflow_commands.release.check_call')
     @patch('cdflow_commands.release.make_archive')
     @patch('cdflow_commands.release.open', new_callable=mock_open, create=True)
+    @patch('cdflow_commands.cli.check_output')
     @patch('cdflow_commands.cli.rmtree')
     @patch('cdflow_commands.cli.Session')
     @patch('cdflow_commands.config.Session')
@@ -23,7 +24,8 @@ class TestReleaseCLI(unittest.TestCase):
     @patch('cdflow_commands.config.check_output')
     def test_release_is_a_no_op(
         self, check_output, mock_open, Session_from_config, Session_from_cli,
-        rmtree, mock_open_release, make_archive, check_call_release, copytree
+        rmtree, check_output_cli, mock_open_release, make_archive,
+        check_call_release, copytree,
     ):
         mock_metadata_file = MagicMock(spec=TextIOWrapper)
         metadata = {
@@ -34,6 +36,8 @@ class TestReleaseCLI(unittest.TestCase):
         mock_metadata_file.read.return_value = yaml.dump(metadata)
 
         mock_open.return_value.__enter__.return_value = mock_metadata_file
+
+        check_output_cli.return_value = 'hash\n'.encode('utf-8')
 
         mock_root_session = Mock()
         mock_root_session.region_name = 'us-east-1'
@@ -50,6 +54,9 @@ class TestReleaseCLI(unittest.TestCase):
             'release-account': 'foodev',
             'release-bucket': 'releases',
             'default-region': 'us-north-4',
+            'environments': {
+                'live': 'foodev',
+            },
         })
 
         mock_s3_resource = Mock()
