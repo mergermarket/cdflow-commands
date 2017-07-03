@@ -303,7 +303,6 @@ class TestRelease(unittest.TestCase):
         def _mock_exists(path):
             if path == './on-docker-build':
                 return True
-            return False
 
         os_path.exists = _mock_exists
 
