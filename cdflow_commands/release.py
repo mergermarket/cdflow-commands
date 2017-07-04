@@ -110,11 +110,13 @@ class Release:
         ], cwd=base_dir)
 
     def _copy_platform_config_files(self, base_dir):
-        destination = '{}/{}'.format(base_dir, PLATFORM_CONFIG_BASE_PATH)
-        mkdir(destination)
-        copytree(self._platform_config_path, destination)
+        copytree(
+            self._platform_config_path,
+            '{}/{}'.format(base_dir, PLATFORM_CONFIG_BASE_PATH)
+        )
 
     def _copy_app_config_files(self, base_dir):
-        destination = '{}/{}'.format(base_dir, CONFIG_BASE_PATH)
-        mkdir(destination)
-        copytree(CONFIG_BASE_PATH, destination)
+        copytree(
+            CONFIG_BASE_PATH,
+            '{}/{}'.format(base_dir, CONFIG_BASE_PATH)
+        )
