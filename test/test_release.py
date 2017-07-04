@@ -77,7 +77,7 @@ class TestReleaseArchive(unittest.TestCase):
         release.create_archive(release_plugin)
 
         # Then
-        mkdir.assert_called_once_with('{}/{}-{}'.format(
+        mkdir.assert_any_call('{}/{}-{}'.format(
             temp_dir, 'dummy-component', 'dummy-version'
         ))
         check_call.assert_any_call([
@@ -91,7 +91,8 @@ class TestReleaseArchive(unittest.TestCase):
     @patch('cdflow_commands.release.copytree')
     @patch('cdflow_commands.release.TemporaryDirectory')
     def test_platform_config_added_to_release_bundle(
-        self, TemporaryDirectory, copytree, _, _1, _2, _3
+        self, TemporaryDirectory, copytree, make_archive, check_call,
+        mock_open, mkdir,
     ):
 
         # Given
@@ -108,14 +109,18 @@ class TestReleaseArchive(unittest.TestCase):
         temp_dir = 'test-temp-dir'
         TemporaryDirectory.return_value.__enter__.return_value = temp_dir
 
+        expected_path_in_release = '{}/{}-{}/platform-config'.format(
+            temp_dir, 'dummy-component', 'dummy-version'
+        )
+
         # When
         release.create_archive(release_plugin)
 
         # Then
+        mkdir.assert_any_call(expected_path_in_release)
+
         copytree.assert_any_call(
-            platform_config_path, '{}/{}-{}/platform-config'.format(
-                temp_dir, 'dummy-component', 'dummy-version'
-            )
+            platform_config_path, expected_path_in_release,
         )
 
     @patch('cdflow_commands.release.mkdir')
@@ -125,7 +130,8 @@ class TestReleaseArchive(unittest.TestCase):
     @patch('cdflow_commands.release.copytree')
     @patch('cdflow_commands.release.TemporaryDirectory')
     def test_app_config_added_to_release_bundle(
-        self, TemporaryDirectory, copytree, _, _1, _2, _3
+        self, TemporaryDirectory, copytree, make_archive, check_call,
+        mock_open, mkdir,
     ):
 
         # Given
@@ -142,14 +148,18 @@ class TestReleaseArchive(unittest.TestCase):
         temp_dir = 'test-temp-dir'
         TemporaryDirectory.return_value.__enter__.return_value = temp_dir
 
+        expected_path_in_release = '{}/{}-{}/config'.format(
+            temp_dir, 'dummy-component', 'dummy-version'
+        )
+
         # When
         release.create_archive(release_plugin)
 
         # Then
+        mkdir.assert_any_call(expected_path_in_release)
+
         copytree.assert_any_call(
-            'config', '{}/{}-{}/config'.format(
-                temp_dir, 'dummy-component', 'dummy-version'
-            )
+            'config', expected_path_in_release
         )
 
     @given(fixed_dictionaries({
