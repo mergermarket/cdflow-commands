@@ -12,6 +12,7 @@ import yaml
 BotoCreds = namedtuple('BotoCreds', ['access_key', 'secret_key', 'token'])
 
 
+@patch.dict('cdflow_commands.cli.os.environ', {'JOB_NAME': 'dummy-job-name'})
 @patch('cdflow_commands.release.os')
 @patch('cdflow_commands.release.ZipFile')
 @patch('cdflow_commands.release.TemporaryDirectory')
@@ -20,7 +21,6 @@ BotoCreds = namedtuple('BotoCreds', ['access_key', 'secret_key', 'token'])
 @patch('cdflow_commands.deploy.time')
 @patch('cdflow_commands.deploy.NamedTemporaryFile')
 @patch('cdflow_commands.deploy.get_secrets')
-@patch('cdflow_commands.cli.os')
 @patch('cdflow_commands.cli.rmtree')
 @patch('cdflow_commands.cli.Session')
 @patch('cdflow_commands.config.Session')
@@ -35,7 +35,7 @@ class TestDeployCLI(unittest.TestCase):
     def setup_mocks(
         self, atexit, move, check_call_state, NamedTemporaryFile_state,
         check_output, _open, Session_from_config, Session_from_cli, rmtree,
-        mock_os, get_secrets, NamedTemporaryFile_deploy, time,
+        get_secrets, NamedTemporaryFile_deploy, time,
         check_call_deploy, mock_os_deploy, TemporaryDirectory, ZipFile,
         mock_os_release,
     ):
@@ -48,8 +48,6 @@ class TestDeployCLI(unittest.TestCase):
         mock_metadata_file.read.return_value = yaml.dump(metadata)
 
         _open.return_value.__enter__.return_value = mock_metadata_file
-
-        mock_os.environ = {'JOB_NAME': 'dummy-job-name'}
 
         mock_sts_client = Mock()
         mock_sts_client.assume_role.return_value = {
@@ -124,6 +122,8 @@ class TestDeployCLI(unittest.TestCase):
 
         Session_from_config.return_value = mock_assumed_session
 
+        TemporaryDirectory.return_value.__enter__.return_value = '/tmp/foo'
+
         mock_os_deploy.environ = {'foo': 'bar'}
 
         mock_os_release.environ = {'CDFLOW_IMAGE_DIGEST': 'hash'}
@@ -140,24 +140,30 @@ class TestDeployCLI(unittest.TestCase):
             check_call_state, check_call_deploy, TemporaryDirectory,
             mock_assumed_session, NamedTemporaryFile_deploy, time,
             aws_access_key_id, aws_secret_access_key, aws_session_token,
-            rmtree,
+            rmtree, component_name,
         )
 
     def test_deploy_is_configured_and_run(self, *args):
         check_call_state, check_call_deploy, TemporaryDirectory, \
             mock_assumed_session, NamedTemporaryFile_deploy, time, \
             aws_access_key_id, aws_secret_access_key, aws_session_token, \
-            rmtree = self.setup_mocks(*args)
+            rmtree, component_name = self.setup_mocks(*args)
+
+        # Given
+        version = '1.2.3'
+
+        workdir = '{}/{}-{}'.format(
+            TemporaryDirectory.return_value.__enter__.return_value,
+            component_name, version,
+        )
 
         # When
-        cli.run(['deploy', 'live', '1.2.3'])
+        cli.run(['deploy', 'live', version])
 
         # Then
         check_call_state.assert_any_call(
             ['terraform', 'init', ANY, ANY, ANY, ANY],
-            cwd='{}/infra'.format(
-                TemporaryDirectory.return_value.__enter__.return_value
-            )
+            cwd=workdir+'/infra'
         )
 
         check_call_deploy.assert_any_call(
@@ -179,7 +185,7 @@ class TestDeployCLI(unittest.TestCase):
                 'AWS_SECRET_ACCESS_KEY': aws_secret_access_key,
                 'AWS_SESSION_TOKEN': aws_session_token
             },
-            cwd=TemporaryDirectory.return_value.__enter__.return_value,
+            cwd=workdir,
         )
 
         check_call_deploy.assert_any_call(
@@ -192,7 +198,7 @@ class TestDeployCLI(unittest.TestCase):
                 'AWS_SECRET_ACCESS_KEY': aws_secret_access_key,
                 'AWS_SESSION_TOKEN': aws_session_token
             },
-            cwd=TemporaryDirectory.return_value.__enter__.return_value,
+            cwd=workdir,
         )
 
         rmtree.assert_called_once_with('.terraform/')
@@ -201,9 +207,17 @@ class TestDeployCLI(unittest.TestCase):
         check_call_state, check_call_deploy, TemporaryDirectory, \
             mock_assumed_session, NamedTemporaryFile_deploy, time, \
             aws_access_key_id, aws_secret_access_key, aws_session_token, \
-            rmtree = self.setup_mocks(*args)
+            rmtree, component_name = self.setup_mocks(*args)
+
+        # Given
+        version = '1.2.3'
+
+        workdir = '{}/{}-{}'.format(
+            TemporaryDirectory.return_value.__enter__.return_value,
+            component_name, version,
+        )
         # When
-        cli.run(['deploy', 'live', '1.2.3', '--plan-only'])
+        cli.run(['deploy', 'live', version, '--plan-only'])
 
         # Then
         check_call_deploy.assert_called_once_with(
@@ -225,7 +239,7 @@ class TestDeployCLI(unittest.TestCase):
                 'AWS_SECRET_ACCESS_KEY': aws_secret_access_key,
                 'AWS_SESSION_TOKEN': aws_session_token
             },
-            cwd=TemporaryDirectory.return_value.__enter__.return_value,
+            cwd=workdir,
         )
 
 

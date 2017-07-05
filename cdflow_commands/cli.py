@@ -88,7 +88,7 @@ def run_release(release_account_session, account_scheme, manifest, args):
     release = Release(
         boto_session=release_account_session,
         release_bucket=account_scheme.release_bucket,
-        platform_config_path=args['--platform-config'],
+        platform_config_path=args['<platform_config>'],
         version=args['<version>'],
         commit=commit,
         component_name=get_component_name(args['--component']),
@@ -124,6 +124,10 @@ def run_deploy(root_session, release_account_session, account_scheme, args):
         release_account_session, account_scheme.release_bucket,
         component_name, version,
     ) as path_to_release:
+        logger.debug('Unpacked release: {}'.format(path_to_release))
+        path_to_release = os.path.join(
+            path_to_release, '{}-{}'.format(component_name, version)
+        )
         initialise_terraform(
             '{}/infra'.format(path_to_release), deploy_account_session,
             environment, component_name
