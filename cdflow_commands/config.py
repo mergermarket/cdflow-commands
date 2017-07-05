@@ -49,7 +49,7 @@ def load_manifest():
         )
 
 
-def assume_role(root_session, acccount_id, session_name):
+def assume_role(root_session, acccount_id, session_name, region=None):
     sts = root_session.client('sts')
     response = sts.assume_role(
         RoleArn='arn:aws:iam::{}:role/admin'.format(acccount_id),
@@ -59,7 +59,7 @@ def assume_role(root_session, acccount_id, session_name):
         response['Credentials']['AccessKeyId'],
         response['Credentials']['SecretAccessKey'],
         response['Credentials']['SessionToken'],
-        root_session.region_name,
+        region if region else root_session.region_name,
     )
 
 
