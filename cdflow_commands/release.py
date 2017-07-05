@@ -57,7 +57,51 @@ class Release:
         self.component_name = component_name
 
     def create(self, plugin):
-        release_archive = self.create_archive(plugin)
+        with TemporaryDirectory() as temp_dir:
+            base_dir = self._setup_base_dir(temp_dir)
+
+            self._run_terraform_get(
+                base_dir,
+                '{}/{}'.format(getcwd(), INFRASTRUCTURE_DEFINITIONS_PATH)
+            )
+
+            self._copy_app_config_files(base_dir)
+            self._copy_platform_config_files(base_dir)
+            self._copy_infra_files(base_dir)
+
+            extra_data = plugin.create()
+
+            self._generate_release_metadata(base_dir, extra_data)
+
+            release_archive = make_archive(
+                base_dir, 'zip', temp_dir,
+                '{}-{}'.format(self.component_name, self.version),
+            )
+
+            self._upload_archive(release_archive)
+
+    def _generate_release_metadata(self, base_dir, extra_data):
+        base_data = {
+            'commit': self._commit,
+            'version': self.version,
+            'component': self.component_name,
+            'team': self._team,
+        }
+
+        with open(path.join(base_dir, RELEASE_METADATA_FILE), 'w') as f:
+            f.write(json.dumps({
+                'release': dict(**base_data, **extra_data)
+            }))
+
+    def _setup_base_dir(self, temp_dir):
+        base_dir = '{}/{}-{}'.format(
+            temp_dir, self.component_name, self.version
+        )
+        logger.debug('Creating directory for release: {}'.format(base_dir))
+        mkdir(base_dir)
+        return base_dir
+
+    def _upload_archive(self, release_archive):
         s3_resource = self.boto_session.resource('s3')
         s3_object = s3_resource.Object(
             self._release_bucket,
@@ -69,42 +113,6 @@ class Release:
                 'cdflow_image_digest': os.environ['CDFLOW_IMAGE_DIGEST'],
             }},
         )
-
-    def create_archive(self, plugin):
-
-        with TemporaryDirectory() as temp_dir:
-            base_dir = '{}/{}-{}'.format(
-                temp_dir, self.component_name, self.version
-            )
-            logger.debug('Creating directory for release: {}'.format(base_dir))
-            mkdir(base_dir)
-
-            cwd = getcwd()
-
-            self._run_terraform_get(
-                base_dir, '{}/{}'.format(cwd, INFRASTRUCTURE_DEFINITIONS_PATH)
-            )
-            self._copy_app_config_files(base_dir)
-            self._copy_platform_config_files(base_dir)
-
-            extra_data = plugin.create()
-
-            base_data = {
-                'commit': self._commit,
-                'version': self.version,
-                'component': self.component_name,
-                'team': self._team,
-            }
-
-            with open(path.join(base_dir, RELEASE_METADATA_FILE), 'w') as f:
-                f.write(json.dumps({
-                    'release': dict(**base_data, **extra_data)
-                }))
-
-            return make_archive(
-                base_dir, 'zip', temp_dir,
-                '{}-{}'.format(self.component_name, self.version),
-            )
 
     def _run_terraform_get(self, base_dir, infra_dir):
         logger.debug(
@@ -127,3 +135,12 @@ class Release:
             CONFIG_BASE_PATH, path_in_release
         ))
         copytree(CONFIG_BASE_PATH, path_in_release)
+
+    def _copy_infra_files(self, base_dir):
+        path_in_release = '{}/{}'.format(
+            base_dir, INFRASTRUCTURE_DEFINITIONS_PATH
+        )
+        logger.debug('Copying {} to {}'.format(
+            INFRASTRUCTURE_DEFINITIONS_PATH, path_in_release
+        ))
+        copytree(INFRASTRUCTURE_DEFINITIONS_PATH, path_in_release)
