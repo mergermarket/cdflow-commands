@@ -10,8 +10,6 @@ from cdflow_commands.exceptions import (
 from cdflow_commands.account import AccountScheme
 import yaml
 
-PLATFORM_CONFIG_PATH_TEMPLATE = 'infra/platform-config/{}/{}/{}.json'
-
 
 class JobNameTooShortError(UserFacingError):
     pass
@@ -33,27 +31,6 @@ class NoGitRemoteError(UserFacingFixedMessageError):
     _message = 'No git remote configured - cannot infer component name'
 
 
-Metadata = namedtuple(
-    'Metadata', [
-        'team',
-        'type',
-        'aws_region',
-        'account_prefix',
-        'ecs_cluster',
-        'handler',
-        'runtime'
-    ]
-)
-
-
-GlobalConfig = namedtuple(
-    'GlobalConfig', [
-        'dev_account_id',
-        'prod_account_id'
-    ]
-)
-
-
 Manifest = namedtuple('Manifest', [
         'account_scheme_url',
         'team',
@@ -70,41 +47,6 @@ def load_manifest():
             manifest_data['team'],
             manifest_data['type'],
         )
-
-
-def load_service_metadata():
-    with open('service.json') as f:
-        metadata = json.loads(f.read())
-        try:
-            return Metadata(
-                metadata['TEAM'],
-                metadata['TYPE'],
-                metadata['REGION'],
-                metadata['ACCOUNT_PREFIX'],
-                metadata.get('ECS_CLUSTER', 'default'),
-                metadata.get('HANDLER', ''),
-                metadata.get('RUNTIME', '')
-            )
-        except KeyError as key:
-            raise UserFacingError(
-                'Deployment failed - did you set {} in {}?'.format(
-                    key, f.name))
-
-
-def load_global_config(account_prefix, aws_region):
-    with open(get_platform_config_path(
-        account_prefix, aws_region, is_prod=False
-    )) as f:
-        config = json.loads(f.read())
-        dev_account_id = config['platform_config']['account_id']
-
-    with open(get_platform_config_path(
-        account_prefix, aws_region, is_prod=True
-    )) as f:
-        config = json.loads(f.read())
-        prod_account_id = config['platform_config']['account_id']
-
-    return GlobalConfig(dev_account_id, prod_account_id)
 
 
 def assume_role(root_session, acccount_id, session_name):
@@ -162,13 +104,6 @@ def _get_component_name_from_git_remote():
     if name.endswith('.git'):
         return name[:-4]
     return name
-
-
-def get_platform_config_path(account_prefix, aws_region, is_prod):
-    account_postfix = 'prod' if is_prod else 'dev'
-    return 'infra/platform-config/{}/{}/{}.json'.format(
-        account_prefix, account_postfix, aws_region
-    )
 
 
 def parse_s3_url(s3_url):

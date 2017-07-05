@@ -1,4 +1,3 @@
-import json
 import yaml
 import unittest
 from datetime import datetime
@@ -7,7 +6,6 @@ from string import ascii_letters, digits, printable
 from subprocess import CalledProcessError
 
 from cdflow_commands import config
-from cdflow_commands.exceptions import UserFacingError
 from hypothesis import example, given, assume
 from hypothesis.strategies import composite, fixed_dictionaries, lists, text
 from mock import MagicMock, Mock, mock_open, patch
@@ -79,104 +77,6 @@ class TestLoadManifest(unittest.TestCase):
         assert manifest.account_scheme_url == fixtures['account-scheme-url']
         assert manifest.team == fixtures['team']
         assert manifest.type == fixtures['type']
-
-
-class TestLoadConfig(unittest.TestCase):
-
-    @patch('cdflow_commands.config.open', new_callable=mock_open, create=True)
-    def test_service_metadata_user_facing_error(self, mock_open):
-        mock_file = MagicMock(spec=TextIOWrapper)
-        expected_config = {
-            'FOO': 'bar',
-        }
-        mock_file.read.return_value = json.dumps(expected_config)
-        mock_open.return_value.__enter__.return_value = mock_file
-        with self.assertRaisesRegexp(
-            UserFacingError,
-            'Deployment failed - did you set .* in .*'
-        ):
-            config.load_service_metadata()
-
-    @patch('cdflow_commands.config.open', new_callable=mock_open, create=True)
-    def test_service_metadata_loaded_with_default_ecs_cluster(self, mock_open):
-        mock_file = MagicMock(spec=TextIOWrapper)
-        expected_config = {
-            'TEAM': 'dummy-team',
-            'TYPE': 'docker',
-            'REGION': 'eu-west-1',
-            'ACCOUNT_PREFIX': 'mmg'
-        }
-        mock_file.read.return_value = json.dumps(expected_config)
-        mock_open.return_value.__enter__.return_value = mock_file
-        metadata = config.load_service_metadata()
-        assert metadata.team == expected_config['TEAM']
-        assert metadata.type == expected_config['TYPE']
-        assert metadata.aws_region == expected_config['REGION']
-        assert metadata.account_prefix == expected_config['ACCOUNT_PREFIX']
-        assert metadata.ecs_cluster == 'default'
-        mock_open.assert_called_once_with('service.json')
-
-    @given(text(alphabet=ascii_letters, min_size=8, max_size=32))
-    def test_service_metadata_loaded_with_specific_ecs_cluster(
-        self, ecs_cluster_name
-    ):
-        mock_file = MagicMock(spec=TextIOWrapper)
-        expected_config = {
-            'TEAM': 'dummy-team',
-            'TYPE': 'docker',
-            'REGION': 'eu-west-1',
-            'ACCOUNT_PREFIX': 'mmg',
-            'ECS_CLUSTER': ecs_cluster_name
-        }
-        with patch(
-            'cdflow_commands.config.open', new_callable=mock_open, create=True
-        ) as mocked_open:
-            mock_file.read.return_value = json.dumps(expected_config)
-            mocked_open.return_value.__enter__.return_value = mock_file
-            metadata = config.load_service_metadata()
-            assert metadata.team == expected_config['TEAM']
-            assert metadata.type == expected_config['TYPE']
-            assert metadata.aws_region == expected_config['REGION']
-            assert metadata.account_prefix == expected_config['ACCOUNT_PREFIX']
-            assert metadata.ecs_cluster == ecs_cluster_name
-            mocked_open.assert_called_once_with('service.json')
-
-    @patch('cdflow_commands.config.open', new_callable=mock_open, create=True)
-    def test_loaded_from_file(self, mock_open):
-        mock_dev_file = MagicMock(spec=TextIOWrapper)
-        dev_config = {
-            'platform_config': {
-                'account_id': 123456789
-            }
-        }
-        mock_dev_file.read.return_value = json.dumps(dev_config)
-
-        mock_prod_file = MagicMock(spec=TextIOWrapper)
-        prod_config = {
-            'platform_config': {
-                'account_id': 987654321
-            }
-        }
-        mock_prod_file.read.return_value = json.dumps(prod_config)
-
-        mock_open.return_value.__enter__.side_effect = (
-            f for f in (mock_dev_file, mock_prod_file)
-        )
-
-        account_prefix = 'mmg'
-        aws_region = 'eu-west-5'
-        global_config = config.load_global_config(account_prefix, aws_region)
-
-        assert global_config.dev_account_id == 123456789
-        assert global_config.prod_account_id == 987654321
-
-        file_path_template = 'infra/platform-config/{}/{}/{}.json'
-        mock_open.assert_any_call(
-            file_path_template.format(account_prefix, 'dev', aws_region)
-        )
-        mock_open.assert_any_call(
-            file_path_template.format(account_prefix, 'prod', aws_region)
-        )
 
 
 class TestAssumeRole(unittest.TestCase):
@@ -393,37 +293,6 @@ class TestGetComponentName(unittest.TestCase):
             config.NoGitRemoteError,
             config.get_component_name,
             None
-        )
-
-
-class TestGetPlatformConfigPath(unittest.TestCase):
-
-    @given(fixed_dictionaries({
-        'account_prefix': text(alphabet=printable),
-        'aws_region': text(alphabet=printable),
-    }))
-    def test_get_platform_config_path(self, function_inputs):
-        function_inputs['is_prod'] = False
-        path = config.get_platform_config_path(
-            **function_inputs
-        )
-        assert path == 'infra/platform-config/{}/dev/{}.json'.format(
-            function_inputs['account_prefix'],
-            function_inputs['aws_region'],
-        )
-
-    @given(fixed_dictionaries({
-        'account_prefix': text(alphabet=printable),
-        'aws_region': text(alphabet=printable),
-    }))
-    def test_get_platform_config_path_for_live(self, function_inputs):
-        function_inputs['is_prod'] = True
-        path = config.get_platform_config_path(
-            **function_inputs
-        )
-        assert path == 'infra/platform-config/{}/prod/{}.json'.format(
-            function_inputs['account_prefix'],
-            function_inputs['aws_region'],
         )
 
 
