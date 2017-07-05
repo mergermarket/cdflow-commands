@@ -6,6 +6,7 @@ from subprocess import CalledProcessError, check_call
 from botocore.exceptions import ClientError
 
 from cdflow_commands.exceptions import UserFacingError
+from cdflow_commands.logger import logger
 
 
 class OnDockerBuildError(UserFacingError):
@@ -42,7 +43,12 @@ class ReleasePlugin:
 
     @property
     def _boto_ecr_client(self):
-        return self._release.boto_session.client('ecr')
+        if not hasattr(self, '__ecr_client'):
+            logger.debug('AWS region on client: {}'.format(
+                self._release.boto_session.region_name
+            ))
+            self.__ecr_client = self._release.boto_session.client('ecr')
+        return self.__ecr_client
 
     @property
     def _image_name(self):
