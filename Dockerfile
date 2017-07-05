@@ -15,11 +15,11 @@ RUN cd /tmp && \
     rm -rf /tmp/* && \
     rm -rf /var/tmp/*
 
-ADD ./requirements.txt /cdflow/requirements.txt
+COPY ./requirements.txt /cdflow/requirements.txt
 RUN pip install -r /cdflow/requirements.txt
 
-ADD . /cdflow
-ADD terraformrc /root/.terraformrc
+COPY . /cdflow
+COPY terraformrc /root/.terraformrc
 
 ENV PYTHONPATH=/cdflow
 
