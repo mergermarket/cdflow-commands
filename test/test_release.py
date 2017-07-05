@@ -6,7 +6,7 @@ import unittest
 
 from hypothesis import given
 from hypothesis.strategies import dictionaries, fixed_dictionaries, text
-from mock import MagicMock, Mock, mock_open, patch, ANY
+from mock import MagicMock, Mock, patch, ANY
 
 from cdflow_commands.release import fetch_release, Release
 
@@ -43,9 +43,13 @@ class TestRelease(unittest.TestCase):
         assert release.component_name == component_name
 
 
+@patch.dict(
+    'cdflow_commands.release.os.environ',
+    values={'CDFLOW_IMAGE_DIGEST': 'hash'}
+)
 class TestReleaseArchive(unittest.TestCase):
 
-    @patch('cdflow_commands.release.open', new_callable=mock_open, create=True)
+    @patch('cdflow_commands.release.open')
     @patch('cdflow_commands.release.make_archive')
     @patch('cdflow_commands.release.check_call')
     @patch('cdflow_commands.release.copytree')
@@ -74,7 +78,7 @@ class TestReleaseArchive(unittest.TestCase):
         getcwd.return_value = '/cwd'
 
         # When
-        release.create_archive(release_plugin)
+        release.create(release_plugin)
 
         # Then
         mkdir.assert_called_once_with('{}/{}-{}'.format(
@@ -85,7 +89,7 @@ class TestReleaseArchive(unittest.TestCase):
         ], cwd='{}/{}-{}'.format(temp_dir, 'dummy-component', 'dummy-version'))
 
     @patch('cdflow_commands.release.mkdir')
-    @patch('cdflow_commands.release.open', new_callable=mock_open, create=True)
+    @patch('cdflow_commands.release.open')
     @patch('cdflow_commands.release.check_call')
     @patch('cdflow_commands.release.make_archive')
     @patch('cdflow_commands.release.copytree')
@@ -109,7 +113,7 @@ class TestReleaseArchive(unittest.TestCase):
         TemporaryDirectory.return_value.__enter__.return_value = temp_dir
 
         # When
-        release.create_archive(release_plugin)
+        release.create(release_plugin)
 
         # Then
         copytree.assert_any_call(
@@ -119,7 +123,7 @@ class TestReleaseArchive(unittest.TestCase):
         )
 
     @patch('cdflow_commands.release.mkdir')
-    @patch('cdflow_commands.release.open', new_callable=mock_open, create=True)
+    @patch('cdflow_commands.release.open')
     @patch('cdflow_commands.release.check_call')
     @patch('cdflow_commands.release.make_archive')
     @patch('cdflow_commands.release.copytree')
@@ -143,11 +147,45 @@ class TestReleaseArchive(unittest.TestCase):
         TemporaryDirectory.return_value.__enter__.return_value = temp_dir
 
         # When
-        release.create_archive(release_plugin)
+        release.create(release_plugin)
 
         # Then
         copytree.assert_any_call(
             'config', '{}/{}-{}/config'.format(
+                temp_dir, 'dummy-component', 'dummy-version'
+            )
+        )
+
+    @patch('cdflow_commands.release.mkdir')
+    @patch('cdflow_commands.release.open')
+    @patch('cdflow_commands.release.check_call')
+    @patch('cdflow_commands.release.make_archive')
+    @patch('cdflow_commands.release.copytree')
+    @patch('cdflow_commands.release.TemporaryDirectory')
+    def test_infra_directory_added_to_release_bundle(
+        self, TemporaryDirectory, copytree, _, _1, _2, _3
+    ):
+
+        # Given
+        release_plugin = Mock()
+        release_plugin.create.return_value = {}
+        platform_config_path = 'test-platform-config-path'
+        release = Release(
+            boto_session=Mock(),
+            release_bucket=ANY,
+            platform_config_path=platform_config_path, commit='dummy',
+            version='dummy-version', component_name='dummy-component',
+            team='dummy-team',
+        )
+        temp_dir = 'test-temp-dir'
+        TemporaryDirectory.return_value.__enter__.return_value = temp_dir
+
+        # When
+        release.create(release_plugin)
+
+        # Then
+        copytree.assert_any_call(
+            'infra', '{}/{}-{}/infra'.format(
                 temp_dir, 'dummy-component', 'dummy-version'
             )
         )
@@ -190,12 +228,7 @@ class TestReleaseArchive(unittest.TestCase):
             TemporaryDirectory = stack.enter_context(
                 patch('cdflow_commands.release.TemporaryDirectory')
             )
-            _open = stack.enter_context(
-                patch(
-                    'cdflow_commands.release.open',
-                    new_callable=mock_open, create=True
-                )
-            )
+            _open = stack.enter_context(patch('cdflow_commands.release.open'))
 
             TemporaryDirectory.return_value.__enter__.return_value = temp_dir
 
@@ -210,7 +243,7 @@ class TestReleaseArchive(unittest.TestCase):
             }
 
             # When
-            release.create_archive(release_plugin)
+            release.create(release_plugin)
 
             # Then
             release_plugin.create.assert_called_once_with()
@@ -228,7 +261,7 @@ class TestReleaseArchive(unittest.TestCase):
     @patch('cdflow_commands.release.copytree')
     @patch('cdflow_commands.release.make_archive')
     @patch('cdflow_commands.release.TemporaryDirectory')
-    @patch('cdflow_commands.release.open', new_callable=mock_open, create=True)
+    @patch('cdflow_commands.release.open')
     def test_release_bundle_added_to_archive(
         self, mock_open, TemporaryDirectory, make_archive, _, _1, _2
     ):
@@ -259,10 +292,9 @@ class TestReleaseArchive(unittest.TestCase):
         make_archive.return_value = make_archive_result
 
         # When
-        path_to_archive = release.create_archive(release_plugin)
+        release.create(release_plugin)
 
         # Then
-        assert path_to_archive == make_archive_result
         make_archive.assert_called_once_with(
             '{}/{}-{}'.format(temp_dir, component_name, version),
             'zip',
@@ -270,16 +302,15 @@ class TestReleaseArchive(unittest.TestCase):
             '{}-{}'.format(component_name, version),
         )
 
-    @patch('cdflow_commands.release.os')
     @patch('cdflow_commands.release.mkdir')
     @patch('cdflow_commands.release.check_call')
     @patch('cdflow_commands.release.copytree')
     @patch('cdflow_commands.release.make_archive')
     @patch('cdflow_commands.release.TemporaryDirectory')
-    @patch('cdflow_commands.release.open', new_callable=mock_open, create=True)
+    @patch('cdflow_commands.release.open')
     def test_create_uploads_archive(
         self, mock_open, TemporaryDirectory, make_archive, copytree,
-        check_call, mkdir, mock_os,
+        check_call, mkdir,
     ):
         # Given
         release_plugin = Mock()
@@ -308,8 +339,6 @@ class TestReleaseArchive(unittest.TestCase):
         make_archive_result = '/path/to/dummy.zip'
         make_archive.return_value = make_archive_result
 
-        mock_os.environ = {'CDFLOW_IMAGE_DIGEST': 'hash'}
-
         # When
         release.create(release_plugin)
 
@@ -318,7 +347,7 @@ class TestReleaseArchive(unittest.TestCase):
         Object.return_value.upload_file.assert_called_once_with(
             make_archive_result,
             ExtraArgs={'Metadata': {
-                'cdflow_image_digest': mock_os.environ['CDFLOW_IMAGE_DIGEST'],
+                'cdflow_image_digest': 'hash',
             }},
         )
         Object.assert_called_once_with(
