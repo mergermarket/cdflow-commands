@@ -25,6 +25,7 @@ from cdflow_commands.config import (
     assume_role, get_component_name, get_role_session_name,
     load_manifest, build_account_scheme
 )
+from cdflow_commands.constants import INFRASTRUCTURE_DEFINITIONS_PATH
 from cdflow_commands.deploy import Deploy
 from cdflow_commands.exceptions import UnknownProjectTypeError, UserFacingError
 from cdflow_commands.logger import logger
@@ -129,8 +130,8 @@ def run_deploy(root_session, release_account_session, account_scheme, args):
             path_to_release, '{}-{}'.format(component_name, version)
         )
         initialise_terraform(
-            '{}/infra'.format(path_to_release), deploy_account_session,
-            environment, component_name
+            os.path.join(path_to_release, INFRASTRUCTURE_DEFINITIONS_PATH),
+            deploy_account_session, environment, component_name,
         )
 
         deploy = Deploy(
