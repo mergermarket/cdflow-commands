@@ -13,6 +13,7 @@ from cdflow_commands.constants import (
     CONFIG_BASE_PATH, INFRASTRUCTURE_DEFINITIONS_PATH,
     PLATFORM_CONFIG_BASE_PATH, RELEASE_METADATA_FILE, TERRAFORM_BINARY
 )
+from cdflow_commands.logger import logger
 
 
 @contextmanager
@@ -75,6 +76,7 @@ class Release:
             base_dir = '{}/{}-{}'.format(
                 temp_dir, self.component_name, self.version
             )
+            logger.debug('Creating directory for release: {}'.format(base_dir))
             mkdir(base_dir)
 
             cwd = getcwd()
@@ -105,18 +107,23 @@ class Release:
             )
 
     def _run_terraform_get(self, base_dir, infra_dir):
+        logger.debug(
+            'Getting Terraform modules defined in {}'.format(infra_dir)
+        )
         check_call([
             TERRAFORM_BINARY, 'get', infra_dir
         ], cwd=base_dir)
 
     def _copy_platform_config_files(self, base_dir):
-        copytree(
-            self._platform_config_path,
-            '{}/{}'.format(base_dir, PLATFORM_CONFIG_BASE_PATH)
-        )
+        path_in_release = '{}/{}'.format(base_dir, PLATFORM_CONFIG_BASE_PATH)
+        logger.debug('Copying {} to {}'.format(
+            self._platform_config_path, path_in_release
+        ))
+        copytree(self._platform_config_path, path_in_release)
 
     def _copy_app_config_files(self, base_dir):
-        copytree(
-            CONFIG_BASE_PATH,
-            '{}/{}'.format(base_dir, CONFIG_BASE_PATH)
-        )
+        path_in_release = '{}/{}'.format(base_dir, CONFIG_BASE_PATH)
+        logger.debug('Copying {} to {}'.format(
+            CONFIG_BASE_PATH, path_in_release
+        ))
+        copytree(CONFIG_BASE_PATH, path_in_release)
