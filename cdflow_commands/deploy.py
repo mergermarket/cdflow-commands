@@ -56,7 +56,8 @@ class Deploy:
             self._environment
         )
         return '{}/{}/{}.json'.format(
-            PLATFORM_CONFIG_BASE_PATH, account, self._boto_session.region_name
+            PLATFORM_CONFIG_BASE_PATH, account.alias,
+            self._boto_session.region_name
         )
 
     def _build_parameters(self, command, secrets_file_path=None):
@@ -71,7 +72,6 @@ class Deploy:
 
     def _add_plan_parameters(self, parameters, secrets_file_path):
         parameters += [
-            INFRASTRUCTURE_DEFINITIONS_PATH,
             '-var', 'env={}'.format(self._environment),
             '-var', 'aws_region={}'.format(
                 self._account_scheme.default_region
@@ -79,7 +79,8 @@ class Deploy:
             '-var-file', RELEASE_METADATA_FILE,
             '-var-file', self._platform_config_file_path,
             '-var-file', secrets_file_path,
-            '-out', self._plan_path
+            '-out', self._plan_path,
+            INFRASTRUCTURE_DEFINITIONS_PATH,
         ]
         parameters = self._add_environment_config_parameters(parameters)
         return parameters

@@ -88,7 +88,7 @@ class TestDeploy(unittest.TestCase):
 
             check_call.assert_any_call(
                 [
-                    'terraform', 'plan', 'infra',
+                    'terraform', 'plan',
                     '-var', 'env={}'.format(environment),
                     '-var', 'aws_region={}'.format(aws_region),
                     '-var-file', 'release.json',
@@ -98,6 +98,7 @@ class TestDeploy(unittest.TestCase):
                     '-var-file', secret_file_path,
                     '-out', 'plan-{}'.format(utcnow),
                     '-var-file', 'config/{}.json'.format(environment),
+                    'infra',
                 ],
                 cwd=release_path,
                 env={
@@ -238,7 +239,7 @@ class TestDeploy(unittest.TestCase):
 
             check_call.assert_called_once_with(
                 [
-                    'terraform', 'plan', 'infra',
+                    'terraform', 'plan',
                     '-var', 'env={}'.format(environment),
                     '-var', 'aws_region={}'.format(aws_region),
                     '-var-file', 'release.json',
@@ -248,6 +249,7 @@ class TestDeploy(unittest.TestCase):
                     '-var-file', secret_file_path,
                     '-out', 'plan-{}'.format(utcnow),
                     '-var-file', 'config/{}.json'.format(environment),
+                    'infra',
                 ],
                 cwd=release_path,
                 env={
@@ -320,7 +322,7 @@ class TestDeploy(unittest.TestCase):
 
             check_call.assert_any_call(
                 [
-                    'terraform', 'plan', 'infra',
+                    'terraform', 'plan',
                     '-var', 'env={}'.format(environment),
                     '-var', 'aws_region={}'.format(aws_region),
                     '-var-file', 'release.json',
@@ -329,6 +331,7 @@ class TestDeploy(unittest.TestCase):
                     ),
                     '-var-file', secret_file_path,
                     '-out', 'plan-{}'.format(utcnow),
+                    'infra',
                 ],
                 cwd=release_path,
                 env={
@@ -406,7 +409,7 @@ class TestDeploy(unittest.TestCase):
 
             check_call.assert_any_call(
                 [
-                    'terraform', 'plan', 'infra',
+                    'terraform', 'plan',
                     '-var', 'env={}'.format(environment),
                     '-var', 'aws_region={}'.format(aws_region),
                     '-var-file', 'release.json',
@@ -416,6 +419,7 @@ class TestDeploy(unittest.TestCase):
                     '-var-file', secret_file_path,
                     '-out', 'plan-{}'.format(utcnow),
                     '-var-file', 'config/all.json',
+                    'infra',
                 ],
                 cwd=release_path,
                 env={
