@@ -9,16 +9,16 @@ from cdflow_commands.constants import (
     CONFIG_BASE_PATH, GLOBAL_CONFIG_FILE, INFRASTRUCTURE_DEFINITIONS_PATH,
     PLATFORM_CONFIG_BASE_PATH, RELEASE_METADATA_FILE, TERRAFORM_BINARY
 )
-from cdflow_commands.secrets import get_secrets
 
 
 class Deploy:
 
     def __init__(
-        self, environment, release_path, account_scheme, boto_session,
+        self, environment, release_path, secrets, account_scheme, boto_session,
     ):
         self._environment = environment
         self._release_path = release_path
+        self._secrets = secrets
         self._account_scheme = account_scheme
         self._boto_session = boto_session
 
@@ -29,7 +29,7 @@ class Deploy:
 
     def _plan(self):
         with NamedTemporaryFile() as secrets_file_path:
-            json.dump(get_secrets(), secrets_file_path)
+            json.dump(self._secrets, secrets_file_path)
             check_call(
                 self._build_parameters('plan', secrets_file_path),
                 cwd=self._release_path,

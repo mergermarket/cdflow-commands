@@ -13,6 +13,7 @@ BotoCreds = namedtuple('BotoCreds', ['access_key', 'secret_key', 'token'])
 
 
 @patch.dict('cdflow_commands.cli.os.environ', {'JOB_NAME': 'dummy-job-name'})
+@patch('cdflow_commands.secrets.credstash')
 @patch('cdflow_commands.release.os')
 @patch('cdflow_commands.release.ZipFile')
 @patch('cdflow_commands.release.TemporaryDirectory')
@@ -20,7 +21,6 @@ BotoCreds = namedtuple('BotoCreds', ['access_key', 'secret_key', 'token'])
 @patch('cdflow_commands.deploy.check_call')
 @patch('cdflow_commands.deploy.time')
 @patch('cdflow_commands.deploy.NamedTemporaryFile')
-@patch('cdflow_commands.deploy.get_secrets')
 @patch('cdflow_commands.cli.rmtree')
 @patch('cdflow_commands.cli.Session')
 @patch('cdflow_commands.config.Session')
@@ -35,9 +35,9 @@ class TestDeployCLI(unittest.TestCase):
     def setup_mocks(
         self, atexit, move, check_call_state, NamedTemporaryFile_state,
         check_output, _open, Session_from_config, Session_from_cli, rmtree,
-        get_secrets, NamedTemporaryFile_deploy, time,
+        NamedTemporaryFile_deploy, time,
         check_call_deploy, mock_os_deploy, TemporaryDirectory, ZipFile,
-        mock_os_release,
+        mock_os_release, credstash,
     ):
         mock_metadata_file = MagicMock(spec=TextIOWrapper)
         metadata = {
@@ -134,7 +134,7 @@ class TestDeployCLI(unittest.TestCase):
             component_name
         ).encode('utf-8')
 
-        get_secrets.return_value = {}
+        credstash.listSecrets.return_value = []
 
         return (
             check_call_state, check_call_deploy, TemporaryDirectory,
