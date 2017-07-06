@@ -176,7 +176,8 @@ class TestDeployCLI(unittest.TestCase):
                 '-var-file', 'release.json',
                 '-var-file', ANY,
                 '-var-file',
-                NamedTemporaryFile_deploy.return_value.__enter__.return_value,
+                NamedTemporaryFile_deploy.return_value.__enter__.return_value
+                .name,
                 '-out', 'plan-{}'.format(time.return_value),
             ],
             env={
@@ -230,7 +231,8 @@ class TestDeployCLI(unittest.TestCase):
                 '-var-file', 'release.json',
                 '-var-file', ANY,
                 '-var-file',
-                NamedTemporaryFile_deploy.return_value.__enter__.return_value,
+                NamedTemporaryFile_deploy.return_value.__enter__.return_value
+                .name,
                 '-out', 'plan-{}'.format(time.return_value),
             ],
             env={

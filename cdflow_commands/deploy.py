@@ -28,10 +28,11 @@ class Deploy:
             self._apply()
 
     def _plan(self):
-        with NamedTemporaryFile() as secrets_file_path:
-            json.dump(self._secrets, secrets_file_path)
+        with NamedTemporaryFile(mode='w+', encoding='utf-8') \
+                as secrets_file:
+            json.dump(self._secrets, secrets_file)
             check_call(
-                self._build_parameters('plan', secrets_file_path),
+                self._build_parameters('plan', secrets_file.name),
                 cwd=self._release_path,
                 env=self._env()
             )
