@@ -4,7 +4,7 @@ from contextlib import ExitStack
 from string import ascii_letters, digits
 
 from hypothesis import given
-from hypothesis.strategies import fixed_dictionaries, text
+from hypothesis.strategies import dictionaries, fixed_dictionaries, text
 from mock import patch, Mock, MagicMock
 
 from cdflow_commands.account import AccountScheme
@@ -30,6 +30,7 @@ class TestDeploy(unittest.TestCase):
         'secret_key': text(alphabet=ALNUM),
         'token': text(alphabet=ALNUM),
         'aws_region': text(alphabet=ALNUM),
+        'secrets': dictionaries(keys=text(), values=text()),
     }))
     def test_deploy_runs_terraform_plan(self, fixtures):
         environment = fixtures['environment']
@@ -40,6 +41,7 @@ class TestDeploy(unittest.TestCase):
         secret_key = fixtures['secret_key']
         token = fixtures['token']
         aws_region = fixtures['aws_region']
+        secrets = fixtures['secrets']
 
         account_scheme = MagicMock(spec=AccountScheme)
         account_scheme.default_region = aws_region
@@ -51,7 +53,7 @@ class TestDeploy(unittest.TestCase):
         boto_session.get_credentials.return_value = credentials
 
         deploy = Deploy(
-            environment, release_path, account_scheme, boto_session,
+            environment, release_path, secrets, account_scheme, boto_session,
         )
 
         with ExitStack() as stack:
@@ -65,16 +67,11 @@ class TestDeploy(unittest.TestCase):
                 patch('cdflow_commands.deploy.NamedTemporaryFile')
             )
             mock_os = stack.enter_context(patch('cdflow_commands.deploy.os'))
-            get_secrets = stack.enter_context(
-                patch('cdflow_commands.deploy.get_secrets')
-            )
             time = stack.enter_context(
                 patch('cdflow_commands.deploy.time')
             )
 
             time.return_value = utcnow
-
-            get_secrets.return_value = {}
 
             secret_file_path = NamedTemporaryFile.return_value.__enter__\
                 .return_value
@@ -119,6 +116,7 @@ class TestDeploy(unittest.TestCase):
         'secret_key': text(alphabet=ALNUM),
         'token': text(alphabet=ALNUM),
         'aws_region': text(alphabet=ALNUM),
+        'secrets': dictionaries(keys=text(), values=text()),
     }))
     def test_deploy_runs_terraform_apply(self, fixtures):
         environment = fixtures['environment']
@@ -129,6 +127,7 @@ class TestDeploy(unittest.TestCase):
         secret_key = fixtures['secret_key']
         token = fixtures['token']
         aws_region = fixtures['aws_region']
+        secrets = fixtures['secrets']
 
         account_scheme = MagicMock(spec=AccountScheme)
         account_scheme.default_region = aws_region
@@ -140,7 +139,7 @@ class TestDeploy(unittest.TestCase):
         boto_session.get_credentials.return_value = credentials
 
         deploy = Deploy(
-            environment, release_path, account_scheme, boto_session,
+            environment, release_path, secrets, account_scheme, boto_session,
         )
 
         with ExitStack() as stack:
@@ -152,16 +151,11 @@ class TestDeploy(unittest.TestCase):
                 patch('cdflow_commands.deploy.check_call')
             )
             mock_os = stack.enter_context(patch('cdflow_commands.deploy.os'))
-            get_secrets = stack.enter_context(
-                patch('cdflow_commands.deploy.get_secrets')
-            )
             time = stack.enter_context(
                 patch('cdflow_commands.deploy.time')
             )
 
             time.return_value = utcnow
-
-            get_secrets.return_value = {}
 
             mock_os.environ = {}
 
@@ -186,6 +180,7 @@ class TestDeploy(unittest.TestCase):
         'secret_key': text(alphabet=ALNUM),
         'token': text(alphabet=ALNUM),
         'aws_region': text(alphabet=ALNUM),
+        'secrets': dictionaries(keys=text(), values=text()),
     }))
     def test_plan_only_does_not_apply(self, fixtures):
         environment = fixtures['environment']
@@ -196,6 +191,7 @@ class TestDeploy(unittest.TestCase):
         secret_key = fixtures['secret_key']
         token = fixtures['token']
         aws_region = fixtures['aws_region']
+        secrets = fixtures['secrets']
 
         account_scheme = MagicMock(spec=AccountScheme)
         account_scheme.default_region = aws_region
@@ -207,7 +203,7 @@ class TestDeploy(unittest.TestCase):
         boto_session.get_credentials.return_value = credentials
 
         deploy = Deploy(
-            environment, release_path, account_scheme, boto_session,
+            environment, release_path, secrets, account_scheme, boto_session,
         )
 
         with ExitStack() as stack:
@@ -221,16 +217,11 @@ class TestDeploy(unittest.TestCase):
                 patch('cdflow_commands.deploy.check_call')
             )
             mock_os = stack.enter_context(patch('cdflow_commands.deploy.os'))
-            get_secrets = stack.enter_context(
-                patch('cdflow_commands.deploy.get_secrets')
-            )
             time = stack.enter_context(
                 patch('cdflow_commands.deploy.time')
             )
 
             time.return_value = utcnow
-
-            get_secrets.return_value = {}
 
             secret_file_path = NamedTemporaryFile.return_value.__enter__\
                 .return_value
@@ -275,6 +266,7 @@ class TestDeploy(unittest.TestCase):
         'secret_key': text(alphabet=ALNUM),
         'token': text(alphabet=ALNUM),
         'aws_region': text(alphabet=ALNUM),
+        'secrets': dictionaries(keys=text(), values=text()),
     }))
     def test_environment_config_not_added_if_not_present(self, fixtures):
         environment = fixtures['environment']
@@ -285,6 +277,7 @@ class TestDeploy(unittest.TestCase):
         secret_key = fixtures['secret_key']
         token = fixtures['token']
         aws_region = fixtures['aws_region']
+        secrets = fixtures['secrets']
 
         account_scheme = MagicMock(spec=AccountScheme)
         account_scheme.default_region = aws_region
@@ -296,7 +289,7 @@ class TestDeploy(unittest.TestCase):
         boto_session.get_credentials.return_value = credentials
 
         deploy = Deploy(
-            environment, release_path, account_scheme, boto_session,
+            environment, release_path, secrets, account_scheme, boto_session,
         )
 
         with ExitStack() as stack:
@@ -310,16 +303,11 @@ class TestDeploy(unittest.TestCase):
                 patch('cdflow_commands.deploy.NamedTemporaryFile')
             )
             mock_os = stack.enter_context(patch('cdflow_commands.deploy.os'))
-            get_secrets = stack.enter_context(
-                patch('cdflow_commands.deploy.get_secrets')
-            )
             time = stack.enter_context(
                 patch('cdflow_commands.deploy.time')
             )
 
             time.return_value = utcnow
-
-            get_secrets.return_value = {}
 
             secret_file_path = NamedTemporaryFile.return_value.__enter__\
                 .return_value
@@ -359,6 +347,7 @@ class TestDeploy(unittest.TestCase):
         'secret_key': text(alphabet=ALNUM),
         'token': text(alphabet=ALNUM),
         'aws_region': text(alphabet=ALNUM),
+        'secrets': dictionaries(keys=text(), values=text()),
     }))
     def test_global_environment_config_added_if_present(self, fixtures):
         environment = fixtures['environment']
@@ -369,6 +358,7 @@ class TestDeploy(unittest.TestCase):
         secret_key = fixtures['secret_key']
         token = fixtures['token']
         aws_region = fixtures['aws_region']
+        secrets = fixtures['secrets']
 
         account_scheme = MagicMock(spec=AccountScheme)
         account_scheme.default_region = aws_region
@@ -380,7 +370,7 @@ class TestDeploy(unittest.TestCase):
         boto_session.get_credentials.return_value = credentials
 
         deploy = Deploy(
-            environment, release_path, account_scheme, boto_session,
+            environment, release_path, secrets, account_scheme, boto_session,
         )
 
         with ExitStack() as stack:
@@ -394,16 +384,11 @@ class TestDeploy(unittest.TestCase):
                 patch('cdflow_commands.deploy.NamedTemporaryFile')
             )
             mock_os = stack.enter_context(patch('cdflow_commands.deploy.os'))
-            get_secrets = stack.enter_context(
-                patch('cdflow_commands.deploy.get_secrets')
-            )
             time = stack.enter_context(
                 patch('cdflow_commands.deploy.time')
             )
 
             time.return_value = utcnow
-
-            get_secrets.return_value = {}
 
             secret_file_path = NamedTemporaryFile.return_value.__enter__\
                 .return_value
