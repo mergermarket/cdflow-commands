@@ -43,8 +43,8 @@ def initialise_terraform(
 
     initialise_terraform_backend(
         directory, boto_session.region_name,
-        lock_table_factory.get_table_name(),
         s3_bucket_factory.get_bucket_name(),
+        lock_table_factory.get_table_name(),
         environment_name, component_name
     )
 
@@ -83,8 +83,8 @@ def initialise_terraform_backend(
         cwd=directory
     )
 
-    from_path = abspath(f'{directory}/.terraform')
-    to_path = abspath('./.terraform')
+    from_path = abspath(f'{directory}/.terraform/terraform.tfstate')
+    to_path = abspath(f'{directory}/../.terraform/')
 
     logger.debug(f'Moving {from_path} to {to_path}')
     move(from_path, to_path)
