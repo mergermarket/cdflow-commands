@@ -74,7 +74,7 @@ class TestDeploy(unittest.TestCase):
             time.return_value = utcnow
 
             secret_file_path = NamedTemporaryFile.return_value.__enter__\
-                .return_value
+                .return_value.name
 
             mock_os.environ = {}
 
@@ -224,7 +224,7 @@ class TestDeploy(unittest.TestCase):
             time.return_value = utcnow
 
             secret_file_path = NamedTemporaryFile.return_value.__enter__\
-                .return_value
+                .return_value.name
 
             def mock_path_exists(path):
                 if path == 'config/{}.json'.format(environment):
@@ -310,7 +310,7 @@ class TestDeploy(unittest.TestCase):
             time.return_value = utcnow
 
             secret_file_path = NamedTemporaryFile.return_value.__enter__\
-                .return_value
+                .return_value.name
 
             mock_os.environ = {}
 
@@ -391,7 +391,7 @@ class TestDeploy(unittest.TestCase):
             time.return_value = utcnow
 
             secret_file_path = NamedTemporaryFile.return_value.__enter__\
-                .return_value
+                .return_value.name
 
             mock_os.environ = {}
 
