@@ -654,7 +654,8 @@ class TestTerraformBackendConfig(unittest.TestCase):
             )
 
         move.assert_called_once_with(
-            f'/cdflow/{directory}/.terraform', '/cdflow/.terraform'
+            f'/cdflow/{directory}/.terraform/terraform.tfstate',
+            '/cdflow/.terraform',
         )
 
     @given(fixed_dictionaries({

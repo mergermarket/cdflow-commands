@@ -117,7 +117,7 @@ class TestDeployCLI(unittest.TestCase):
         }
 
         mock_assumed_session.client.side_effect = (
-            mock_db_client, mock_s3_client,
+            mock_s3_client, mock_db_client,
         )
 
         Session_from_config.return_value = mock_assumed_session
@@ -168,7 +168,7 @@ class TestDeployCLI(unittest.TestCase):
 
         check_call_deploy.assert_any_call(
             [
-                'terraform', 'plan', 'infra',
+                'terraform', 'plan',
                 '-var', 'env=live',
                 '-var', 'aws_region={}'.format(
                     mock_assumed_session.region_name
@@ -179,6 +179,7 @@ class TestDeployCLI(unittest.TestCase):
                 NamedTemporaryFile_deploy.return_value.__enter__.return_value
                 .name,
                 '-out', 'plan-{}'.format(time.return_value),
+                'infra',
             ],
             env={
                 'foo': 'bar',
@@ -223,7 +224,7 @@ class TestDeployCLI(unittest.TestCase):
         # Then
         check_call_deploy.assert_called_once_with(
             [
-                'terraform', 'plan', 'infra',
+                'terraform', 'plan',
                 '-var', 'env=live',
                 '-var', 'aws_region={}'.format(
                     mock_assumed_session.region_name
@@ -234,6 +235,7 @@ class TestDeployCLI(unittest.TestCase):
                 NamedTemporaryFile_deploy.return_value.__enter__.return_value
                 .name,
                 '-out', 'plan-{}'.format(time.return_value),
+                'infra',
             ],
             env={
                 'foo': 'bar',

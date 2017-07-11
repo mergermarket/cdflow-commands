@@ -6,7 +6,7 @@ from os import getcwd, path, mkdir
 from shutil import copytree, make_archive
 import shutil
 from subprocess import check_call
-from tempfile import TemporaryDirectory, mkdtemp
+from tempfile import TemporaryDirectory
 from time import time
 from zipfile import ZipFile
 
@@ -18,6 +18,7 @@ from cdflow_commands.logger import logger
 from cdflow_commands.zip_patch import _make_zipfile
 
 # Monkey patch the standard library...
+# https://xkcd.com/292/
 shutil._ARCHIVE_FORMATS['zip'] = (_make_zipfile, [], 'ZIP file')
 
 
@@ -27,9 +28,10 @@ def fetch_release(boto_session, release_bucket, component_name, version):
         boto_session, release_bucket,
         format_release_key(component_name, version)
     )
-    path_to_release = mkdtemp(prefix='{}/release-{}'.format(getcwd(), time()))
-    release_archive.extractall(path_to_release)
-    yield path_to_release
+    with TemporaryDirectory(prefix='{}/release-{}'.format(getcwd(), time())) \
+            as path_to_release:
+        release_archive.extractall(path_to_release)
+        yield path_to_release
 
 
 def download_release(boto_session, release_bucket, key):

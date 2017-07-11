@@ -45,10 +45,10 @@ class Deploy:
         )
 
     @property
-    def _plan_path(self):
-        if not hasattr(self, '__plan_path'):
-            self.__plan_path = 'plan-{}'.format(time())
-        return self.__plan_path
+    def plan_path(self):
+        if not hasattr(self, '_plan_path'):
+            self._plan_path = 'plan-{}'.format(time())
+        return self._plan_path
 
     @property
     def _platform_config_file_path(self):
@@ -67,7 +67,7 @@ class Deploy:
                 parameters, secrets_file_path
             )
         else:
-            parameters.append(self._plan_path)
+            parameters.append(self.plan_path)
         return parameters
 
     def _add_plan_parameters(self, parameters, secrets_file_path):
@@ -79,10 +79,10 @@ class Deploy:
             '-var-file', RELEASE_METADATA_FILE,
             '-var-file', self._platform_config_file_path,
             '-var-file', secrets_file_path,
-            '-out', self._plan_path,
-            INFRASTRUCTURE_DEFINITIONS_PATH,
+            '-out', self.plan_path,
         ]
         parameters = self._add_environment_config_parameters(parameters)
+        parameters += [INFRASTRUCTURE_DEFINITIONS_PATH]
         return parameters
 
     def _add_environment_config_parameters(self, parameters):
