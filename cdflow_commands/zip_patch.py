@@ -1,8 +1,8 @@
-import os 
+import os
 import zipfile
 
 
-def _make_zipfile(base_name, base_dir, verbose=0, dry_run=0, logger=None):
+def _make_zipfile(base_name, base_dir, verbose=0, dry_run=0, logger=None): # noqa C901
     """Create a zip file from all the files under 'base_dir'.
     The output zip file will be named 'base_name' + ".zip".  Returns the
     name of the output zip file.

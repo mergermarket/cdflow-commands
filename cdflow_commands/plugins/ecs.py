@@ -43,12 +43,12 @@ class ReleasePlugin:
 
     @property
     def _boto_ecr_client(self):
-        if not hasattr(self, '__ecr_client'):
+        if not hasattr(self, '_ecr_client'):
             logger.debug('AWS region on client: {}'.format(
                 self._release.boto_session.region_name
             ))
-            self.__ecr_client = self._release.boto_session.client('ecr')
-        return self.__ecr_client
+            self._ecr_client = self._release.boto_session.client('ecr')
+        return self._ecr_client
 
     @property
     def _image_name(self):

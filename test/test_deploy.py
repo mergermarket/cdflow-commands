@@ -7,7 +7,7 @@ from hypothesis import given
 from hypothesis.strategies import dictionaries, fixed_dictionaries, text
 from mock import patch, Mock, MagicMock
 
-from cdflow_commands.account import AccountScheme
+from cdflow_commands.account import AccountScheme, Account
 from cdflow_commands.deploy import Deploy
 
 
@@ -24,7 +24,7 @@ class TestDeploy(unittest.TestCase):
     @given(fixed_dictionaries({
         'environment': text(alphabet=ALNUM),
         'release_path': text(alphabet=ALNUM),
-        'account': text(alphabet=ALNUM),
+        'account_alias': text(alphabet=ALNUM),
         'utcnow': text(alphabet=digits),
         'access_key': text(alphabet=ALNUM),
         'secret_key': text(alphabet=ALNUM),
@@ -35,7 +35,7 @@ class TestDeploy(unittest.TestCase):
     def test_deploy_runs_terraform_plan(self, fixtures):
         environment = fixtures['environment']
         release_path = fixtures['release_path']
-        account = fixtures['account']
+        account_alias = fixtures['account_alias']
         utcnow = fixtures['utcnow']
         access_key = fixtures['access_key']
         secret_key = fixtures['secret_key']
@@ -45,6 +45,8 @@ class TestDeploy(unittest.TestCase):
 
         account_scheme = MagicMock(spec=AccountScheme)
         account_scheme.default_region = aws_region
+        account = MagicMock(spec=Account)
+        account.alias = account_alias
         account_scheme.account_for_environment.return_value = account
 
         boto_session = Mock()
@@ -93,7 +95,7 @@ class TestDeploy(unittest.TestCase):
                     '-var', 'aws_region={}'.format(aws_region),
                     '-var-file', 'release.json',
                     '-var-file', 'platform-config/{}/{}.json'.format(
-                        account, boto_session.region_name
+                        account_alias, boto_session.region_name
                     ),
                     '-var-file', secret_file_path,
                     '-out', 'plan-{}'.format(utcnow),
@@ -111,7 +113,7 @@ class TestDeploy(unittest.TestCase):
     @given(fixed_dictionaries({
         'environment': text(alphabet=ALNUM),
         'release_path': text(alphabet=ALNUM),
-        'account': text(alphabet=ALNUM),
+        'account_alias': text(alphabet=ALNUM),
         'utcnow': text(alphabet=digits),
         'access_key': text(alphabet=ALNUM),
         'secret_key': text(alphabet=ALNUM),
@@ -122,7 +124,7 @@ class TestDeploy(unittest.TestCase):
     def test_deploy_runs_terraform_apply(self, fixtures):
         environment = fixtures['environment']
         release_path = fixtures['release_path']
-        account = fixtures['account']
+        account_alias = fixtures['account_alias']
         utcnow = fixtures['utcnow']
         access_key = fixtures['access_key']
         secret_key = fixtures['secret_key']
@@ -132,6 +134,8 @@ class TestDeploy(unittest.TestCase):
 
         account_scheme = MagicMock(spec=AccountScheme)
         account_scheme.default_region = aws_region
+        account = MagicMock(spec=Account)
+        account.alias = account_alias
         account_scheme.account_for_environment.return_value = account
 
         boto_session = Mock()
@@ -175,7 +179,7 @@ class TestDeploy(unittest.TestCase):
     @given(fixed_dictionaries({
         'environment': text(alphabet=ALNUM),
         'release_path': text(alphabet=ALNUM),
-        'account': text(alphabet=ALNUM),
+        'account_alias': text(alphabet=ALNUM),
         'utcnow': text(alphabet=digits),
         'access_key': text(alphabet=ALNUM),
         'secret_key': text(alphabet=ALNUM),
@@ -186,7 +190,7 @@ class TestDeploy(unittest.TestCase):
     def test_plan_only_does_not_apply(self, fixtures):
         environment = fixtures['environment']
         release_path = fixtures['release_path']
-        account = fixtures['account']
+        account_alias = fixtures['account_alias']
         utcnow = fixtures['utcnow']
         access_key = fixtures['access_key']
         secret_key = fixtures['secret_key']
@@ -196,6 +200,8 @@ class TestDeploy(unittest.TestCase):
 
         account_scheme = MagicMock(spec=AccountScheme)
         account_scheme.default_region = aws_region
+        account = MagicMock(spec=Account)
+        account.alias = account_alias
         account_scheme.account_for_environment.return_value = account
 
         boto_session = Mock()
@@ -244,7 +250,7 @@ class TestDeploy(unittest.TestCase):
                     '-var', 'aws_region={}'.format(aws_region),
                     '-var-file', 'release.json',
                     '-var-file', 'platform-config/{}/{}.json'.format(
-                        account, boto_session.region_name
+                        account_alias, boto_session.region_name
                     ),
                     '-var-file', secret_file_path,
                     '-out', 'plan-{}'.format(utcnow),
@@ -262,7 +268,7 @@ class TestDeploy(unittest.TestCase):
     @given(fixed_dictionaries({
         'environment': text(alphabet=ALNUM),
         'release_path': text(alphabet=ALNUM),
-        'account': text(alphabet=ALNUM),
+        'account_alias': text(alphabet=ALNUM),
         'utcnow': text(alphabet=digits),
         'access_key': text(alphabet=ALNUM),
         'secret_key': text(alphabet=ALNUM),
@@ -273,7 +279,7 @@ class TestDeploy(unittest.TestCase):
     def test_environment_config_not_added_if_not_present(self, fixtures):
         environment = fixtures['environment']
         release_path = fixtures['release_path']
-        account = fixtures['account']
+        account_alias = fixtures['account_alias']
         utcnow = fixtures['utcnow']
         access_key = fixtures['access_key']
         secret_key = fixtures['secret_key']
@@ -283,6 +289,8 @@ class TestDeploy(unittest.TestCase):
 
         account_scheme = MagicMock(spec=AccountScheme)
         account_scheme.default_region = aws_region
+        account = MagicMock(spec=Account)
+        account.alias = account_alias
         account_scheme.account_for_environment.return_value = account
 
         boto_session = Mock()
@@ -327,7 +335,7 @@ class TestDeploy(unittest.TestCase):
                     '-var', 'aws_region={}'.format(aws_region),
                     '-var-file', 'release.json',
                     '-var-file', 'platform-config/{}/{}.json'.format(
-                        account, boto_session.region_name
+                        account_alias, boto_session.region_name
                     ),
                     '-var-file', secret_file_path,
                     '-out', 'plan-{}'.format(utcnow),
@@ -344,7 +352,7 @@ class TestDeploy(unittest.TestCase):
     @given(fixed_dictionaries({
         'environment': text(alphabet=ALNUM),
         'release_path': text(alphabet=ALNUM),
-        'account': text(alphabet=ALNUM),
+        'account_alias': text(alphabet=ALNUM),
         'utcnow': text(alphabet=digits),
         'access_key': text(alphabet=ALNUM),
         'secret_key': text(alphabet=ALNUM),
@@ -355,7 +363,7 @@ class TestDeploy(unittest.TestCase):
     def test_global_environment_config_added_if_present(self, fixtures):
         environment = fixtures['environment']
         release_path = fixtures['release_path']
-        account = fixtures['account']
+        account_alias = fixtures['account_alias']
         utcnow = fixtures['utcnow']
         access_key = fixtures['access_key']
         secret_key = fixtures['secret_key']
@@ -365,6 +373,8 @@ class TestDeploy(unittest.TestCase):
 
         account_scheme = MagicMock(spec=AccountScheme)
         account_scheme.default_region = aws_region
+        account = MagicMock(spec=Account)
+        account.alias = account_alias
         account_scheme.account_for_environment.return_value = account
 
         boto_session = Mock()
@@ -414,7 +424,7 @@ class TestDeploy(unittest.TestCase):
                     '-var', 'aws_region={}'.format(aws_region),
                     '-var-file', 'release.json',
                     '-var-file', 'platform-config/{}/{}.json'.format(
-                        account, boto_session.region_name
+                        account_alias, boto_session.region_name
                     ),
                     '-var-file', secret_file_path,
                     '-out', 'plan-{}'.format(utcnow),
