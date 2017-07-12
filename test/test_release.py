@@ -3,6 +3,7 @@ from io import TextIOWrapper
 import json
 from string import ascii_letters, digits
 import unittest
+from zipfile import ZipInfo
 
 from hypothesis import given
 from hypothesis.strategies import dictionaries, fixed_dictionaries, text
@@ -383,10 +384,18 @@ class TestFetchRelease(unittest.TestCase):
             getcwd = stack.enter_context(
                 patch('cdflow_commands.release.getcwd')
             )
+            chmod = stack.enter_context(
+                patch('cdflow_commands.release.chmod')
+            )
             TemporaryDirectory = stack.enter_context(
                 patch('cdflow_commands.release.TemporaryDirectory')
             )
             time = stack.enter_context(patch('cdflow_commands.release.time'))
+
+            mock_zipinfo = MagicMock(spec=ZipInfo)
+            file_perm = 1000
+            mock_zipinfo.external_attr = file_perm << 16
+            ZipFile.return_value.infolist.return_value = [mock_zipinfo]
 
             with fetch_release(
                 boto_session, release_bucket, component_name, version
@@ -407,6 +416,14 @@ class TestFetchRelease(unittest.TestCase):
 
             ZipFile.assert_called_once_with(BytesIO.return_value)
 
-            ZipFile.return_value.extractall.assert_called_once_with(
-                TemporaryDirectory.return_value.__enter__.return_value
+            ZipFile.return_value.infolist.assert_called_once_with()
+
+            ZipFile.return_value.extract.assert_called_once_with(
+                mock_zipinfo.filename,
+                TemporaryDirectory.return_value.__enter__.return_value,
+            )
+
+            chmod.assert_called_once_with(
+                ZipFile.return_value.extract.return_value,
+                file_perm,
             )

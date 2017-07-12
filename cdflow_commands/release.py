@@ -2,7 +2,7 @@ from contextlib import contextmanager
 from io import BytesIO
 import json
 import os
-from os import getcwd, path, mkdir
+from os import chmod, getcwd, path, mkdir
 from shutil import copytree, make_archive
 import shutil
 from subprocess import check_call
@@ -30,8 +30,17 @@ def fetch_release(boto_session, release_bucket, component_name, version):
     )
     with TemporaryDirectory(prefix='{}/release-{}'.format(getcwd(), time())) \
             as path_to_release:
-        release_archive.extractall(path_to_release)
+        for zipinfo in release_archive.infolist():
+            extract_file(release_archive, zipinfo, path_to_release)
         yield path_to_release
+
+
+def extract_file(release_archive, zipinfo, extract_path):
+    extracted_file_path = release_archive.extract(
+        zipinfo.filename, extract_path
+    )
+    file_mode = zipinfo.external_attr >> 16
+    chmod(extracted_file_path, file_mode)
 
 
 def download_release(boto_session, release_bucket, key):
