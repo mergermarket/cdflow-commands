@@ -4,7 +4,7 @@ Commands for managing the software lifecycle.
 
 Usage:
     cdflow release --platform-config <platform_config> <version> [options]
-    cdflow deploy <environment>  [(--var <key=value>)...] [<version>] [options]
+    cdflow deploy <environment> <version> [options]
     cdflow destroy <environment> [options]
 
 Options:
@@ -13,25 +13,29 @@ Options:
     -p, --plan-only
 
 """
+import os
 import logging
 import sys
 from shutil import rmtree
+from subprocess import check_output
 
 from boto3.session import Session
 
 from cdflow_commands.config import (
-    assume_role, get_component_name, load_manifest, build_account_scheme
+    assume_role, get_component_name, get_role_session_name,
+    load_manifest, build_account_scheme
 )
+from cdflow_commands.constants import INFRASTRUCTURE_DEFINITIONS_PATH
+from cdflow_commands.deploy import Deploy
 from cdflow_commands.exceptions import UnknownProjectTypeError, UserFacingError
 from cdflow_commands.logger import logger
-from cdflow_commands.plugins.ecs import (
-    build_ecs_plugin, ReleasePlugin as ECSReleasePlugin
-)
-from cdflow_commands.plugins.infrastructure import build_infrastructure_plugin
+from cdflow_commands.plugins.ecs import ReleasePlugin as ECSReleasePlugin
 from cdflow_commands.plugins.aws_lambda import (
-    build_lambda_plugin, ReleasePlugin as LambdaReleasePlugin
+    ReleasePlugin as LambdaReleasePlugin
 )
-from cdflow_commands.release import Release
+from cdflow_commands.release import Release, fetch_release
+from cdflow_commands.secrets import get_secrets
+from cdflow_commands.state import initialise_terraform
 from docopt import docopt
 
 
@@ -51,7 +55,7 @@ def run(argv):
 class NoopReleasePlugin:
 
     def create(*args):
-        pass
+        return {}
 
 
 def _run(argv):
@@ -66,86 +70,90 @@ def _run(argv):
         root_session.resource('s3'), manifest.account_scheme_url
     )
 
+    role_session_name = get_role_session_name(os.environ)
+
+    release_account_session = assume_role(
+        root_session, account_scheme.release_account.id, role_session_name,
+        account_scheme.default_region,
+    )
+
     if args['release']:
-        session=assume_role(
-            root_session, account_scheme.release_account.id, 'role-name'
-        )
-        release = Release(
-            boto_session=session,
-            release_bucket=account_scheme.release_bucket,
-            platform_config_path=args['--platform-config'],
-            version=args['<version>'],
-            commit='hello',
-            component_name=get_component_name(args['--component']),
+        run_release(release_account_session, account_scheme, manifest, args)
+    elif args['deploy']:
+        run_deploy(
+            root_session, release_account_session,
+            account_scheme, manifest, args,
         )
 
-        if manifest.type == 'docker':
-            plugin = ECSReleasePlugin(release, account_scheme)
-        elif manifest.type == 'lambda':
-            plugin = LambdaReleasePlugin(release, account_scheme)
-        elif manifest.type == 'infrastructure':
-            plugin = NoopReleasePlugin()
-        else:
-            raise UnknownProjectTypeError('Unknown project type: {}'.format(
-                manifest.type
-            ))
 
-        release.create(plugin)
+def run_release(release_account_session, account_scheme, manifest, args):
+    commit = check_output(
+        ['git', 'rev-parse', 'HEAD']
+    ).decode('utf-8').strip()
 
+    release = Release(
+        boto_session=release_account_session,
+        release_bucket=account_scheme.release_bucket,
+        platform_config_path=args['<platform_config>'],
+        version=args['<version>'],
+        commit=commit,
+        component_name=get_component_name(args['--component']),
+        team=manifest.team,
+    )
+
+    if manifest.type == 'docker':
+        plugin = ECSReleasePlugin(release, account_scheme)
+    elif manifest.type == 'lambda':
+        plugin = LambdaReleasePlugin(release, account_scheme)
+    elif manifest.type == 'infrastructure':
+        plugin = NoopReleasePlugin()
     else:
-        plugin = build_plugin(
-            metadata.type,
-            component_name=get_component_name(args['--component']),
-            version=args['<version>'],
-            environment_name=args['<environment>'],
-            additional_variables=args['<key=value>'],
-            metadata=metadata,
-            global_config=global_config,
-            root_session=root_session,
-        )
+        raise UnknownProjectTypeError('Unknown project type: {}'.format(
+            manifest.type
+        ))
 
-        if args['deploy']:
-            plugin.deploy()
-        elif args['destroy']:
-            plugin.destroy()
+    release.create(plugin)
 
 
-def build_plugin(project_type, **kwargs):
-    if project_type == 'docker':
-        plugin = build_ecs_plugin(
-            kwargs['environment_name'],
-            kwargs['component_name'],
-            kwargs['version'],
-            kwargs['metadata'],
-            kwargs['global_config'],
-            kwargs['root_session'],
-            kwargs['plan_only']
+def run_deploy(
+    root_session, release_account_session, account_scheme, manifest, args,
+):
+    environment = args['<environment>']
+    component_name = get_component_name(args['--component'])
+    version = args['<version>']
+    role_session_name = get_role_session_name(os.environ)
+    account_id = account_scheme.account_for_environment(environment).id
+
+    deploy_account_session = assume_role(
+        root_session, account_id, role_session_name,
+        account_scheme.default_region,
+    )
+
+    with fetch_release(
+        release_account_session, account_scheme.release_bucket,
+        component_name, version,
+    ) as path_to_release:
+        logger.debug('Unpacked release: {}'.format(path_to_release))
+        path_to_release = os.path.join(
+            path_to_release, '{}-{}'.format(component_name, version)
         )
-    elif project_type == 'infrastructure':
-        plugin = build_infrastructure_plugin(
-            kwargs['environment_name'],
-            kwargs['component_name'],
-            kwargs['additional_variables'],
-            kwargs['metadata'],
-            kwargs['global_config'],
-            kwargs['root_session'],
-            kwargs['plan_only']
+        initialise_terraform(
+            os.path.join(path_to_release, INFRASTRUCTURE_DEFINITIONS_PATH),
+            deploy_account_session, environment, component_name,
         )
-    elif project_type == 'lambda':
-        plugin = build_lambda_plugin(
-            kwargs['environment_name'],
-            kwargs['component_name'],
-            kwargs['version'],
-            kwargs['metadata'],
-            kwargs['global_config'],
-            kwargs['root_session'],
-            kwargs['plan_only']
+
+        secrets = {
+            'secrets': get_secrets(
+                environment, manifest.team,
+                component_name, deploy_account_session
+            )
+        }
+
+        deploy = Deploy(
+            environment, path_to_release, secrets,
+            account_scheme, deploy_account_session
         )
-    else:
-        raise UnknownProjectTypeError(
-            'Unsupported project type specified in service.json'
-        )
-    return plugin
+        deploy.run(args['--plan-only'])
 
 
 def conditionally_set_debug(verbose):
