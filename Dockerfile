@@ -1,9 +1,9 @@
 FROM python:3-alpine
 
-ENV TERRAFORM_VERSION=0.9.5
+ENV TERRAFORM_VERSION=0.9.11
 ENV ACME_VERSION=0.3.0
 
-RUN echo http://dl-cdn.alpinelinux.org/alpine/edge/community >> /etc/apk/repositories
+RUN echo http://dl-cdn.alpinelinux.org/alpine/latest-stable/community >> /etc/apk/repositories
 RUN apk update
 RUN apk add gcc musl-dev libffi-dev openssl-dev docker curl git
 
@@ -15,11 +15,11 @@ RUN cd /tmp && \
     rm -rf /tmp/* && \
     rm -rf /var/tmp/*
 
-ADD ./requirements.txt /cdflow/requirements.txt
+COPY ./requirements.txt /cdflow/requirements.txt
 RUN pip install -r /cdflow/requirements.txt
 
-ADD . /cdflow
-ADD terraformrc /root/.terraformrc
+COPY . /cdflow
+COPY terraformrc /root/.terraformrc
 
 ENV PYTHONPATH=/cdflow
 

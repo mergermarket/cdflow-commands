@@ -31,6 +31,24 @@ def remove_file(filepath):
         logger.debug(f'Error removing {filepath}: {e}')
 
 
+def initialise_terraform(
+    directory, boto_session, environment_name, component_name
+):
+    lock_table_factory = LockTableFactory(boto_session)
+
+    s3_bucket_factory = S3BucketFactory(
+        boto_session,
+        '123456789'  # account_id - need to remove from logic in the factory
+    )
+
+    initialise_terraform_backend(
+        directory, boto_session.region_name,
+        s3_bucket_factory.get_bucket_name(),
+        lock_table_factory.get_table_name(),
+        environment_name, component_name
+    )
+
+
 def initialise_terraform_backend(
     directory, aws_region, bucket_name, lock_table_name,
     environment_name, component_name
@@ -65,8 +83,8 @@ def initialise_terraform_backend(
         cwd=directory
     )
 
-    from_path = abspath(f'{directory}/.terraform')
-    to_path = abspath('./.terraform')
+    from_path = abspath(f'{directory}/.terraform/terraform.tfstate')
+    to_path = abspath(f'{directory}/../.terraform/')
 
     logger.debug(f'Moving {from_path} to {to_path}')
     move(from_path, to_path)
@@ -136,9 +154,16 @@ class LockTableFactory:
 class S3BucketFactory:
 
     def __init__(self, boto_session, account_id):
-        self._boto_s3_client = boto_session.client('s3')
+        self._boto_session = boto_session
         self._aws_region = boto_session.region_name
         self._account_id = account_id
+
+    @property
+    def _boto_s3_client(self):
+        client = getattr(self, '_s3client', None)
+        if not client:
+            client = self._s3client = self._boto_session.client('s3')
+        return client
 
     def get_bucket_name(self, bucket_name_prefix=TFSTATE_NAME_PREFIX):
 
