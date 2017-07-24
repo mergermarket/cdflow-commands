@@ -7,5 +7,6 @@ PLATFORM_CONFIG_BASE_PATH = 'platform-config'
 
 TERRAFORM_BINARY = 'terraform'
 INFRASTRUCTURE_DEFINITIONS_PATH = 'infra'
+TERRAFORM_DESTROY_DEFINITION = '/cdflow/tf-destroy'
 
 RELEASE_METADATA_FILE = 'release.json'
