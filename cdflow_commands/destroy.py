@@ -9,16 +9,29 @@ from cdflow_commands.constants import (
 
 class Destroy:
 
-    def __init__(self, boto_session, component_name, environment, bucket_name):
+    def __init__(self, boto_session):
         self._boto_session = boto_session
 
-    def run(self):
-        check_call([
-            TERRAFORM_BINARY, 'plan', '-destroy',
-            '-var', 'aws_region={}'.format(self._boto_session.region_name),
-            '-out', self.plan_path,
-            TERRAFORM_DESTROY_DEFINITION,
-        ], env=self._env(),
+    def run(self, plan_only=False):
+        self._plan()
+        if not plan_only:
+            self._destroy()
+
+    def _plan(self):
+        check_call(
+            [
+                TERRAFORM_BINARY, 'plan', '-destroy',
+                '-var', 'aws_region={}'.format(self._boto_session.region_name),
+                '-out', self.plan_path,
+                TERRAFORM_DESTROY_DEFINITION,
+            ],
+            env=self._env(),
+        )
+
+    def _destroy(self):
+        check_call(
+            [TERRAFORM_BINARY, 'destroy', '-force', self.plan_path],
+            env=self._env(),
         )
 
     @property
