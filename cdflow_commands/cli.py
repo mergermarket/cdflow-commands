@@ -25,8 +25,11 @@ from cdflow_commands.config import (
     assume_role, get_component_name, get_role_session_name,
     load_manifest, build_account_scheme
 )
-from cdflow_commands.constants import INFRASTRUCTURE_DEFINITIONS_PATH
+from cdflow_commands.constants import (
+    INFRASTRUCTURE_DEFINITIONS_PATH, TERRAFORM_DESTROY_DEFINITION,
+)
 from cdflow_commands.deploy import Deploy
+from cdflow_commands.destroy import Destroy
 from cdflow_commands.exceptions import UnknownProjectTypeError, UserFacingError
 from cdflow_commands.logger import logger
 from cdflow_commands.plugins.ecs import ReleasePlugin as ECSReleasePlugin
@@ -35,7 +38,7 @@ from cdflow_commands.plugins.aws_lambda import (
 )
 from cdflow_commands.release import Release, fetch_release
 from cdflow_commands.secrets import get_secrets
-from cdflow_commands.state import initialise_terraform
+from cdflow_commands.state import initialise_terraform, remove_state
 from docopt import docopt
 
 
@@ -84,6 +87,8 @@ def _run(argv):
             root_session, release_account_session,
             account_scheme, manifest, args,
         )
+    elif args['destroy']:
+        run_destroy(root_session, account_scheme, manifest, args)
 
 
 def run_release(release_account_session, account_scheme, manifest, args):
@@ -154,6 +159,29 @@ def run_deploy(
             account_scheme, deploy_account_session
         )
         deploy.run(args['--plan-only'])
+
+
+def run_destroy(root_session, account_scheme, manifest, args):
+    environment = args['<environment>']
+    component_name = get_component_name(args['--component'])
+    role_session_name = get_role_session_name(os.environ)
+    account_id = account_scheme.account_for_environment(environment).id
+
+    destroy_account_session = assume_role(
+        root_session, account_id, role_session_name,
+        account_scheme.default_region,
+    )
+
+    initialise_terraform(
+        TERRAFORM_DESTROY_DEFINITION, destroy_account_session,
+        environment, component_name,
+    )
+
+    destroy = Destroy(destroy_account_session)
+
+    destroy.run()
+
+    remove_state(destroy_account_session, environment, component_name)
 
 
 def conditionally_set_debug(verbose):
