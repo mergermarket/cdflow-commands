@@ -89,6 +89,9 @@ class TestDestroy(unittest.TestCase):
             check_call = stack.enter_context(
                 patch('cdflow_commands.destroy.check_call')
             )
+            time = stack.enter_context(
+                patch('cdflow_commands.destroy.time')
+            )
             stack.enter_context(
                 patch.dict(
                     'cdflow_commands.destroy.os.environ',
@@ -99,11 +102,7 @@ class TestDestroy(unittest.TestCase):
             destroy.run()
 
         check_call.assert_any_call(
-            [
-                TERRAFORM_BINARY, 'destroy', '-force',
-                '-var', 'aws_region={}'.format(session.region_name),
-                TERRAFORM_DESTROY_DEFINITION,
-            ],
+            [TERRAFORM_BINARY, 'apply', 'plan-{}'.format(time.return_value)],
             env={
                 'AWS_ACCESS_KEY_ID': aws_access_key_id,
                 'AWS_SECRET_ACCESS_KEY': aws_secret_access_key,
