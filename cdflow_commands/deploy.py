@@ -9,6 +9,7 @@ from cdflow_commands.constants import (
     CONFIG_BASE_PATH, GLOBAL_CONFIG_FILE, INFRASTRUCTURE_DEFINITIONS_PATH,
     PLATFORM_CONFIG_BASE_PATH, RELEASE_METADATA_FILE, TERRAFORM_BINARY
 )
+from cdflow_commands.logger import logger
 
 
 class Deploy:
@@ -30,12 +31,12 @@ class Deploy:
     def _plan(self):
         with NamedTemporaryFile(mode='w+', encoding='utf-8') \
                 as secrets_file:
+            logger.debug(f'Writing secrets to file {secrets_file.name}')
             json.dump(self._secrets, secrets_file)
-            check_call(
-                self._build_parameters('plan', secrets_file.name),
-                cwd=self._release_path,
-                env=self._env()
-            )
+            secrets_file.flush()
+            command = self._build_parameters('plan', secrets_file.name)
+            logger.debug(f'Running {command}')
+            check_call(command, cwd=self._release_path, env=self._env())
 
     def _apply(self):
         check_call(
