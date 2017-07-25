@@ -400,11 +400,7 @@ class TestDestroyCLI(unittest.TestCase):
         )
 
         check_call_destroy.assert_any_call(
-            [
-                TERRAFORM_BINARY, 'destroy', '-force',
-                '-var', 'aws_region=us-north-4',
-                TERRAFORM_DESTROY_DEFINITION,
-            ],
+            [TERRAFORM_BINARY, 'apply', ANY],
             env=ANY,
             cwd=CDFLOW_BASE_PATH,
         )
