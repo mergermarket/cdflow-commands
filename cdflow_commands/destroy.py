@@ -26,12 +26,18 @@ class Destroy:
                 TERRAFORM_DESTROY_DEFINITION,
             ],
             env=self._env(),
+            cwd='/cdflow',
         )
 
     def _destroy(self):
         check_call(
-            [TERRAFORM_BINARY, 'destroy', '-force', self.plan_path],
+            [
+                TERRAFORM_BINARY, 'destroy', '-force',
+                '-var', 'aws_region={}'.format(self._boto_session.region_name),
+                TERRAFORM_DESTROY_DEFINITION,
+            ],
             env=self._env(),
+            cwd='/cdflow',
         )
 
     @property

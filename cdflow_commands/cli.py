@@ -167,6 +167,7 @@ def run_destroy(root_session, account_scheme, manifest, args):
     role_session_name = get_role_session_name(os.environ)
     account_id = account_scheme.account_for_environment(environment).id
 
+    logger.debug('Assuming role in {}'.format(account_id))
     destroy_account_session = assume_role(
         root_session, account_id, role_session_name,
         account_scheme.default_region,
@@ -181,9 +182,14 @@ def run_destroy(root_session, account_scheme, manifest, args):
 
     plan_only = args['--plan-only']
 
+    logger.info(
+        'Planning destruction of {} in {}'.format(component_name, environment)
+    )
+
     destroy.run(plan_only)
 
     if not plan_only:
+        logger.info('Destroying {} in {}'.format(component_name, environment))
         remove_state(destroy_account_session, environment, component_name)
 
 

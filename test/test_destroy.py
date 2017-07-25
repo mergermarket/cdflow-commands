@@ -8,7 +8,7 @@ from mock import Mock, patch
 
 from cdflow_commands.destroy import Destroy
 from cdflow_commands.constants import (
-    TERRAFORM_BINARY, TERRAFORM_DESTROY_DEFINITION,
+    CDFLOW_BASE_PATH, TERRAFORM_BINARY, TERRAFORM_DESTROY_DEFINITION,
 )
 
 
@@ -52,17 +52,21 @@ class TestDestroy(unittest.TestCase):
 
             destroy.run()
 
-        check_call.assert_any_call([
-            TERRAFORM_BINARY, 'plan',
-            '-destroy',
-            '-var', 'aws_region={}'.format(session.region_name),
-            '-out', 'plan-{}'.format(time.return_value),
-            TERRAFORM_DESTROY_DEFINITION,
-        ], env={
-            'AWS_ACCESS_KEY_ID': aws_access_key_id,
-            'AWS_SECRET_ACCESS_KEY': aws_secret_access_key,
-            'AWS_SESSION_TOKEN': aws_session_token,
-        })
+        check_call.assert_any_call(
+            [
+                TERRAFORM_BINARY, 'plan',
+                '-destroy',
+                '-var', 'aws_region={}'.format(session.region_name),
+                '-out', 'plan-{}'.format(time.return_value),
+                TERRAFORM_DESTROY_DEFINITION,
+            ],
+            env={
+                'AWS_ACCESS_KEY_ID': aws_access_key_id,
+                'AWS_SECRET_ACCESS_KEY': aws_secret_access_key,
+                'AWS_SESSION_TOKEN': aws_session_token,
+            },
+            cwd=CDFLOW_BASE_PATH,
+        )
 
     @given(fixed_dictionaries({
         'aws_access_key_id': text(),
@@ -85,9 +89,6 @@ class TestDestroy(unittest.TestCase):
             check_call = stack.enter_context(
                 patch('cdflow_commands.destroy.check_call')
             )
-            time = stack.enter_context(
-                patch('cdflow_commands.destroy.time')
-            )
             stack.enter_context(
                 patch.dict(
                     'cdflow_commands.destroy.os.environ',
@@ -97,14 +98,19 @@ class TestDestroy(unittest.TestCase):
 
             destroy.run()
 
-        check_call.assert_any_call([
-            TERRAFORM_BINARY, 'destroy', '-force',
-            'plan-{}'.format(time.return_value),
-        ], env={
-            'AWS_ACCESS_KEY_ID': aws_access_key_id,
-            'AWS_SECRET_ACCESS_KEY': aws_secret_access_key,
-            'AWS_SESSION_TOKEN': aws_session_token,
-        })
+        check_call.assert_any_call(
+            [
+                TERRAFORM_BINARY, 'destroy', '-force',
+                '-var', 'aws_region={}'.format(session.region_name),
+                TERRAFORM_DESTROY_DEFINITION,
+            ],
+            env={
+                'AWS_ACCESS_KEY_ID': aws_access_key_id,
+                'AWS_SECRET_ACCESS_KEY': aws_secret_access_key,
+                'AWS_SESSION_TOKEN': aws_session_token,
+            },
+            cwd=CDFLOW_BASE_PATH,
+        )
 
     @given(fixed_dictionaries({
         'aws_access_key_id': text(),
@@ -139,14 +145,18 @@ class TestDestroy(unittest.TestCase):
 
             destroy.run(plan_only=True)
 
-        check_call.assert_called_once_with([
-            TERRAFORM_BINARY, 'plan',
-            '-destroy',
-            '-var', 'aws_region={}'.format(session.region_name),
-            '-out', 'plan-{}'.format(time.return_value),
-            TERRAFORM_DESTROY_DEFINITION,
-        ], env={
-            'AWS_ACCESS_KEY_ID': aws_access_key_id,
-            'AWS_SECRET_ACCESS_KEY': aws_secret_access_key,
-            'AWS_SESSION_TOKEN': aws_session_token,
-        })
+        check_call.assert_called_once_with(
+            [
+                TERRAFORM_BINARY, 'plan',
+                '-destroy',
+                '-var', 'aws_region={}'.format(session.region_name),
+                '-out', 'plan-{}'.format(time.return_value),
+                TERRAFORM_DESTROY_DEFINITION,
+            ],
+            env={
+                'AWS_ACCESS_KEY_ID': aws_access_key_id,
+                'AWS_SECRET_ACCESS_KEY': aws_secret_access_key,
+                'AWS_SESSION_TOKEN': aws_session_token,
+            },
+            cwd=CDFLOW_BASE_PATH,
+        )
