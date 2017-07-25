@@ -406,3 +406,37 @@ class TestDestroyCLI(unittest.TestCase):
         remove_state_mock_s3.delete_object.assert_called_once_with(
             'tfstate', state_file_key
         )
+
+    def test_plan_only_does_not_destroy_or_remove_state(self, *args):
+        check_call_state, mock_assumed_session, time, aws_access_key_id, \
+            aws_secret_access_key, aws_session_token, component_name, \
+            check_call_destroy, remove_state_mock_s3 = self.setup_mocks(*args)
+
+        environment = 'live'
+        state_file_key = '{}/{}/terraform.tfstate'.format(
+            environment, component_name
+        )
+
+        cli.run(['destroy', environment, '--plan-only'])
+
+        check_call_state.assert_called_once_with(
+            [
+                TERRAFORM_BINARY, 'init',
+                '-backend-config=bucket=tfstate',
+                '-backend-config=region=us-north-4',
+                '-backend-config=key={}'.format(state_file_key),
+                '-backend-config=lock_table=terraform_locks',
+            ],
+            cwd=ANY,
+        )
+
+        check_call_destroy.assert_called_once_with(
+            [
+                TERRAFORM_BINARY, 'plan', '-destroy',
+                '-var', 'aws_region=us-north-4',
+                '-out', ANY, TERRAFORM_DESTROY_DEFINITION,
+            ],
+            env=ANY
+        )
+
+        remove_state_mock_s3.delete_object.assert_not_called()

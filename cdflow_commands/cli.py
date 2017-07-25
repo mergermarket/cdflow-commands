@@ -179,9 +179,12 @@ def run_destroy(root_session, account_scheme, manifest, args):
 
     destroy = Destroy(destroy_account_session)
 
-    destroy.run()
+    plan_only = args['--plan-only']
 
-    remove_state(destroy_account_session, environment, component_name)
+    destroy.run(plan_only)
+
+    if not plan_only:
+        remove_state(destroy_account_session, environment, component_name)
 
 
 def conditionally_set_debug(verbose):
