@@ -1,6 +1,6 @@
 import atexit
 from hashlib import sha1
-from os import unlink
+from os import unlink, mkdir
 from os.path import abspath
 from shutil import move
 from subprocess import check_call
@@ -67,17 +67,17 @@ def initialise_terraform_backend(
         logger.debug(f'Registering {backend_file.name} to be removed at exit')
         atexit.register(remove_file, backend_file.name)
 
-    state_file_key = f'{environment_name}/{component_name}/terraform.tfstate'
+    key = state_file_key(environment_name, component_name)
     logger.debug(
         f'Initialising backend in {directory} with {bucket_name}, '
-        f'{aws_region}, {state_file_key}, {lock_table_name}'
+        f'{aws_region}, {key}, {lock_table_name}'
     )
     check_call(
         [
             'terraform', 'init',
             f'-backend-config=bucket={bucket_name}',
             f'-backend-config=region={aws_region}',
-            f'-backend-config=key={state_file_key}',
+            f'-backend-config=key={key}',
             f'-backend-config=lock_table={lock_table_name}',
         ],
         cwd=directory
@@ -87,7 +87,29 @@ def initialise_terraform_backend(
     to_path = abspath(f'{directory}/../.terraform/')
 
     logger.debug(f'Moving {from_path} to {to_path}')
+    try:
+        mkdir(to_path)
+    except OSError:
+        logger.debug(f'{to_path} already exists - not creating')
     move(from_path, to_path)
+
+
+def state_file_key(environment_name, component_name):
+    return f'{environment_name}/{component_name}/terraform.tfstate'
+
+
+def remove_state(boto_session, environment_name, component_name):
+    s3_bucket_factory = S3BucketFactory(
+        boto_session,
+        '123456789'  # account_id - need to remove from logic in the factory
+    )
+
+    bucket_name = s3_bucket_factory.get_bucket_name()
+
+    key = state_file_key(environment_name, component_name)
+
+    s3_client = boto_session.client('s3')
+    s3_client.delete_object(Bucket=bucket_name, Key=key)
 
 
 class LockTableFactory:
