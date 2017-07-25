@@ -5,7 +5,7 @@ from io import TextIOWrapper
 
 from cdflow_commands import cli
 from cdflow_commands.constants import (
-    TERRAFORM_BINARY, TERRAFORM_DESTROY_DEFINITION,
+    CDFLOW_BASE_PATH, TERRAFORM_BINARY, TERRAFORM_DESTROY_DEFINITION,
 )
 from mock import ANY, MagicMock, Mock, patch
 import yaml
@@ -395,16 +395,22 @@ class TestDestroyCLI(unittest.TestCase):
                 '-var', 'aws_region=us-north-4',
                 '-out', ANY, TERRAFORM_DESTROY_DEFINITION,
             ],
-            env=ANY
+            env=ANY,
+            cwd=CDFLOW_BASE_PATH,
         )
 
         check_call_destroy.assert_any_call(
-            [TERRAFORM_BINARY, 'destroy', '-force', ANY],
-            env=ANY
+            [
+                TERRAFORM_BINARY, 'destroy', '-force',
+                '-var', 'aws_region=us-north-4',
+                TERRAFORM_DESTROY_DEFINITION,
+            ],
+            env=ANY,
+            cwd=CDFLOW_BASE_PATH,
         )
 
         remove_state_mock_s3.delete_object.assert_called_once_with(
-            'tfstate', state_file_key
+            Bucket='tfstate', Key=state_file_key
         )
 
     def test_plan_only_does_not_destroy_or_remove_state(self, *args):
@@ -436,7 +442,8 @@ class TestDestroyCLI(unittest.TestCase):
                 '-var', 'aws_region=us-north-4',
                 '-out', ANY, TERRAFORM_DESTROY_DEFINITION,
             ],
-            env=ANY
+            env=ANY,
+            cwd=CDFLOW_BASE_PATH,
         )
 
         remove_state_mock_s3.delete_object.assert_not_called()

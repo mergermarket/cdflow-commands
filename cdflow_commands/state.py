@@ -1,6 +1,6 @@
 import atexit
 from hashlib import sha1
-from os import unlink
+from os import unlink, mkdir
 from os.path import abspath
 from shutil import move
 from subprocess import check_call
@@ -87,6 +87,10 @@ def initialise_terraform_backend(
     to_path = abspath(f'{directory}/../.terraform/')
 
     logger.debug(f'Moving {from_path} to {to_path}')
+    try:
+        mkdir(to_path)
+    except OSError:
+        logger.debug(f'{to_path} already exists - not creating')
     move(from_path, to_path)
 
 
@@ -105,7 +109,7 @@ def remove_state(boto_session, environment_name, component_name):
     key = state_file_key(environment_name, component_name)
 
     s3_client = boto_session.client('s3')
-    s3_client.delete_object(bucket_name, key)
+    s3_client.delete_object(Bucket=bucket_name, Key=key)
 
 
 class LockTableFactory:
