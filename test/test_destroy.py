@@ -20,17 +20,11 @@ BotoCredentials = namedtuple(
 class TestDestroy(unittest.TestCase):
 
     @given(fixed_dictionaries({
-        'component_name': text(),
-        'environment': text(),
-        'bucket_name': text(),
         'aws_access_key_id': text(),
         'aws_secret_access_key': text(),
         'aws_session_token': text(),
     }))
     def test_destroy_calls_terraform_plan(self, fixtures):
-        component_name = fixtures['component_name']
-        environment = fixtures['environment']
-        bucket_name = fixtures['bucket_name']
         aws_access_key_id = fixtures['aws_access_key_id']
         aws_secret_access_key = fixtures['aws_secret_access_key']
         aws_session_token = fixtures['aws_session_token']
@@ -40,7 +34,7 @@ class TestDestroy(unittest.TestCase):
             aws_access_key_id, aws_secret_access_key, aws_session_token
         )
 
-        destroy = Destroy(session, component_name, environment, bucket_name)
+        destroy = Destroy(session)
 
         with ExitStack() as stack:
             check_call = stack.enter_context(
@@ -59,6 +53,93 @@ class TestDestroy(unittest.TestCase):
             destroy.run()
 
         check_call.assert_any_call([
+            TERRAFORM_BINARY, 'plan',
+            '-destroy',
+            '-var', 'aws_region={}'.format(session.region_name),
+            '-out', 'plan-{}'.format(time.return_value),
+            TERRAFORM_DESTROY_DEFINITION,
+        ], env={
+            'AWS_ACCESS_KEY_ID': aws_access_key_id,
+            'AWS_SECRET_ACCESS_KEY': aws_secret_access_key,
+            'AWS_SESSION_TOKEN': aws_session_token,
+        })
+
+    @given(fixed_dictionaries({
+        'aws_access_key_id': text(),
+        'aws_secret_access_key': text(),
+        'aws_session_token': text(),
+    }))
+    def test_terraform_destroy_is_called(self, fixtures):
+        aws_access_key_id = fixtures['aws_access_key_id']
+        aws_secret_access_key = fixtures['aws_secret_access_key']
+        aws_session_token = fixtures['aws_session_token']
+        session = Mock()
+
+        session.get_credentials.return_value = BotoCredentials(
+            aws_access_key_id, aws_secret_access_key, aws_session_token
+        )
+
+        destroy = Destroy(session)
+
+        with ExitStack() as stack:
+            check_call = stack.enter_context(
+                patch('cdflow_commands.destroy.check_call')
+            )
+            time = stack.enter_context(
+                patch('cdflow_commands.destroy.time')
+            )
+            stack.enter_context(
+                patch.dict(
+                    'cdflow_commands.destroy.os.environ',
+                    values={}, clear=True,
+                )
+            )
+
+            destroy.run()
+
+        check_call.assert_any_call([
+            TERRAFORM_BINARY, 'destroy', '-force',
+            'plan-{}'.format(time.return_value),
+        ], env={
+            'AWS_ACCESS_KEY_ID': aws_access_key_id,
+            'AWS_SECRET_ACCESS_KEY': aws_secret_access_key,
+            'AWS_SESSION_TOKEN': aws_session_token,
+        })
+
+    @given(fixed_dictionaries({
+        'aws_access_key_id': text(),
+        'aws_secret_access_key': text(),
+        'aws_session_token': text(),
+    }))
+    def test_plan_only_flag_does_not_run_destroy(self, fixtures):
+        aws_access_key_id = fixtures['aws_access_key_id']
+        aws_secret_access_key = fixtures['aws_secret_access_key']
+        aws_session_token = fixtures['aws_session_token']
+        session = Mock()
+
+        session.get_credentials.return_value = BotoCredentials(
+            aws_access_key_id, aws_secret_access_key, aws_session_token
+        )
+
+        destroy = Destroy(session)
+
+        with ExitStack() as stack:
+            check_call = stack.enter_context(
+                patch('cdflow_commands.destroy.check_call')
+            )
+            time = stack.enter_context(
+                patch('cdflow_commands.destroy.time')
+            )
+            stack.enter_context(
+                patch.dict(
+                    'cdflow_commands.destroy.os.environ',
+                    values={}, clear=True,
+                )
+            )
+
+            destroy.run(plan_only=True)
+
+        check_call.assert_called_once_with([
             TERRAFORM_BINARY, 'plan',
             '-destroy',
             '-var', 'aws_region={}'.format(session.region_name),
