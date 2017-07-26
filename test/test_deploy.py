@@ -409,7 +409,7 @@ class TestDeploy(unittest.TestCase):
             mock_os.environ = {}
 
             def mock_path_exists(path):
-                if path == 'config/all.json':
+                if path == 'config/common.json':
                     return True
                 else:
                     return False
@@ -428,7 +428,7 @@ class TestDeploy(unittest.TestCase):
                     ),
                     '-var-file', secret_file_path,
                     '-out', 'plan-{}'.format(utcnow),
-                    '-var-file', 'config/all.json',
+                    '-var-file', 'config/common.json',
                     'infra',
                 ],
                 cwd=release_path,
