@@ -62,7 +62,7 @@ class Deploy:
         )
 
     def _build_parameters(self, command, secrets_file_path=None):
-        parameters = [TERRAFORM_BINARY, command]
+        parameters = [TERRAFORM_BINARY, command, '-input=false']
         if command == 'plan':
             parameters = self._add_plan_parameters(
                 parameters, secrets_file_path
