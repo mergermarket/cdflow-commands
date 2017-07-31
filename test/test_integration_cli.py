@@ -170,7 +170,7 @@ class TestDeployCLI(unittest.TestCase):
 
         check_call_deploy.assert_any_call(
             [
-                'terraform', 'plan',
+                'terraform', 'plan', '-input=false',
                 '-var', 'env=live',
                 '-var', 'aws_region={}'.format(
                     mock_assumed_session.region_name
@@ -194,7 +194,8 @@ class TestDeployCLI(unittest.TestCase):
 
         check_call_deploy.assert_any_call(
             [
-                'terraform', 'apply', 'plan-{}'.format(time.return_value),
+                'terraform', 'apply', '-input=false',
+                'plan-{}'.format(time.return_value),
             ],
             env={
                 'foo': 'bar',
@@ -226,7 +227,7 @@ class TestDeployCLI(unittest.TestCase):
         # Then
         check_call_deploy.assert_called_once_with(
             [
-                'terraform', 'plan',
+                'terraform', 'plan', '-input=false',
                 '-var', 'env=live',
                 '-var', 'aws_region={}'.format(
                     mock_assumed_session.region_name
