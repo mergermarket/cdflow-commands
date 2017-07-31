@@ -90,7 +90,7 @@ class TestDeploy(unittest.TestCase):
 
             check_call.assert_any_call(
                 [
-                    'terraform', 'plan',
+                    'terraform', 'plan', '-input=false',
                     '-var', 'env={}'.format(environment),
                     '-var', 'aws_region={}'.format(aws_region),
                     '-var-file', 'release.json',
@@ -167,7 +167,10 @@ class TestDeploy(unittest.TestCase):
             deploy.run()
 
             check_call.assert_any_call(
-                ['terraform', 'apply', 'plan-{}'.format(utcnow)],
+                [
+                    'terraform', 'apply', '-input=false',
+                    'plan-{}'.format(utcnow)
+                ],
                 cwd=release_path,
                 env={
                     'AWS_ACCESS_KEY_ID': credentials.access_key,
@@ -245,7 +248,7 @@ class TestDeploy(unittest.TestCase):
 
             check_call.assert_called_once_with(
                 [
-                    'terraform', 'plan',
+                    'terraform', 'plan', '-input=false',
                     '-var', 'env={}'.format(environment),
                     '-var', 'aws_region={}'.format(aws_region),
                     '-var-file', 'release.json',
@@ -330,7 +333,7 @@ class TestDeploy(unittest.TestCase):
 
             check_call.assert_any_call(
                 [
-                    'terraform', 'plan',
+                    'terraform', 'plan', '-input=false',
                     '-var', 'env={}'.format(environment),
                     '-var', 'aws_region={}'.format(aws_region),
                     '-var-file', 'release.json',
@@ -419,7 +422,7 @@ class TestDeploy(unittest.TestCase):
 
             check_call.assert_any_call(
                 [
-                    'terraform', 'plan',
+                    'terraform', 'plan', '-input=false',
                     '-var', 'env={}'.format(environment),
                     '-var', 'aws_region={}'.format(aws_region),
                     '-var-file', 'release.json',
