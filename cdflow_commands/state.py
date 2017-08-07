@@ -75,6 +75,7 @@ def initialise_terraform_backend(
     check_call(
         [
             'terraform', 'init',
+            f'-get-plugins=false',
             f'-backend-config=bucket={bucket_name}',
             f'-backend-config=region={aws_region}',
             f'-backend-config=key={key}',
@@ -83,15 +84,20 @@ def initialise_terraform_backend(
         cwd=directory
     )
 
-    from_path = abspath(f'{directory}/.terraform/terraform.tfstate')
+    from_path_statefile = abspath(f'{directory}/.terraform/terraform.tfstate')
+    from_path_plugins = abspath(f'{directory}/.terraform/plugins')
     to_path = abspath(f'{directory}/../.terraform/')
 
-    logger.debug(f'Moving {from_path} to {to_path}')
     try:
         mkdir(to_path)
     except OSError:
         logger.debug(f'{to_path} already exists - not creating')
-    move(from_path, to_path)
+
+    logger.debug(f'Moving {from_path_statefile} to {to_path}')
+    move(from_path_statefile, to_path)
+
+    logger.debug(f'Moving {from_path_plugins} to {to_path}')
+    move(from_path_plugins, to_path)
 
 
 def state_file_key(environment_name, component_name):
