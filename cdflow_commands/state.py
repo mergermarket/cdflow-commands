@@ -1,6 +1,7 @@
 import atexit
+import os
 from hashlib import sha1
-from os import unlink, mkdir
+from os import mkdir, unlink
 from os.path import abspath
 from shutil import move
 from subprocess import check_call
@@ -8,6 +9,7 @@ from tempfile import NamedTemporaryFile
 from textwrap import dedent
 
 from botocore.exceptions import ClientError
+
 from cdflow_commands.exceptions import CDFlowError
 from cdflow_commands.logger import logger
 
@@ -42,7 +44,7 @@ def initialise_terraform(
     )
 
     initialise_terraform_backend(
-        directory, boto_session.region_name,
+        directory, boto_session,
         s3_bucket_factory.get_bucket_name(),
         lock_table_factory.get_table_name(),
         environment_name, component_name
@@ -50,7 +52,7 @@ def initialise_terraform(
 
 
 def initialise_terraform_backend(
-    directory, aws_region, bucket_name, lock_table_name,
+    directory, boto_session, bucket_name, lock_table_name,
     environment_name, component_name
 ):
     with NamedTemporaryFile(
@@ -70,22 +72,34 @@ def initialise_terraform_backend(
     key = state_file_key(environment_name, component_name)
     logger.debug(
         f'Initialising backend in {directory} with {bucket_name}, '
-        f'{aws_region}, {key}, {lock_table_name}'
+        f'{boto_session.region_name}, {key}, {lock_table_name}'
     )
+
+    env = os.environ.copy()
+    credentials = boto_session.get_credentials()
+    env.update({
+        'AWS_ACCESS_KEY_ID': credentials.access_key,
+        'AWS_SECRET_ACCESS_KEY': credentials.secret_key,
+        'AWS_SESSION_TOKEN': credentials.token,
+    })
     check_call(
         [
             'terraform', 'init',
             f'-get-plugins=false',
             f'-backend-config=bucket={bucket_name}',
-            f'-backend-config=region={aws_region}',
+            f'-backend-config=region={boto_session.region_name}',
             f'-backend-config=key={key}',
             f'-backend-config=lock_table={lock_table_name}',
         ],
-        cwd=directory
+        cwd=directory, env=env
     )
 
-    from_path_statefile = abspath(f'{directory}/.terraform/terraform.tfstate')
-    from_path_plugins = abspath(f'{directory}/.terraform/plugins')
+    from_path_statefile = abspath(
+        f'{directory}/.terraform/terraform.tfstate'
+    )
+    from_path_plugins = abspath(
+        f'{directory}/.terraform/plugins'
+    )
     to_path = abspath(f'{directory}/../.terraform/')
 
     try:
