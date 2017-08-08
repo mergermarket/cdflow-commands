@@ -3,12 +3,14 @@ from collections import namedtuple
 from re import DOTALL, match, sub
 from subprocess import CalledProcessError, check_output
 
+import yaml
 from boto3.session import Session
+
+from cdflow_commands.account import AccountScheme
 from cdflow_commands.exceptions import (
     UserFacingError, UserFacingFixedMessageError
 )
-from cdflow_commands.account import AccountScheme
-import yaml
+from cdflow_commands.logger import logger
 
 
 class JobNameTooShortError(UserFacingError):
@@ -50,6 +52,11 @@ def load_manifest():
 
 
 def assume_role(root_session, acccount_id, session_name, region=None):
+    logger.debug(
+        "Assuming role arn:aws:iam::{}:role/admin over session {}".format(
+            acccount_id, session_name
+        )
+    )
     sts = root_session.client('sts')
     response = sts.assume_role(
         RoleArn='arn:aws:iam::{}:role/admin'.format(acccount_id),
