@@ -13,7 +13,7 @@ from cdflow_commands.state import (
 )
 from hypothesis import given
 from hypothesis.strategies import fixed_dictionaries, text
-from mock import MagicMock, Mock, patch
+from mock import MagicMock, Mock, patch, ANY
 
 NEW_BUCKET_PATTERN = r'^cdflow-tfstate-[a-z0-9]+$'
 
@@ -558,11 +558,11 @@ class TestTerraformBackendConfig(unittest.TestCase):
         self, terraform_backend_input
     ):
         directory = terraform_backend_input['directory']
-        aws_region = terraform_backend_input['aws_region']
         bucket_name = terraform_backend_input['bucket_name']
         lock_table_name = terraform_backend_input['lock_table_name']
         environment_name = terraform_backend_input['environment_name']
         component_name = terraform_backend_input['component_name']
+        boto_session = MagicMock(spec=Session)
 
         with ExitStack() as stack:
             stack.enter_context(patch('cdflow_commands.state.check_call'))
@@ -576,7 +576,7 @@ class TestTerraformBackendConfig(unittest.TestCase):
             NamedTemporaryFile.return_value.__enter__.return_value = mock_file
 
             initialise_terraform_backend(
-                directory, aws_region, bucket_name, lock_table_name,
+                directory, boto_session, bucket_name, lock_table_name,
                 environment_name, component_name
             )
 
@@ -595,11 +595,11 @@ class TestTerraformBackendConfig(unittest.TestCase):
     @given(terraform_backend_input)
     def test_backend_is_initialised(self, terraform_backend_input):
         directory = terraform_backend_input['directory']
-        aws_region = terraform_backend_input['aws_region']
         bucket_name = terraform_backend_input['bucket_name']
         lock_table_name = terraform_backend_input['lock_table_name']
         environment_name = terraform_backend_input['environment_name']
         component_name = terraform_backend_input['component_name']
+        boto_session = MagicMock(spec=Session)
 
         state_file_key = (
             f'{environment_name}/{component_name}/terraform.tfstate'
@@ -616,7 +616,7 @@ class TestTerraformBackendConfig(unittest.TestCase):
             )
 
             initialise_terraform_backend(
-                directory, aws_region, bucket_name, lock_table_name,
+                directory, boto_session, bucket_name, lock_table_name,
                 environment_name, component_name
             )
 
@@ -625,21 +625,22 @@ class TestTerraformBackendConfig(unittest.TestCase):
                 'terraform', 'init',
                 '-get-plugins=false',
                 f'-backend-config=bucket={bucket_name}',
-                f'-backend-config=region={aws_region}',
+                f'-backend-config=region={boto_session.region_name}',
                 f'-backend-config=key={state_file_key}',
                 f'-backend-config=lock_table={lock_table_name}',
             ],
+            env=ANY,
             cwd=directory
         )
 
     @given(terraform_backend_input)
     def test_state_file_is_moved_to_root(self, terraform_backend_input):
         directory = terraform_backend_input['directory']
-        aws_region = terraform_backend_input['aws_region']
         bucket_name = terraform_backend_input['bucket_name']
         lock_table_name = terraform_backend_input['lock_table_name']
         environment_name = terraform_backend_input['environment_name']
         component_name = terraform_backend_input['component_name']
+        boto_session = MagicMock(spec=Session)
 
         with ExitStack() as stack:
             stack.enter_context(
@@ -650,7 +651,7 @@ class TestTerraformBackendConfig(unittest.TestCase):
             move = stack.enter_context(patch('cdflow_commands.state.move'))
 
             initialise_terraform_backend(
-                directory, aws_region, bucket_name, lock_table_name,
+                directory, boto_session, bucket_name, lock_table_name,
                 environment_name, component_name
             )
 
@@ -673,8 +674,8 @@ class TestTerraformBackendConfig(unittest.TestCase):
     }))
     def test_config_file_is_removed_at_exit(self, test_fixtures):
         directory = test_fixtures['terraform_backend_input']['directory']
-        aws_region = test_fixtures['terraform_backend_input']['aws_region']
         bucket_name = test_fixtures['terraform_backend_input']['bucket_name']
+        boto_session = MagicMock(spec=Session)
         lock_table_name = (
             test_fixtures['terraform_backend_input']['lock_table_name']
         )
@@ -701,7 +702,7 @@ class TestTerraformBackendConfig(unittest.TestCase):
                 backend_config_file_name
 
             initialise_terraform_backend(
-                directory, aws_region, bucket_name, lock_table_name,
+                directory, boto_session, bucket_name, lock_table_name,
                 environment_name, component_name
             )
 
