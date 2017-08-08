@@ -164,7 +164,7 @@ class TestDeployCLI(unittest.TestCase):
 
         # Then
         check_call_state.assert_any_call(
-            ['terraform', 'init', ANY, ANY, ANY, ANY],
+            ['terraform', 'init', ANY, ANY, ANY, ANY, ANY],
             cwd=workdir+'/infra'
         )
 
@@ -382,6 +382,7 @@ class TestDestroyCLI(unittest.TestCase):
         check_call_state.assert_called_once_with(
             [
                 TERRAFORM_BINARY, 'init',
+                '-get-plugins=false',
                 '-backend-config=bucket=tfstate',
                 '-backend-config=region=us-north-4',
                 '-backend-config=key={}'.format(state_file_key),
@@ -425,6 +426,7 @@ class TestDestroyCLI(unittest.TestCase):
         check_call_state.assert_called_once_with(
             [
                 TERRAFORM_BINARY, 'init',
+                '-get-plugins=false',
                 '-backend-config=bucket=tfstate',
                 '-backend-config=region=us-north-4',
                 '-backend-config=key={}'.format(state_file_key),

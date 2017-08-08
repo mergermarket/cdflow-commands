@@ -623,6 +623,7 @@ class TestTerraformBackendConfig(unittest.TestCase):
         check_call.assert_called_once_with(
             [
                 'terraform', 'init',
+                '-get-plugins=false',
                 f'-backend-config=bucket={bucket_name}',
                 f'-backend-config=region={aws_region}',
                 f'-backend-config=key={state_file_key}',
@@ -653,9 +654,15 @@ class TestTerraformBackendConfig(unittest.TestCase):
                 environment_name, component_name
             )
 
-        move.assert_called_once_with(
-            f'/cdflow/{directory}/.terraform/terraform.tfstate',
-            '/cdflow/.terraform',
+        move.assert_has_calls(
+            move(
+                f'/cdflow/{directory}/.terraform/terraform.tfstate',
+                '/cdflow/.terraform'
+            ),
+            move(
+                f'/cdflow/{directory}/.terraform/plugins',
+                '/cdflow/.terraform'
+            )
         )
 
     @given(fixed_dictionaries({
