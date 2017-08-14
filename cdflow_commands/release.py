@@ -79,7 +79,8 @@ class Release:
                 '{}/{}'.format(getcwd(), INFRASTRUCTURE_DEFINITIONS_PATH)
             )
 
-            self._copy_app_config_files(base_dir)
+            if os.path.exists(CONFIG_BASE_PATH):
+                self._copy_app_config_files(base_dir)
             self._copy_platform_config_files(base_dir)
             self._copy_infra_files(base_dir)
 
