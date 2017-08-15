@@ -1,20 +1,19 @@
-# CDFlow Commands
+# cdflow
 
-These are the commands available to components using CDFLow for managing the software lifecycle.
-
-There is the facility to build a release, deploy the release and to destroy the component.
+This repository contains the source code for the cdflow docker image, which contains the implementation of the commands that cdflow provdes - to release, deploy, and (eventually) decommission software services. This is typically used via the wrapper script at [github.com/mergermarket/cdflow/](https://github.com/mergermarket/cdflow/) in order to ensure you get the latest version when you release (with the option to pin should you need to) and that the image used remains consistent through your pipeline.
 
 Full documentation is here: https://mergermarket.github.io/cdflow/
 
 ## Running
 
-To get help:
+If you are using the [cdflow wrapper comamnd](https://github.com/mergermarket/cdflow/) mentioned above, you can get usage information by running:
+
 ```
 $ cdflow --help
 
-CDFlow Commands.
+cdflow
 
-Commands for managing the software lifecycle.
+Create and manage software services using continuous delivery.
 
 Usage:
     cdflow release --platform-config <platform_config> <version> [options]
