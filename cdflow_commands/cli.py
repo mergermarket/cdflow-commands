@@ -1,6 +1,7 @@
-"""CDFlow Commands.
+"""
+cdflow
 
-Commands for managing the software lifecycle.
+Create and manage software services using continuous delivery.
 
 Usage:
     cdflow release --platform-config <platform_config> <version> [options]
