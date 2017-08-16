@@ -10,6 +10,7 @@ from textwrap import dedent
 
 from botocore.exceptions import ClientError
 
+from cdflow_commands.config import env_with_aws_credetials
 from cdflow_commands.exceptions import CDFlowError
 from cdflow_commands.logger import logger
 
@@ -75,13 +76,6 @@ def initialise_terraform_backend(
         f'{boto_session.region_name}, {key}, {lock_table_name}'
     )
 
-    env = os.environ.copy()
-    credentials = boto_session.get_credentials()
-    env.update({
-        'AWS_ACCESS_KEY_ID': credentials.access_key,
-        'AWS_SECRET_ACCESS_KEY': credentials.secret_key,
-        'AWS_SESSION_TOKEN': credentials.token,
-    })
     check_call(
         [
             'terraform', 'init',
@@ -91,7 +85,10 @@ def initialise_terraform_backend(
             f'-backend-config=key={key}',
             f'-backend-config=lock_table={lock_table_name}',
         ],
-        cwd=directory, env=env
+        cwd=directory,
+        env=env_with_aws_credetials(
+            os.environ, boto_session
+        )
     )
 
     from_path_statefile = abspath(

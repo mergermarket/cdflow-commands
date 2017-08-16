@@ -187,7 +187,8 @@ class TestDeployCLI(unittest.TestCase):
                 'foo': 'bar',
                 'AWS_ACCESS_KEY_ID': aws_access_key_id,
                 'AWS_SECRET_ACCESS_KEY': aws_secret_access_key,
-                'AWS_SESSION_TOKEN': aws_session_token
+                'AWS_SESSION_TOKEN': aws_session_token,
+                'AWS_DEFAULT_REGION': mock_assumed_session.region_name
             },
             cwd=workdir,
         )
@@ -201,7 +202,8 @@ class TestDeployCLI(unittest.TestCase):
                 'foo': 'bar',
                 'AWS_ACCESS_KEY_ID': aws_access_key_id,
                 'AWS_SECRET_ACCESS_KEY': aws_secret_access_key,
-                'AWS_SESSION_TOKEN': aws_session_token
+                'AWS_SESSION_TOKEN': aws_session_token,
+                'AWS_DEFAULT_REGION': mock_assumed_session.region_name,
             },
             cwd=workdir,
         )
@@ -244,7 +246,8 @@ class TestDeployCLI(unittest.TestCase):
                 'foo': 'bar',
                 'AWS_ACCESS_KEY_ID': aws_access_key_id,
                 'AWS_SECRET_ACCESS_KEY': aws_secret_access_key,
-                'AWS_SESSION_TOKEN': aws_session_token
+                'AWS_SESSION_TOKEN': aws_session_token,
+                'AWS_DEFAULT_REGION': mock_assumed_session.region_name,
             },
             cwd=workdir,
         )

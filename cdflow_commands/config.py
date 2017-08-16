@@ -70,6 +70,18 @@ def assume_role(root_session, acccount_id, session_name, region=None):
     )
 
 
+def env_with_aws_credetials(env, boto_session):
+    result = env.copy()
+    credentials = boto_session.get_credentials()
+    result.update({
+        'AWS_ACCESS_KEY_ID': credentials.access_key,
+        'AWS_SECRET_ACCESS_KEY': credentials.secret_key,
+        'AWS_SESSION_TOKEN': credentials.token,
+        'AWS_DEFAULT_REGION': boto_session.region_name,
+    })
+    return result
+
+
 def _validate_job_name(job_name):
     if len(job_name) < 6:
         raise JobNameTooShortError(
