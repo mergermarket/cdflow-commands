@@ -23,12 +23,14 @@ class TestDestroy(unittest.TestCase):
         'aws_access_key_id': text(),
         'aws_secret_access_key': text(),
         'aws_session_token': text(),
+        'region': text(),
     }))
     def test_destroy_calls_terraform_plan(self, fixtures):
         aws_access_key_id = fixtures['aws_access_key_id']
         aws_secret_access_key = fixtures['aws_secret_access_key']
         aws_session_token = fixtures['aws_session_token']
         session = Mock()
+        session.region_name = fixtures['region']
 
         session.get_credentials.return_value = BotoCredentials(
             aws_access_key_id, aws_secret_access_key, aws_session_token
@@ -64,6 +66,7 @@ class TestDestroy(unittest.TestCase):
                 'AWS_ACCESS_KEY_ID': aws_access_key_id,
                 'AWS_SECRET_ACCESS_KEY': aws_secret_access_key,
                 'AWS_SESSION_TOKEN': aws_session_token,
+                'AWS_DEFAULT_REGION': fixtures['region'],
             },
             cwd=CDFLOW_BASE_PATH,
         )
@@ -72,12 +75,14 @@ class TestDestroy(unittest.TestCase):
         'aws_access_key_id': text(),
         'aws_secret_access_key': text(),
         'aws_session_token': text(),
+        'region': text(),
     }))
     def test_terraform_destroy_is_called(self, fixtures):
         aws_access_key_id = fixtures['aws_access_key_id']
         aws_secret_access_key = fixtures['aws_secret_access_key']
         aws_session_token = fixtures['aws_session_token']
         session = Mock()
+        session.region_name = fixtures['region']
 
         session.get_credentials.return_value = BotoCredentials(
             aws_access_key_id, aws_secret_access_key, aws_session_token
@@ -107,6 +112,7 @@ class TestDestroy(unittest.TestCase):
                 'AWS_ACCESS_KEY_ID': aws_access_key_id,
                 'AWS_SECRET_ACCESS_KEY': aws_secret_access_key,
                 'AWS_SESSION_TOKEN': aws_session_token,
+                'AWS_DEFAULT_REGION': fixtures['region'],
             },
             cwd=CDFLOW_BASE_PATH,
         )
@@ -115,12 +121,14 @@ class TestDestroy(unittest.TestCase):
         'aws_access_key_id': text(),
         'aws_secret_access_key': text(),
         'aws_session_token': text(),
+        'region': text(),
     }))
     def test_plan_only_flag_does_not_run_destroy(self, fixtures):
         aws_access_key_id = fixtures['aws_access_key_id']
         aws_secret_access_key = fixtures['aws_secret_access_key']
         aws_session_token = fixtures['aws_session_token']
         session = Mock()
+        session.region_name = fixtures['region']
 
         session.get_credentials.return_value = BotoCredentials(
             aws_access_key_id, aws_secret_access_key, aws_session_token
@@ -156,6 +164,7 @@ class TestDestroy(unittest.TestCase):
                 'AWS_ACCESS_KEY_ID': aws_access_key_id,
                 'AWS_SECRET_ACCESS_KEY': aws_secret_access_key,
                 'AWS_SESSION_TOKEN': aws_session_token,
+                'AWS_DEFAULT_REGION': fixtures['region'],
             },
             cwd=CDFLOW_BASE_PATH,
         )
