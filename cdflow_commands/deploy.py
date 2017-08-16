@@ -5,6 +5,7 @@ from subprocess import check_call
 from tempfile import NamedTemporaryFile
 from time import time
 
+from cdflow_commands.config import env_with_aws_credetials
 from cdflow_commands.constants import (
     CONFIG_BASE_PATH, GLOBAL_CONFIG_FILE, INFRASTRUCTURE_DEFINITIONS_PATH,
     PLATFORM_CONFIG_BASE_PATH, RELEASE_METADATA_FILE, TERRAFORM_BINARY
@@ -36,13 +37,20 @@ class Deploy:
             secrets_file.flush()
             command = self._build_parameters('plan', secrets_file.name)
             logger.debug(f'Running {command}')
-            check_call(command, cwd=self._release_path, env=self._env())
+            check_call(
+                command, cwd=self._release_path,
+                env=env_with_aws_credetials(
+                    os.environ, self._boto_session
+                ),
+            )
 
     def _apply(self):
         check_call(
             self._build_parameters('apply'),
             cwd=self._release_path,
-            env=self._env()
+            env=env_with_aws_credetials(
+                os.environ, self._boto_session
+            )
         )
 
     @property
@@ -98,13 +106,3 @@ class Deploy:
             parameters += ['-var-file', GLOBAL_CONFIG_FILE]
 
         return parameters
-
-    def _env(self):
-        env = os.environ.copy()
-        credentials = self._boto_session.get_credentials()
-        env.update({
-            'AWS_ACCESS_KEY_ID': credentials.access_key,
-            'AWS_SECRET_ACCESS_KEY': credentials.secret_key,
-            'AWS_SESSION_TOKEN': credentials.token,
-        })
-        return env

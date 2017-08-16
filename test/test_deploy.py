@@ -50,7 +50,7 @@ class TestDeploy(unittest.TestCase):
         account_scheme.account_for_environment.return_value = account
 
         boto_session = Mock()
-        boto_session.region_name = 'us-north-4'
+        boto_session.region_name = aws_region
         credentials = BotoCredentials(access_key, secret_key, token)
         boto_session.get_credentials.return_value = credentials
 
@@ -107,6 +107,7 @@ class TestDeploy(unittest.TestCase):
                     'AWS_ACCESS_KEY_ID': credentials.access_key,
                     'AWS_SECRET_ACCESS_KEY': credentials.secret_key,
                     'AWS_SESSION_TOKEN': credentials.token,
+                    'AWS_DEFAULT_REGION': aws_region,
                 }
             )
 
@@ -139,7 +140,7 @@ class TestDeploy(unittest.TestCase):
         account_scheme.account_for_environment.return_value = account
 
         boto_session = Mock()
-        boto_session.region_name = 'us-north-4'
+        boto_session.region_name = aws_region
         credentials = BotoCredentials(access_key, secret_key, token)
         boto_session.get_credentials.return_value = credentials
 
@@ -176,6 +177,7 @@ class TestDeploy(unittest.TestCase):
                     'AWS_ACCESS_KEY_ID': credentials.access_key,
                     'AWS_SECRET_ACCESS_KEY': credentials.secret_key,
                     'AWS_SESSION_TOKEN': credentials.token,
+                    'AWS_DEFAULT_REGION': aws_region,
                 }
             )
 
@@ -208,7 +210,7 @@ class TestDeploy(unittest.TestCase):
         account_scheme.account_for_environment.return_value = account
 
         boto_session = Mock()
-        boto_session.region_name = 'us-north-4'
+        boto_session.region_name = aws_region
         credentials = BotoCredentials(access_key, secret_key, token)
         boto_session.get_credentials.return_value = credentials
 
@@ -265,6 +267,7 @@ class TestDeploy(unittest.TestCase):
                     'AWS_ACCESS_KEY_ID': credentials.access_key,
                     'AWS_SECRET_ACCESS_KEY': credentials.secret_key,
                     'AWS_SESSION_TOKEN': credentials.token,
+                    'AWS_DEFAULT_REGION': aws_region,
                 }
             )
 
@@ -297,7 +300,7 @@ class TestDeploy(unittest.TestCase):
         account_scheme.account_for_environment.return_value = account
 
         boto_session = Mock()
-        boto_session.region_name = 'us-north-4'
+        boto_session.region_name = aws_region
         credentials = BotoCredentials(access_key, secret_key, token)
         boto_session.get_credentials.return_value = credentials
 
@@ -349,6 +352,7 @@ class TestDeploy(unittest.TestCase):
                     'AWS_ACCESS_KEY_ID': credentials.access_key,
                     'AWS_SECRET_ACCESS_KEY': credentials.secret_key,
                     'AWS_SESSION_TOKEN': credentials.token,
+                    'AWS_DEFAULT_REGION': aws_region,
                 }
             )
 
@@ -381,7 +385,7 @@ class TestDeploy(unittest.TestCase):
         account_scheme.account_for_environment.return_value = account
 
         boto_session = Mock()
-        boto_session.region_name = 'us-north-4'
+        boto_session.region_name = aws_region
         credentials = BotoCredentials(access_key, secret_key, token)
         boto_session.get_credentials.return_value = credentials
 
@@ -439,5 +443,6 @@ class TestDeploy(unittest.TestCase):
                     'AWS_ACCESS_KEY_ID': credentials.access_key,
                     'AWS_SECRET_ACCESS_KEY': credentials.secret_key,
                     'AWS_SESSION_TOKEN': credentials.token,
+                    'AWS_DEFAULT_REGION': aws_region,
                 }
             )

@@ -470,3 +470,37 @@ class TestAccountSchemeHandling(unittest.TestCase):
         s3_resource.Object.assert_called_once_with(
             *fixtures['s3_bucket_and_key']
         )
+
+
+class TestEnvWithAWSCredentials(unittest.TestCase):
+
+    @given(fixed_dictionaries({
+        'access_key': text(),
+        'secret_key': text(),
+        'token': text(),
+        'region': text(),
+    }))
+    def test_env_with_aws_credentials(self, fixtures):
+
+        # Given
+        session = Mock()
+        credentials = Mock()
+        session.get_credentials.return_value = credentials
+        credentials.access_key = fixtures['access_key']
+        credentials.secret_key = fixtures['secret_key']
+        credentials.token = fixtures['token']
+        session.region_name = fixtures['region']
+        env = {'existing': 'value'}
+
+        # When
+        result = config.env_with_aws_credetials(env, session)
+
+        # Then
+        self.assertEqual(env, {'existing': 'value'})
+        self.assertEqual(result, {
+            'existing': 'value',
+            'AWS_ACCESS_KEY_ID': fixtures['access_key'],
+            'AWS_SECRET_ACCESS_KEY': fixtures['secret_key'],
+            'AWS_SESSION_TOKEN': fixtures['token'],
+            'AWS_DEFAULT_REGION': fixtures['region'],
+        })

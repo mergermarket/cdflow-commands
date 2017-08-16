@@ -2,6 +2,7 @@ import os
 from subprocess import check_call
 from time import time
 
+from cdflow_commands.config import env_with_aws_credetials
 from cdflow_commands.constants import (
     TERRAFORM_BINARY, TERRAFORM_DESTROY_DEFINITION
 )
@@ -25,14 +26,18 @@ class Destroy:
                 '-out', self.plan_path,
                 TERRAFORM_DESTROY_DEFINITION,
             ],
-            env=self._env(),
+            env=env_with_aws_credetials(
+                os.environ, self._boto_session
+            ),
             cwd='/cdflow',
         )
 
     def _destroy(self):
         check_call(
             [TERRAFORM_BINARY, 'apply', self.plan_path],
-            env=self._env(),
+            env=env_with_aws_credetials(
+                os.environ, self._boto_session
+            ),
             cwd='/cdflow',
         )
 
@@ -41,13 +46,3 @@ class Destroy:
         if not hasattr(self, '_plan_path'):
             self._plan_path = 'plan-{}'.format(time())
         return self._plan_path
-
-    def _env(self):
-        env = os.environ.copy()
-        credentials = self._boto_session.get_credentials()
-        env.update({
-            'AWS_ACCESS_KEY_ID': credentials.access_key,
-            'AWS_SECRET_ACCESS_KEY': credentials.secret_key,
-            'AWS_SESSION_TOKEN': credentials.token,
-        })
-        return env
