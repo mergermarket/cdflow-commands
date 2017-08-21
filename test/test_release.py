@@ -127,10 +127,11 @@ class TestReleaseArchive(unittest.TestCase):
     @patch('cdflow_commands.release.open')
     @patch('cdflow_commands.release.check_call')
     @patch('cdflow_commands.release.make_archive')
+    @patch('cdflow_commands.release.os.path')
     @patch('cdflow_commands.release.copytree')
     @patch('cdflow_commands.release.TemporaryDirectory')
     def test_app_config_added_to_release_bundle(
-        self, TemporaryDirectory, copytree, _, _1, _2, _3
+        self, TemporaryDirectory, copytree, patch_path, _, _1, _2, _3
     ):
 
         # Given
@@ -146,6 +147,7 @@ class TestReleaseArchive(unittest.TestCase):
         )
         temp_dir = 'test-temp-dir'
         TemporaryDirectory.return_value.__enter__.return_value = temp_dir
+        patch_path.exists.return_value = True
 
         # When
         release.create(release_plugin)
@@ -156,6 +158,41 @@ class TestReleaseArchive(unittest.TestCase):
                 temp_dir, 'dummy-component', 'dummy-version'
             )
         )
+
+    @patch('cdflow_commands.release.mkdir')
+    @patch('cdflow_commands.release.open')
+    @patch('cdflow_commands.release.check_call')
+    @patch('cdflow_commands.release.make_archive')
+    @patch('cdflow_commands.release.os.path')
+    @patch('cdflow_commands.release.copytree')
+    @patch('cdflow_commands.release.TemporaryDirectory')
+    def test_app_config_add_skipped_to_release_bundle_if_not_existing(
+        self, TemporaryDirectory, copytree, patch_path, _, _1, _2, _3
+    ):
+
+        # Given
+        release_plugin = Mock()
+        release_plugin.create.return_value = {}
+        platform_config_path = 'test-platform-config-path'
+        release = Release(
+            boto_session=Mock(),
+            release_bucket=ANY,
+            platform_config_path=platform_config_path, commit='dummy',
+            version='dummy-version', component_name='dummy-component',
+            team='dummy-team',
+        )
+        temp_dir = 'test-temp-dir'
+        TemporaryDirectory.return_value.__enter__.return_value = temp_dir
+        patch_path.exists.return_value = False
+
+        # When
+        release.create(release_plugin)
+
+        # Then
+        for args, kwargs in copytree.call_args_list:
+            for arg in args:
+                self.assertNotEqual('config', arg)
+        self.assertEqual(copytree.call_count, 2)
 
     @patch('cdflow_commands.release.mkdir')
     @patch('cdflow_commands.release.open')
