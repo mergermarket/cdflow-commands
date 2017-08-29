@@ -1,7 +1,7 @@
 def slavePrefix = "mmg"
 
 try {
-    build()
+    build(slavePrefix)
     unitTest(slavePrefix)
     // publish(releaseCandidate = true)
     // acceptanceTest()
