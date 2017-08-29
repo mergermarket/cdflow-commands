@@ -1,80 +1,61 @@
-// variables
-
-def remote
-def commit
-def shortCommit
-def version
-
-// configuration
-
 def slavePrefix = "mmg"
-def awsCredentialsId = "platform-mergermarket"
 
+try {
+    build()
+    unitTest(slavePrefix)
+    // publish(releaseCandidate = true)
+    // acceptanceTest()
+    // publish()
+}
+catch (e) {
+    currentBuild.result = 'FAILURE'
+    notifySlack(currentBuild.result)
+    throw e
+}
 
-// constants
-
-def githubCredentialsId = "github-build-user"
-
-
-// pipeline definition
-test(awsCredentialsId, slavePrefix)
-
-//release(awsCredentialsId, slavePrefix)
-
-//deploy("aslive", slavePrefix, githubCredentialsId, awsCredentialsId)
-
-//deploy("live", slavePrefix, githubCredentialsId, awsCredentialsId)
-
-// reusable code
-
-// perform a release - note release() must be called before calling deploy()
-def test(awsCredentialsId, slavePrefix) {
-    stage ("Test") {
+def build(slavePrefix) {
+    stage("Build") {
         node ("${slavePrefix}dev") {
+            def commitObject = checkout scm
+            sh "docker build -t mergermarket/cdflow-commands:${commitObject.GIT_COMMIT} ."
+        }
+    }
+}
 
-            checkout scm
+def unitTest(slavePrefix) {
+    stage ("Unit Test") {
+        node ("${slavePrefix}dev") {
             sh "./test.sh"
         }
     }
 }
 
-def release(awsCredentialsId, slavePrefix) {
-    stage ("Release") {
-        node ("${slavePrefix}dev") {
+def publish(releaseCandidate = false) {
 
-            checkout scm
+}
 
-            remote = sh(returnStdout: true, script: "git config remote.origin.url").trim()
-            commit = sh(returnStdout: true, script: "git rev-parse HEAD").trim()
-            shortCommit = sh(returnStdout: true, script: "git rev-parse --short HEAD").trim()
-            version = "${env.BUILD_NUMBER}-${shortCommit}"
-
-            withCredentials([[$class: "UsernamePasswordMultiBinding", credentialsId: awsCredentialsId, passwordVariable: "AWS_SECRET_ACCESS_KEY", usernameVariable: "AWS_ACCESS_KEY_ID"]]) {
-                wrap([$class: "AnsiColorBuildWrapper"]) {
-                    sh "./infra/scripts/release ${version}"
-                }
-            }
-        }
+def acceptanceTest() {
+    stage ("Acceptance Test") {
+      build job: 'platform/cdflow-test-service.temp', parameters: [string(name: 'CDFLOW_IMAGE_ID', value: "${GIT_COMMIT}") ]
     }
 }
 
-// perform a deploy
-def deploy(env, slavePrefix, githubCredentialsId, awsCredentialsId) {
-    
-    account = env == "live" || env == "debug" ? "prod" : "dev"
+def notifySlack(String buildStatus = 'STARTED') {
+    // Build status of null means success.
+    buildStatus = buildStatus ?: 'SUCCESS'
 
-    stage ("Deploy to ${env}") {
-        node ("${slavePrefix}${account}") {
-            // work around "checkout scm" getting the wrong commit when stages from different commits are interleaved
-            git url: remote, credentialsId: githubCredentialsId
-            sh "git checkout -q ${commit}"
+    def color
 
-            withCredentials([[$class: "UsernamePasswordMultiBinding", credentialsId: awsCredentialsId, passwordVariable: "AWS_SECRET_ACCESS_KEY", usernameVariable: "AWS_ACCESS_KEY_ID"]]) {
-                wrap([$class: "AnsiColorBuildWrapper"]) {
-                    sh "./infra/scripts/deploy ${env} ${version}"
-                }
-            }
-        }
+    if (buildStatus == 'STARTED') {
+        color = '#D4DADF'
+    } else if (buildStatus == 'SUCCESS') {
+        color = '#BDFFC3'
+    } else if (buildStatus == 'UNSTABLE') {
+        color = '#FFFE89'
+    } else {
+        color = '#FF9FA1'
     }
-}
 
+    def msg = "${buildStatus}: `${env.JOB_NAME}` #${env.BUILD_NUMBER}:\n${env.BUILD_URL}"
+    slackSend(color: color, message: msg, channel: '#platform-team-alerts', token: fetch_credential('slack-r2d2'))
+}
