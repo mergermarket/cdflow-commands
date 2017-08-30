@@ -1,11 +1,12 @@
 def slavePrefix = "mmg"
+def commitObject
 
 try {
     build(slavePrefix)
     unitTest(slavePrefix)
-    // publish(releaseCandidate = true)
-    // acceptanceTest()
-    // publish()
+    publishReleaseCandidate(slavePrefix)
+    acceptanceTest()
+    publishRelease(slavePrefix)
 }
 catch (e) {
     currentBuild.result = 'FAILURE'
@@ -16,7 +17,7 @@ catch (e) {
 def build(slavePrefix) {
     stage("Build") {
         node ("${slavePrefix}dev") {
-            def commitObject = checkout scm
+            commitObject = checkout scm
             sh "docker build -t mergermarket/cdflow-commands:${commitObject.GIT_COMMIT} ."
         }
     }
@@ -30,13 +31,25 @@ def unitTest(slavePrefix) {
     }
 }
 
-def publish(releaseCandidate = false) {
-
+def publishReleaseCandidate(slavePrefix) {
+    stage("Publish Release Candidate") {
+        node ("${slavePrefix}dev") {
+            sh "docker push mergermarket/cdflow-commands:${commitObject.GIT_COMMIT}"
+        }
+    }
 }
 
 def acceptanceTest() {
     stage ("Acceptance Test") {
-      build job: 'platform/cdflow-test-service.temp', parameters: [string(name: 'CDFLOW_IMAGE_ID', value: "${GIT_COMMIT}") ]
+      build job: 'platform/cdflow-test-service.temp', parameters: [string(name: 'CDFLOW_IMAGE_ID', value: "mergermarket/cdflow-commands:${commitObject.GIT_COMMIT}") ]
+    }
+}
+
+def publishRelease(slavePrefix) {
+    stage("Publish Release") {
+        node ("${slavePrefix}dev") {
+            sh "docker tag mergermarket/cdflow-commands:latest; docker push mergermarket/cdflow-commands:latest"
+        }
     }
 }
 
