@@ -43,7 +43,7 @@ def publishReleaseCandidate(slavePrefix, dockerHubCredentialsId) {
                 wrap([$class: "AnsiColorBuildWrapper"]) {
                     sh '''
                       docker login -u $DOCKER_HUB_USERNAME -p $DOCKER_HUB_PASSWORD
-                      docker push mergermarket/cdflow-commands:${commitObject.GIT_COMMIT}
+                      docker push mergermarket/cdflow-commands:$commitObject.GIT_COMMIT
                     '''
                 }
             }
