@@ -68,7 +68,7 @@ def publishRelease(slavePrefix, dockerHubCredentialsId, imageName) {
                 wrap([$class: "AnsiColorBuildWrapper"]) {
                     sh """
                       docker login -u \$DOCKER_HUB_USERNAME -p \$DOCKER_HUB_PASSWORD
-                      docker tag ${imageName}:latest
+                      docker tag ${imageName}:${gitCommit} ${imageName}:latest
                       docker push ${imageName}:latest
                     """
                 }
