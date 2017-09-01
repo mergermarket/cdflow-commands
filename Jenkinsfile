@@ -1,6 +1,6 @@
 def slavePrefix = "mmg"
 def commitObject
-def dockerHubCredentialsId = "docker-hub"
+def dockerHubCredentialsId = "dockerhub"
 
 try {
     build(slavePrefix)
