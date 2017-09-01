@@ -5,9 +5,9 @@ def dockerHubCredentialsId = "docker-hub"
 try {
     build(slavePrefix)
     unitTest(slavePrefix)
-    publishReleaseCandidate(slavePrefix)
+    publishReleaseCandidate(slavePrefix, dockerHubCredentialsId)
     acceptanceTest()
-    publishRelease(slavePrefix)
+    publishRelease(slavePrefix, dockerHubCredentialsId)
 }
 catch (e) {
     currentBuild.result = 'FAILURE'
@@ -36,7 +36,7 @@ def unitTest(slavePrefix) {
     }
 }
 
-def publishReleaseCandidate(slavePrefix) {
+def publishReleaseCandidate(slavePrefix, dockerHubCredentialsId) {
     stage("Publish Release Candidate") {
         node ("${slavePrefix}dev") {
             withCredentials([[$class: "UsernamePasswordMultiBinding", credentialsId: dockerHubCredentialsId, passwordVariable: "DOCKER_ID_USER_PASSWORD", usernameVariable: "DOCKER_ID_USER"]]) {
@@ -54,7 +54,7 @@ def acceptanceTest() {
     }
 }
 
-def publishRelease(slavePrefix) {
+def publishRelease(slavePrefix, dockerHubCredentialsId) {
     stage("Publish Release") {
         node ("${slavePrefix}dev") {
             withCredentials([[$class: "UsernamePasswordMultiBinding", credentialsId: dockerHubCredentialsId, passwordVariable: "DOCKER_ID_USER_PASSWORD", usernameVariable: "DOCKER_ID_USER"]]) {
