@@ -1,7 +1,9 @@
-def slavePrefix = "mmg"
+def slavePrefix = 'mmg'
 def commitObject
 def gitCommit
-def dockerHubCredentialsId = "dockerhub"
+def dockerHubCredentialsId = 'dockerhub'
+
+def imageName = 'mergermarket/cdflow-commands'
 
 try {
     build(slavePrefix)
@@ -22,7 +24,7 @@ def build(slavePrefix) {
             commitObject = checkout scm
             gitCommit = commitObject.GIT_COMMIT
             wrap([$class: "AnsiColorBuildWrapper"]) {
-                sh "docker build -t mergermarket/cdflow-commands:${gitCommit} ."
+                sh "docker build -t ${imageName}:${gitCommit} ."
             }
         }
     }
@@ -43,10 +45,10 @@ def publishReleaseCandidate(slavePrefix, dockerHubCredentialsId) {
         node ("${slavePrefix}dev") {
             withCredentials([[$class: "UsernamePasswordMultiBinding", credentialsId: dockerHubCredentialsId, passwordVariable: "DOCKER_HUB_PASSWORD", usernameVariable: "DOCKER_HUB_USERNAME"]]) {
                 wrap([$class: "AnsiColorBuildWrapper"]) {
-                    sh '''
-                      docker login -u $DOCKER_HUB_USERNAME -p $DOCKER_HUB_PASSWORD
-                      docker push mergermarket/cdflow-commands:$gitCommit
-                    '''
+                    sh """
+                      docker login -u \$DOCKER_HUB_USERNAME -p \$DOCKER_HUB_PASSWORD
+                      docker push ${imageName}:${gitCommit}
+                    """
                 }
             }
         }
@@ -55,7 +57,7 @@ def publishReleaseCandidate(slavePrefix, dockerHubCredentialsId) {
 
 def acceptanceTest() {
     stage ("Acceptance Test") {
-      build job: 'platform/cdflow-test-service.temp', parameters: [string(name: 'CDFLOW_IMAGE_ID', value: "mergermarket/cdflow-commands:${gitCommit}") ]
+      build job: 'platform/cdflow-test-service.temp', parameters: [string(name: 'CDFLOW_IMAGE_ID', value: "${imageName}:${gitCommit}") ]
     }
 }
 
@@ -64,11 +66,11 @@ def publishRelease(slavePrefix, dockerHubCredentialsId) {
         node ("${slavePrefix}dev") {
             withCredentials([[$class: "UsernamePasswordMultiBinding", credentialsId: dockerHubCredentialsId, passwordVariable: "DOCKER_HUB_PASSWORD", usernameVariable: "DOCKER_HUB_USERNAME"]]) {
                 wrap([$class: "AnsiColorBuildWrapper"]) {
-                    sh '''
-                      docker login -u $DOCKER_HUB_USERNAME -p $DOCKER_HUB_PASSWORD
-                      docker tag mergermarket/cdflow-commands:latest
-                      docker push mergermarket/cdflow-commands:latest
-                    '''
+                    sh """
+                      docker login -u \$DOCKER_HUB_USERNAME -p \$DOCKER_HUB_PASSWORD
+                      docker tag ${imageName}:latest
+                      docker push ${imageName}:latest
+                    """
                 }
             }
         }
