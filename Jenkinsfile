@@ -1,5 +1,6 @@
 def slavePrefix = "mmg"
 def commitObject
+def gitCommit
 def dockerHubCredentialsId = "dockerhub"
 
 try {
@@ -19,8 +20,9 @@ def build(slavePrefix) {
     stage("Build") {
         node ("${slavePrefix}dev") {
             commitObject = checkout scm
+            gitCommit = commitObject.GIT_COMMIT
             wrap([$class: "AnsiColorBuildWrapper"]) {
-                sh "docker build -t mergermarket/cdflow-commands:${commitObject.GIT_COMMIT} ."
+                sh "docker build -t mergermarket/cdflow-commands:${gitCommit} ."
             }
         }
     }
@@ -43,7 +45,7 @@ def publishReleaseCandidate(slavePrefix, dockerHubCredentialsId) {
                 wrap([$class: "AnsiColorBuildWrapper"]) {
                     sh '''
                       docker login -u $DOCKER_HUB_USERNAME -p $DOCKER_HUB_PASSWORD
-                      docker push mergermarket/cdflow-commands:$commitObject.GIT_COMMIT
+                      docker push mergermarket/cdflow-commands:$gitCommit
                     '''
                 }
             }
@@ -53,7 +55,7 @@ def publishReleaseCandidate(slavePrefix, dockerHubCredentialsId) {
 
 def acceptanceTest() {
     stage ("Acceptance Test") {
-      build job: 'platform/cdflow-test-service.temp', parameters: [string(name: 'CDFLOW_IMAGE_ID', value: "mergermarket/cdflow-commands:${commitObject.GIT_COMMIT}") ]
+      build job: 'platform/cdflow-test-service.temp', parameters: [string(name: 'CDFLOW_IMAGE_ID', value: "mergermarket/cdflow-commands:${gitCommit}") ]
     }
 }
 
