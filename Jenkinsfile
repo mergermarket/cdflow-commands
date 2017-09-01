@@ -1,5 +1,6 @@
 def slavePrefix = "mmg"
 def commitObject
+def dockerHubCredentialsId = "docker-hub"
 
 try {
     build(slavePrefix)
@@ -18,7 +19,9 @@ def build(slavePrefix) {
     stage("Build") {
         node ("${slavePrefix}dev") {
             commitObject = checkout scm
-            sh "docker build -t mergermarket/cdflow-commands:${commitObject.GIT_COMMIT} ."
+            wrap([$class: "AnsiColorBuildWrapper"]) {
+                sh "docker build -t mergermarket/cdflow-commands:${commitObject.GIT_COMMIT} ."
+            }
         }
     }
 }
@@ -26,7 +29,9 @@ def build(slavePrefix) {
 def unitTest(slavePrefix) {
     stage ("Unit Test") {
         node ("${slavePrefix}dev") {
-            sh "./test.sh"
+          wrap([$class: "AnsiColorBuildWrapper"]) {
+              sh "./test.sh"
+          }
         }
     }
 }
@@ -34,7 +39,11 @@ def unitTest(slavePrefix) {
 def publishReleaseCandidate(slavePrefix) {
     stage("Publish Release Candidate") {
         node ("${slavePrefix}dev") {
-            sh "docker push mergermarket/cdflow-commands:${commitObject.GIT_COMMIT}"
+            withCredentials([[$class: "UsernamePasswordMultiBinding", credentialsId: dockerHubCredentialsId, passwordVariable: "DOCKER_ID_USER_PASSWORD", usernameVariable: "DOCKER_ID_USER"]]) {
+                wrap([$class: "AnsiColorBuildWrapper"]) {
+                    sh "docker login -u '\${DOCKER_ID_USER}' -p '\${DOCKER_ID_USER_PASSWORD}'; docker push mergermarket/cdflow-commands:${commitObject.GIT_COMMIT}"
+                }
+            }
         }
     }
 }
@@ -48,7 +57,11 @@ def acceptanceTest() {
 def publishRelease(slavePrefix) {
     stage("Publish Release") {
         node ("${slavePrefix}dev") {
-            sh "docker tag mergermarket/cdflow-commands:latest; docker push mergermarket/cdflow-commands:latest"
+            withCredentials([[$class: "UsernamePasswordMultiBinding", credentialsId: dockerHubCredentialsId, passwordVariable: "DOCKER_ID_USER_PASSWORD", usernameVariable: "DOCKER_ID_USER"]]) {
+                wrap([$class: "AnsiColorBuildWrapper"]) {
+                    sh "docker login -u '\${DOCKER_ID_USER}' -p '\${DOCKER_ID_USER_PASSWORD}'; docker tag mergermarket/cdflow-commands:latest; docker push mergermarket/cdflow-commands:latest"
+                }
+            }
         }
     }
 }
