@@ -6,11 +6,11 @@ def dockerHubCredentialsId = 'dockerhub'
 def imageName = 'mergermarket/cdflow-commands'
 
 try {
-    build(slavePrefix)
+    build(slavePrefix, imageName)
     unitTest(slavePrefix)
-    publishReleaseCandidate(slavePrefix, dockerHubCredentialsId)
-    acceptanceTest()
-    publishRelease(slavePrefix, dockerHubCredentialsId)
+    publishReleaseCandidate(slavePrefix, dockerHubCredentialsId, imageName)
+    acceptanceTest(imageName)
+    publishRelease(slavePrefix, dockerHubCredentialsId, imageName)
 }
 catch (e) {
     currentBuild.result = 'FAILURE'
@@ -18,7 +18,7 @@ catch (e) {
     throw e
 }
 
-def build(slavePrefix) {
+def build(slavePrefix, imageName) {
     stage("Build") {
         node ("${slavePrefix}dev") {
             commitObject = checkout scm
@@ -40,7 +40,7 @@ def unitTest(slavePrefix) {
     }
 }
 
-def publishReleaseCandidate(slavePrefix, dockerHubCredentialsId) {
+def publishReleaseCandidate(slavePrefix, dockerHubCredentialsId, imageName) {
     stage("Publish Release Candidate") {
         node ("${slavePrefix}dev") {
             withCredentials([[$class: "UsernamePasswordMultiBinding", credentialsId: dockerHubCredentialsId, passwordVariable: "DOCKER_HUB_PASSWORD", usernameVariable: "DOCKER_HUB_USERNAME"]]) {
@@ -55,13 +55,13 @@ def publishReleaseCandidate(slavePrefix, dockerHubCredentialsId) {
     }
 }
 
-def acceptanceTest() {
+def acceptanceTest(imageName) {
     stage ("Acceptance Test") {
       build job: 'platform/cdflow-test-service.temp', parameters: [string(name: 'CDFLOW_IMAGE_ID', value: "${imageName}:${gitCommit}") ]
     }
 }
 
-def publishRelease(slavePrefix, dockerHubCredentialsId) {
+def publishRelease(slavePrefix, dockerHubCredentialsId, imageName) {
     stage("Publish Release") {
         node ("${slavePrefix}dev") {
             withCredentials([[$class: "UsernamePasswordMultiBinding", credentialsId: dockerHubCredentialsId, passwordVariable: "DOCKER_HUB_PASSWORD", usernameVariable: "DOCKER_HUB_USERNAME"]]) {
