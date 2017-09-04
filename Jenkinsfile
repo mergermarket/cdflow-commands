@@ -1,10 +1,8 @@
 def slavePrefix = 'mmg'
 
-// versions
 def currentVersion
 def nextVersion
-
-def scmObject
+def commit
 
 //  docker
 def dockerHubCredentialsId = 'dockerhub'
@@ -12,9 +10,8 @@ def imageName = 'mergermarket/cdflow-commands'
 
 try {
     build(slavePrefix, dockerHubCredentialsId, imageName)
-    // unitTest(slavePrefix)
-    // acceptanceTest(imageName)
-    publishRelease(slavePrefix, dockerHubCredentialsId, imageName)
+    // test(slavePrefix, imageName)
+    publish(slavePrefix, dockerHubCredentialsId, imageName)
 }
 catch (e) {
     currentBuild.result = 'FAILURE'
@@ -25,8 +22,9 @@ catch (e) {
 def build(slavePrefix, dockerHubCredentialsId, imageName) {
     stage("Build") {
         node ("${slavePrefix}dev") {
-            scmObject = checkout scm
+            checkout scm
             currentVersion = sh(returnStdout: true, script: 'git describe --abbrev=0 --tags').trim().toInteger()
+            commit = sh(returnStdout: true, script: "git rev-parse HEAD").trim()
             nextVersion = currentVersion + 1
 
             docker.withRegistry('https://registry.hub.docker.com', dockerHubCredentialsId) {
@@ -36,7 +34,7 @@ def build(slavePrefix, dockerHubCredentialsId, imageName) {
     }
 }
 
-def unitTest(slavePrefix) {
+def unitTest(slavePrefix, imageName) {
     stage ("Unit Test") {
         node ("${slavePrefix}dev") {
           wrap([$class: "AnsiColorBuildWrapper"]) {
@@ -44,42 +42,28 @@ def unitTest(slavePrefix) {
           }
         }
     }
-}
 
-def acceptanceTest(imageName) {
     stage ("Acceptance Test") {
-      build job: 'platform/cdflow-test-service.temp', parameters: [string(name: 'CDFLOW_IMAGE_ID', value: "${imageName}:snapshot") ]
+        build job: 'platform/cdflow-test-service.temp', parameters: [string(name: 'CDFLOW_IMAGE_ID', value: "${imageName}:snapshot") ]
     }
 }
 
-def publishRelease(slavePrefix, dockerHubCredentialsId, imageName) {
+def publish(slavePrefix, dockerHubCredentialsId, imageName) {
     stage("Publish Release") {
         node ("${slavePrefix}dev") {
-
             checkout scm
-
-            // sh """
-            //   git tag -a '${nextVersion}' -m 'Version ${nextVersion}'
-            //   git push --tags
-            // """
+            sh """
+                git checkout -q ${commit}
+                git tag -a '${nextVersion}' -m 'Version ${nextVersion}'
+                git push --tags
+            """
 
             docker.withRegistry('https://registry.hub.docker.com', dockerHubCredentialsId) {
                 def app = docker.image "${imageName}:snapshot"
                 app.pull()
-                app.push nextVersion
+                app.push "${nextVersion}"
                 app.push 'latest'
             }
-
-            // withCredentials([[$class: "UsernamePasswordMultiBinding", credentialsId: dockerHubCredentialsId, passwordVariable: "DOCKER_HUB_PASSWORD", usernameVariable: "DOCKER_HUB_USERNAME"]]) {
-            //     wrap([$class: "AnsiColorBuildWrapper"]) {
-            //         sh """
-            //           docker login -u \$DOCKER_HUB_USERNAME -p \$DOCKER_HUB_PASSWORD
-            //           docker pull ${imageName}:${nextVersion}
-            //           docker tag ${imageName}:${nextVersion} ${imageName}:latest
-            //           docker push ${imageName}:latest
-            //         """
-            //     }
-            // }
         }
     }
 }
