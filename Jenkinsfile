@@ -1,17 +1,20 @@
 def slavePrefix = 'mmg'
+
+// versions
 def currentVersion
 def nextVersion
-def githubCredentialsId = "github-build-user"
-def dockerHubCredentialsId = 'dockerhub'
 
+def scmObject
+
+//  docker
+def dockerHubCredentialsId = 'dockerhub'
 def imageName = 'mergermarket/cdflow-commands'
 
 try {
-    build(slavePrefix, imageName)
+    build(slavePrefix, dockerHubCredentialsId, imageName)
     // unitTest(slavePrefix)
-    // publishReleaseCandidate(slavePrefix, dockerHubCredentialsId, imageName)
     // acceptanceTest(imageName)
-    // publishRelease(slavePrefix, githubCredentialsId, dockerHubCredentialsId, imageName)
+    publishRelease(slavePrefix, dockerHubCredentialsId, imageName)
 }
 catch (e) {
     currentBuild.result = 'FAILURE'
@@ -19,13 +22,16 @@ catch (e) {
     throw e
 }
 
-def build(slavePrefix, imageName) {
+def build(slavePrefix, dockerHubCredentialsId, imageName) {
     stage("Build") {
         node ("${slavePrefix}dev") {
-            checkout scm
+            scmObject = checkout scm
             currentVersion = sh(returnStdout: true, script: 'git describe --abbrev=0 --tags').trim().toInteger()
             nextVersion = currentVersion + 1
-            docker.build "${imageName}:snapshot"
+
+            docker.withRegistry('https://registry.hub.docker.com', dockerHubCredentialsId) {
+                docker.build("${imageName}:snapshot").push()
+            }
         }
     }
 }
@@ -40,48 +46,40 @@ def unitTest(slavePrefix) {
     }
 }
 
-def publishReleaseCandidate(slavePrefix, dockerHubCredentialsId, imageName) {
-    stage("Publish Release Candidate") {
-        node ("${slavePrefix}dev") {
-            withCredentials([[$class: "UsernamePasswordMultiBinding", credentialsId: dockerHubCredentialsId, passwordVariable: "DOCKER_HUB_PASSWORD", usernameVariable: "DOCKER_HUB_USERNAME"]]) {
-                wrap([$class: "AnsiColorBuildWrapper"]) {
-                    sh """
-                      docker login -u \$DOCKER_HUB_USERNAME -p \$DOCKER_HUB_PASSWORD
-                      docker push ${imageName}:${nextVersion}
-                    """
-                }
-            }
-        }
-    }
-}
-
 def acceptanceTest(imageName) {
     stage ("Acceptance Test") {
-      build job: 'platform/cdflow-test-service.temp', parameters: [string(name: 'CDFLOW_IMAGE_ID', value: "${imageName}:${nextVersion}") ]
+      build job: 'platform/cdflow-test-service.temp', parameters: [string(name: 'CDFLOW_IMAGE_ID', value: "${imageName}:snapshot") ]
     }
 }
 
-def publishRelease(slavePrefix, githubCredentialsId, dockerHubCredentialsId, imageName) {
+def publishRelease(slavePrefix, dockerHubCredentialsId, imageName) {
     stage("Publish Release") {
         node ("${slavePrefix}dev") {
 
-            sshagent(githubCredentialsId) {
-                sh """
-                  git tag -a '${nextVersion}' -m 'Version ${nextVersion}'
-                  git push --tags
-                """
+            checkout scm
+
+            // sh """
+            //   git tag -a '${nextVersion}' -m 'Version ${nextVersion}'
+            //   git push --tags
+            // """
+
+            docker.withRegistry('https://registry.hub.docker.com', dockerHubCredentialsId) {
+                def app = docker.image "${imageName}:snapshot"
+                app.pull()
+                app.push nextVersion
+                app.push 'latest'
             }
 
-            withCredentials([[$class: "UsernamePasswordMultiBinding", credentialsId: dockerHubCredentialsId, passwordVariable: "DOCKER_HUB_PASSWORD", usernameVariable: "DOCKER_HUB_USERNAME"]]) {
-                wrap([$class: "AnsiColorBuildWrapper"]) {
-                    sh """
-                      docker login -u \$DOCKER_HUB_USERNAME -p \$DOCKER_HUB_PASSWORD
-                      docker pull ${imageName}:${nextVersion}
-                      docker tag ${imageName}:${nextVersion} ${imageName}:latest
-                      docker push ${imageName}:latest
-                    """
-                }
-            }
+            // withCredentials([[$class: "UsernamePasswordMultiBinding", credentialsId: dockerHubCredentialsId, passwordVariable: "DOCKER_HUB_PASSWORD", usernameVariable: "DOCKER_HUB_USERNAME"]]) {
+            //     wrap([$class: "AnsiColorBuildWrapper"]) {
+            //         sh """
+            //           docker login -u \$DOCKER_HUB_USERNAME -p \$DOCKER_HUB_PASSWORD
+            //           docker pull ${imageName}:${nextVersion}
+            //           docker tag ${imageName}:${nextVersion} ${imageName}:latest
+            //           docker push ${imageName}:latest
+            //         """
+            //     }
+            // }
         }
     }
 }
