@@ -1,6 +1,7 @@
 def slavePrefix = 'mmg'
-def commitObject
-def gitCommit
+def currentVersion
+def nextVersion
+def githubCredentialsId = "github-build-user"
 def dockerHubCredentialsId = 'dockerhub'
 
 def imageName = 'mergermarket/cdflow-commands'
@@ -10,7 +11,7 @@ try {
     unitTest(slavePrefix)
     publishReleaseCandidate(slavePrefix, dockerHubCredentialsId, imageName)
     acceptanceTest(imageName)
-    publishRelease(slavePrefix, dockerHubCredentialsId, imageName)
+    publishRelease(slavePrefix, githubCredentialsId, dockerHubCredentialsId, imageName)
 }
 catch (e) {
     currentBuild.result = 'FAILURE'
@@ -21,10 +22,11 @@ catch (e) {
 def build(slavePrefix, imageName) {
     stage("Build") {
         node ("${slavePrefix}dev") {
-            commitObject = checkout scm
-            gitCommit = commitObject.GIT_COMMIT
+            checkout scm
+            currentVersion = sh(returnStdout: true, script: 'git describe --abbrev=0 --tags').trim().toInteger()
+            nextVersion = currentVersion + 1
             wrap([$class: "AnsiColorBuildWrapper"]) {
-                sh "docker build -t ${imageName}:${gitCommit} ."
+                sh "docker build -t ${imageName}:${nextVersion} ."
             }
         }
     }
@@ -47,7 +49,7 @@ def publishReleaseCandidate(slavePrefix, dockerHubCredentialsId, imageName) {
                 wrap([$class: "AnsiColorBuildWrapper"]) {
                     sh """
                       docker login -u \$DOCKER_HUB_USERNAME -p \$DOCKER_HUB_PASSWORD
-                      docker push ${imageName}:${gitCommit}
+                      docker push ${imageName}:${nextVersion}
                     """
                 }
             }
@@ -57,19 +59,27 @@ def publishReleaseCandidate(slavePrefix, dockerHubCredentialsId, imageName) {
 
 def acceptanceTest(imageName) {
     stage ("Acceptance Test") {
-      build job: 'platform/cdflow-test-service.temp', parameters: [string(name: 'CDFLOW_IMAGE_ID', value: "${imageName}:${gitCommit}") ]
+      build job: 'platform/cdflow-test-service.temp', parameters: [string(name: 'CDFLOW_IMAGE_ID', value: "${imageName}:${nextVersion}") ]
     }
 }
 
-def publishRelease(slavePrefix, dockerHubCredentialsId, imageName) {
+def publishRelease(slavePrefix, githubCredentialsId, dockerHubCredentialsId, imageName) {
     stage("Publish Release") {
         node ("${slavePrefix}dev") {
+
+            sshagent(githubCredentialsId) {
+                sh """
+                  git tag -a '${nextVersion}' -m 'Version ${nextVersion}'
+                  git push --tags
+                """
+            }
+
             withCredentials([[$class: "UsernamePasswordMultiBinding", credentialsId: dockerHubCredentialsId, passwordVariable: "DOCKER_HUB_PASSWORD", usernameVariable: "DOCKER_HUB_USERNAME"]]) {
                 wrap([$class: "AnsiColorBuildWrapper"]) {
                     sh """
                       docker login -u \$DOCKER_HUB_USERNAME -p \$DOCKER_HUB_PASSWORD
-                      docker pull ${imageName}:${gitCommit}
-                      docker tag ${imageName}:${gitCommit} ${imageName}:latest
+                      docker pull ${imageName}:${nextVersion}
+                      docker tag ${imageName}:${nextVersion} ${imageName}:latest
                       docker push ${imageName}:latest
                     """
                 }
