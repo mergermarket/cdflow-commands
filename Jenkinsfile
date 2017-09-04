@@ -2,7 +2,11 @@ def slavePrefix = 'mmg'
 
 def currentVersion
 def nextVersion
+
+def remote
 def commit
+
+def githubCredentialsId = "github-build-user"
 
 //  docker
 def dockerHubCredentialsId = 'dockerhub'
@@ -11,7 +15,7 @@ def imageName = 'mergermarket/cdflow-commands'
 try {
     build(slavePrefix, dockerHubCredentialsId, imageName)
     // test(slavePrefix, imageName)
-    publish(slavePrefix, dockerHubCredentialsId, imageName)
+    publish(slavePrefix, githubCredentialsId, dockerHubCredentialsId, imageName)
 }
 catch (e) {
     currentBuild.result = 'FAILURE'
@@ -24,6 +28,7 @@ def build(slavePrefix, dockerHubCredentialsId, imageName) {
         node ("${slavePrefix}dev") {
             checkout scm
             currentVersion = sh(returnStdout: true, script: 'git describe --abbrev=0 --tags').trim().toInteger()
+            remote = sh(returnStdout: true, script: "git config remote.origin.url").trim()
             commit = sh(returnStdout: true, script: "git rev-parse HEAD").trim()
             nextVersion = currentVersion + 1
 
@@ -34,7 +39,7 @@ def build(slavePrefix, dockerHubCredentialsId, imageName) {
     }
 }
 
-def unitTest(slavePrefix, imageName) {
+def test(slavePrefix, imageName) {
     stage ("Unit Test") {
         node ("${slavePrefix}dev") {
           wrap([$class: "AnsiColorBuildWrapper"]) {
@@ -48,16 +53,20 @@ def unitTest(slavePrefix, imageName) {
     }
 }
 
-def publish(slavePrefix, dockerHubCredentialsId, imageName) {
+def publish(slavePrefix, githubCredentialsId, dockerHubCredentialsId, imageName) {
     stage("Publish Release") {
         node ("${slavePrefix}dev") {
-            checkout scm
-            def author = sh(returnStdout: true, script: "git --no-pager show -s --format='%an' ${commit}").trim()
-            def email = sh(returnStdout: true, script: "git --no-pager show -s --format='%ae' ${commit}").trim()
+            git url: remote, commitId: commit, credentialsId: githubCredentialsId
+            // def author = sh(returnStdout: true, script: "git --no-pager show -s --format='%an' ${commit}").trim()
+            // def email = sh(returnStdout: true, script: "git --no-pager show -s --format='%ae' ${commit}").trim()
+            // sh """
+            //     git config user.name '${author}'
+            //     git config user.email '${email}'
+            //     git tag -a '${nextVersion}' -m 'Version ${nextVersion}'
+            //     git push --tags
+            // """
+
             sh """
-                git checkout -q ${commit}
-                git config user.name '${author}'
-                git config user.email '${email}'
                 git tag -a '${nextVersion}' -m 'Version ${nextVersion}'
                 git push --tags
             """
