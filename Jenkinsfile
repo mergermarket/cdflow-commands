@@ -52,8 +52,12 @@ def publish(slavePrefix, dockerHubCredentialsId, imageName) {
     stage("Publish Release") {
         node ("${slavePrefix}dev") {
             checkout scm
+            def author = sh("git --no-pager show -s --format='%an' ${commit}")
+            def email = sh("git --no-pager show -s --format='%ae' ${commit}")
             sh """
                 git checkout -q ${commit}
+                git config user.name '${author}'
+                git config user.email '${email}'
                 git tag -a '${nextVersion}' -m 'Version ${nextVersion}'
                 git push --tags
             """
