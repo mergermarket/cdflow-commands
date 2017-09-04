@@ -8,10 +8,10 @@ def imageName = 'mergermarket/cdflow-commands'
 
 try {
     build(slavePrefix, imageName)
-    unitTest(slavePrefix)
-    publishReleaseCandidate(slavePrefix, dockerHubCredentialsId, imageName)
-    acceptanceTest(imageName)
-    publishRelease(slavePrefix, githubCredentialsId, dockerHubCredentialsId, imageName)
+    // unitTest(slavePrefix)
+    // publishReleaseCandidate(slavePrefix, dockerHubCredentialsId, imageName)
+    // acceptanceTest(imageName)
+    // publishRelease(slavePrefix, githubCredentialsId, dockerHubCredentialsId, imageName)
 }
 catch (e) {
     currentBuild.result = 'FAILURE'
@@ -25,9 +25,7 @@ def build(slavePrefix, imageName) {
             checkout scm
             currentVersion = sh(returnStdout: true, script: 'git describe --abbrev=0 --tags').trim().toInteger()
             nextVersion = currentVersion + 1
-            wrap([$class: "AnsiColorBuildWrapper"]) {
-                sh "docker build -t ${imageName}:${nextVersion} ."
-            }
+            docker.build "${imageName}:snapshot"
         }
     }
 }
