@@ -6,6 +6,8 @@ def nextVersion
 def remote
 def commit
 
+def registry = "registry.hub.docker.com"
+
 def githubCredentialsId = "github-build-user"
 
 def dockerHubCredentialsId = 'dockerhub'
@@ -35,7 +37,7 @@ def build(slavePrefix, dockerHubCredentialsId, imageName) {
             }
 
             def imageNameTag = "${imageName}:snapshot"
-            docker.withRegistry('https://registry.hub.docker.com', dockerHubCredentialsId) {
+            docker.withRegistry("https://${registry}", dockerHubCredentialsId) {
                 docker.build(imageNameTag).push()
             }
 
@@ -59,8 +61,8 @@ def publish(slavePrefix, githubCredentialsId, dockerHubCredentialsId, imageName)
                 """
             }
 
-            docker.withRegistry('https://registry.hub.docker.com', dockerHubCredentialsId) {
-                def app = docker.image "${imageName}:snapshot"
+            docker.withRegistry("https://${registry}", dockerHubCredentialsId) {
+                def app = docker.image "${registry}/${imageName}:snapshot"
                 app.pull()
                 app.push "${nextVersion}"
                 app.push 'latest'
