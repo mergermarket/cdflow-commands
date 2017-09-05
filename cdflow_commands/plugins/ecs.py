@@ -37,7 +37,9 @@ class ReleasePlugin:
     def _on_docker_build(self):
         if path.exists(self.ON_BUILD_HOOK):
             try:
-                check_call([self.ON_BUILD_HOOK, self._image_name])
+                check_call([
+                    path.abspath(self.ON_BUILD_HOOK), self._image_name
+                ])
             except CalledProcessError as e:
                 raise OnDockerBuildError(str(e))
 
