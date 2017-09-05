@@ -14,8 +14,8 @@ def dockerHubCredentialsId = 'dockerhub'
 def imageName = 'mergermarket/cdflow-commands'
 
 try {
-    build(slavePrefix, dockerHubCredentialsId, imageName)
-    publish(slavePrefix, githubCredentialsId, dockerHubCredentialsId, imageName)
+    build(slavePrefix, dockerHubCredentialsId, imageName, registry)
+    publish(slavePrefix, githubCredentialsId, dockerHubCredentialsId, imageName, registry)
 }
 catch (e) {
     currentBuild.result = 'FAILURE'
@@ -23,7 +23,7 @@ catch (e) {
     throw e
 }
 
-def build(slavePrefix, dockerHubCredentialsId, imageName) {
+def build(slavePrefix, dockerHubCredentialsId, imageName, registry) {
     stage("Build") {
         node ("${slavePrefix}dev") {
             checkout scm
@@ -46,7 +46,7 @@ def build(slavePrefix, dockerHubCredentialsId, imageName) {
     }
 }
 
-def publish(slavePrefix, githubCredentialsId, dockerHubCredentialsId, imageName) {
+def publish(slavePrefix, githubCredentialsId, dockerHubCredentialsId, imageName, registry) {
     stage("Publish Release") {
         node ("${slavePrefix}dev") {
             withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: githubCredentialsId, usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD']]) {
