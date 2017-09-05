@@ -22,7 +22,11 @@ class ReleasePlugin:
         self._account_scheme = account_scheme
 
     def create(self):
-        check_call(['docker', 'build', '-t', self._image_name, '.'])
+        check_call([
+            'docker', 'build',
+            '--cache-from', self._latest_image_name,
+            '-t', self._image_name, '.'
+        ])
 
         self._on_docker_build()
 
