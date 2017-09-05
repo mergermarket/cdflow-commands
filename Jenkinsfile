@@ -14,7 +14,7 @@ def imageName = 'mergermarket/cdflow-commands'
 
 try {
     build(slavePrefix, dockerHubCredentialsId, imageName)
-    // test(slavePrefix, imageName)
+    test(slavePrefix, imageName)
     publish(slavePrefix, githubCredentialsId, dockerHubCredentialsId, imageName)
 }
 catch (e) {
