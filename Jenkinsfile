@@ -56,20 +56,12 @@ def test(slavePrefix, imageName) {
 def publish(slavePrefix, githubCredentialsId, dockerHubCredentialsId, imageName) {
     stage("Publish Release") {
         node ("${slavePrefix}dev") {
-            git url: remote, commitId: commit, credentialsId: githubCredentialsId
-            // def author = sh(returnStdout: true, script: "git --no-pager show -s --format='%an' ${commit}").trim()
-            // def email = sh(returnStdout: true, script: "git --no-pager show -s --format='%ae' ${commit}").trim()
-            // sh """
-            //     git config user.name '${author}'
-            //     git config user.email '${email}'
-            //     git tag -a '${nextVersion}' -m 'Version ${nextVersion}'
-            //     git push --tags
-            // """
-
-            sh """
-                git tag -a '${nextVersion}' -m 'Version ${nextVersion}'
-                git push --tags
-            """
+            withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: githubCredentialsId, usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD']]) {
+                sh """
+                    git tag -a '${nextVersion}' -m 'Version ${nextVersion}'
+                    git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/mergermarket/cdflow-commands --tags
+                """
+            }
 
             docker.withRegistry('https://registry.hub.docker.com', dockerHubCredentialsId) {
                 def app = docker.image "${imageName}:snapshot"
