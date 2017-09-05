@@ -305,13 +305,14 @@ class TestRelease(unittest.TestCase):
                 return True
 
         os_path.exists = _mock_exists
+        os_path.abspath.return_value = '/dummy/path/on-docker-build'
 
         # When
         self._plugin.create()
 
         # Then
         check_call.assert_any_call([
-            './on-docker-build',
+            '/dummy/path/on-docker-build',
             '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
                 self._account_id,
                 self._region,
@@ -319,6 +320,7 @@ class TestRelease(unittest.TestCase):
                 self._version
             )
         ])
+        os_path.abspath.assert_called_once_with('./on-docker-build')
 
     @patch('cdflow_commands.plugins.ecs.check_call')
     @patch('cdflow_commands.plugins.ecs.path')
@@ -326,8 +328,10 @@ class TestRelease(unittest.TestCase):
         self, os_path, check_call
     ):
         # Given
+        os_path.abspath.return_value = '/path/to/on-docker-build'
+
         def _error_on_docker_build(command):
-            if command[0] == ReleasePlugin.ON_BUILD_HOOK:
+            if command[0] == '/path/to/on-docker-build':
                 raise CalledProcessError(1, ['./on-docker-build'])
 
         os_path.exists.return_value = True
@@ -340,6 +344,7 @@ class TestRelease(unittest.TestCase):
         call_arguments = [call[1][0] for call in check_call.mock_calls]
         for arguments in call_arguments:
             assert ['docker', 'push'] != arguments[:2]
+        os_path.abspath.assert_called_once_with(ReleasePlugin.ON_BUILD_HOOK)
 
     @patch('cdflow_commands.plugins.ecs.check_call')
     @patch('cdflow_commands.plugins.ecs.path')
@@ -347,8 +352,10 @@ class TestRelease(unittest.TestCase):
         self, os_path, check_call
     ):
         # Given
+        os_path.abspath.return_value = '/path/to/on-docker-build'
+
         def _error_on_docker_build(command):
-            if command[0] == ReleasePlugin.ON_BUILD_HOOK:
+            if command[0] == '/path/to/on-docker-build':
                 raise CalledProcessError(1, ['./on-docker-build'])
 
         os_path.exists.return_value = True
@@ -356,3 +363,4 @@ class TestRelease(unittest.TestCase):
 
         # When & Then
         self.assertRaises(UserFacingError, self._plugin.create)
+        os_path.abspath.assert_called_once_with(ReleasePlugin.ON_BUILD_HOOK)
