@@ -92,7 +92,6 @@ class TestDeploy(unittest.TestCase):
                 [
                     'terraform', 'plan', '-input=false',
                     '-var', 'env={}'.format(environment),
-                    '-var', 'aws_region={}'.format(aws_region),
                     '-var-file', 'release.json',
                     '-var-file', 'platform-config/{}/{}.json'.format(
                         account_alias, boto_session.region_name
@@ -252,7 +251,6 @@ class TestDeploy(unittest.TestCase):
                 [
                     'terraform', 'plan', '-input=false',
                     '-var', 'env={}'.format(environment),
-                    '-var', 'aws_region={}'.format(aws_region),
                     '-var-file', 'release.json',
                     '-var-file', 'platform-config/{}/{}.json'.format(
                         account_alias, boto_session.region_name
@@ -338,7 +336,6 @@ class TestDeploy(unittest.TestCase):
                 [
                     'terraform', 'plan', '-input=false',
                     '-var', 'env={}'.format(environment),
-                    '-var', 'aws_region={}'.format(aws_region),
                     '-var-file', 'release.json',
                     '-var-file', 'platform-config/{}/{}.json'.format(
                         account_alias, boto_session.region_name
@@ -428,7 +425,6 @@ class TestDeploy(unittest.TestCase):
                 [
                     'terraform', 'plan', '-input=false',
                     '-var', 'env={}'.format(environment),
-                    '-var', 'aws_region={}'.format(aws_region),
                     '-var-file', 'release.json',
                     '-var-file', 'platform-config/{}/{}.json'.format(
                         account_alias, boto_session.region_name

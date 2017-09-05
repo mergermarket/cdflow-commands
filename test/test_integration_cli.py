@@ -172,9 +172,6 @@ class TestDeployCLI(unittest.TestCase):
             [
                 'terraform', 'plan', '-input=false',
                 '-var', 'env=live',
-                '-var', 'aws_region={}'.format(
-                    mock_assumed_session.region_name
-                ),
                 '-var-file', 'release.json',
                 '-var-file', ANY,
                 '-var-file',
@@ -231,9 +228,6 @@ class TestDeployCLI(unittest.TestCase):
             [
                 'terraform', 'plan', '-input=false',
                 '-var', 'env=live',
-                '-var', 'aws_region={}'.format(
-                    mock_assumed_session.region_name
-                ),
                 '-var-file', 'release.json',
                 '-var-file', ANY,
                 '-var-file',
@@ -398,7 +392,6 @@ class TestDestroyCLI(unittest.TestCase):
         check_call_destroy.assert_any_call(
             [
                 TERRAFORM_BINARY, 'plan', '-destroy',
-                '-var', 'aws_region=us-north-4',
                 '-out', ANY, TERRAFORM_DESTROY_DEFINITION,
             ],
             env=ANY,
@@ -443,7 +436,6 @@ class TestDestroyCLI(unittest.TestCase):
         check_call_destroy.assert_called_once_with(
             [
                 TERRAFORM_BINARY, 'plan', '-destroy',
-                '-var', 'aws_region=us-north-4',
                 '-out', ANY, TERRAFORM_DESTROY_DEFINITION,
             ],
             env=ANY,
