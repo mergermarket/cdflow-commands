@@ -58,7 +58,11 @@ def publish(slavePrefix, githubCredentialsId, dockerHubCredentialsId, imageName)
         node ("${slavePrefix}dev") {
             withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: githubCredentialsId, usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD']]) {
                 git url: remote, commitId: commit, credentialsId: githubCredentialsId
+                def author = sh(returnStdout: true, script: "git --no-pager show -s --format='%an' ${commit}").trim()
+                def email = sh(returnStdout: true, script: "git --no-pager show -s --format='%ae' ${commit}").trim()
                 sh """
+                    git config user.name '${author}'
+                    git config user.email '${email}'
                     git tag -a '${nextVersion}' -m 'Version ${nextVersion}'
                     git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/mergermarket/cdflow-commands --tags
                 """
