@@ -30,7 +30,9 @@ class ReleasePlugin:
             self._ensure_ecr_repo_exists()
             self._ensure_ecr_policy_set()
             self._docker_login()
-            self._docker_push()
+            self._docker_push(self._image_name)
+            self._docker_tag_latest()
+            self._docker_push(self._latest_image_name)
 
         return {'image_id': self._image_name}
 
@@ -59,6 +61,15 @@ class ReleasePlugin:
             self._account_scheme.default_region,
             self._release.component_name,
             self._release.version or 'dev'
+        )
+
+    @property
+    def _latest_image_name(self):
+        return '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
+            self._account_scheme.release_account.id,
+            self._account_scheme.default_region,
+            self._release.component_name,
+            'latest'
         )
 
     def _ensure_ecr_repo_exists(self):
@@ -114,5 +125,10 @@ class ReleasePlugin:
             ['docker', 'login', '-u', username, '-p', password, proxy_endpoint]
         )
 
-    def _docker_push(self):
-        check_call(['docker', 'push', self._image_name])
+    def _docker_push(self, image_name):
+        check_call(['docker', 'push', image_name])
+
+    def _docker_tag_latest(self):
+        check_call(
+            ['docker', 'tag', self._image_name, self._latest_image_name]
+        )

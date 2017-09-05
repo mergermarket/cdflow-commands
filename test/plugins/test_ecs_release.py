@@ -183,6 +183,64 @@ class TestRelease(unittest.TestCase):
                 'docker', 'push', image_name
             ])
 
+    @given(fixed_dictionaries({
+        'proxy_endpoint': text(
+            alphabet=IDENTIFIER_ALPHABET + ':/', min_size=8, max_size=16
+        ),
+        'username': text(
+            alphabet=IDENTIFIER_ALPHABET, min_size=8, max_size=16
+        ),
+        'password': text(
+            alphabet=IDENTIFIER_ALPHABET, min_size=8, max_size=16
+        )
+    }))
+    def test_build_with_version_pushes_to_ecr_repo_with_latest_tag(
+        self, fixtures
+    ):
+        # Given
+        proxy_endpoint = fixtures['proxy_endpoint']
+        username = fixtures['username']
+        password = fixtures['password']
+
+        self._ecr_client.describe_repositories = Mock()
+        self._set_mock_get_authorization_token(
+            username, password, proxy_endpoint
+        )
+
+        with patch('cdflow_commands.plugins.ecs.check_call') as check_call:
+            # When
+            self._plugin.create()
+
+            # Then
+            self._ecr_client.describe_repositories.assert_called_once_with(
+                repositoryNames=[self._component_name]
+            )
+
+            self._ecr_client.get_authorization_token.assert_called_once()
+
+            check_call.assert_any_call([
+                'docker', 'login',
+                '-u', username, '-p', password, proxy_endpoint
+            ])
+
+            image_name = '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
+                self._account_id, self._region, self._component_name,
+                self._version
+            )
+
+            latest_image_name = '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
+                self._account_id, self._region, self._component_name,
+                'latest'
+            )
+
+            check_call.assert_any_call([
+                'docker', 'tag', image_name, latest_image_name
+            ])
+
+            check_call.assert_any_call([
+                'docker', 'push', latest_image_name
+            ])
+
     @given(text(alphabet=IDENTIFIER_ALPHABET, min_size=8, max_size=16))
     def test_ecr_repo_created_when_it_does_not_exist(self, component_name):
         # Given
