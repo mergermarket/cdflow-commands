@@ -57,6 +57,7 @@ def publish(slavePrefix, githubCredentialsId, dockerHubCredentialsId, imageName)
     stage("Publish Release") {
         node ("${slavePrefix}dev") {
             withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: githubCredentialsId, usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD']]) {
+                git url: remote, commitId: commit, credentialsId: githubCredentialsId
                 sh """
                     git tag -a '${nextVersion}' -m 'Version ${nextVersion}'
                     git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/mergermarket/cdflow-commands --tags
