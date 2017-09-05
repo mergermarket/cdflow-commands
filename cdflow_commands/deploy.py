@@ -1,7 +1,6 @@
 import json
 import os
 from os import path
-from subprocess import check_call
 from tempfile import NamedTemporaryFile
 from time import time
 
@@ -11,6 +10,7 @@ from cdflow_commands.constants import (
     PLATFORM_CONFIG_BASE_PATH, RELEASE_METADATA_FILE, TERRAFORM_BINARY
 )
 from cdflow_commands.logger import logger
+from cdflow_commands.process import check_call
 
 
 class Deploy:

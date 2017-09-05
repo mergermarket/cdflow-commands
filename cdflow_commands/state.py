@@ -4,7 +4,6 @@ from hashlib import sha1
 from os import mkdir, unlink
 from os.path import abspath
 from shutil import move
-from subprocess import check_call
 from tempfile import NamedTemporaryFile
 from textwrap import dedent
 
@@ -13,6 +12,7 @@ from botocore.exceptions import ClientError
 from cdflow_commands.config import env_with_aws_credetials
 from cdflow_commands.exceptions import CDFlowError
 from cdflow_commands.logger import logger
+from cdflow_commands.process import check_call
 
 TFSTATE_NAME_PREFIX = 'cdflow-tfstate'
 LAMBDA_BUCKET_NAME = 'cdflow-lambda-releases'
