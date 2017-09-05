@@ -8,13 +8,11 @@ def commit
 
 def githubCredentialsId = "github-build-user"
 
-//  docker
 def dockerHubCredentialsId = 'dockerhub'
 def imageName = 'mergermarket/cdflow-commands'
 
 try {
     build(slavePrefix, dockerHubCredentialsId, imageName)
-    test(slavePrefix, imageName)
     publish(slavePrefix, githubCredentialsId, dockerHubCredentialsId, imageName)
 }
 catch (e) {
@@ -32,24 +30,17 @@ def build(slavePrefix, dockerHubCredentialsId, imageName) {
             commit = sh(returnStdout: true, script: "git rev-parse HEAD").trim()
             nextVersion = currentVersion + 1
 
-            docker.withRegistry('https://registry.hub.docker.com', dockerHubCredentialsId) {
-                docker.build("${imageName}:snapshot").push()
+            wrap([$class: "AnsiColorBuildWrapper"]) {
+                sh "./test.sh"
             }
-        }
-    }
-}
 
-def test(slavePrefix, imageName) {
-    stage ("Unit Test") {
-        node ("${slavePrefix}dev") {
-          wrap([$class: "AnsiColorBuildWrapper"]) {
-              sh "./test.sh"
-          }
-        }
-    }
+            def imageNameTag = "${imageName}:snapshot"
+            docker.withRegistry('https://registry.hub.docker.com', dockerHubCredentialsId) {
+                docker.build(imageNameTag).push()
+            }
 
-    stage ("Acceptance Test") {
-        build job: 'platform/cdflow-test-service.temp', parameters: [string(name: 'CDFLOW_IMAGE_ID', value: "${imageName}:snapshot") ]
+            build job: 'platform/cdflow-test-service.temp', parameters: [string(name: 'CDFLOW_IMAGE_ID', value: imageNameTag) ]
+        }
     }
 }
 
