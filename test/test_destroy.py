@@ -58,7 +58,6 @@ class TestDestroy(unittest.TestCase):
             [
                 TERRAFORM_BINARY, 'plan',
                 '-destroy',
-                '-var', 'aws_region={}'.format(session.region_name),
                 '-out', 'plan-{}'.format(time.return_value),
                 TERRAFORM_DESTROY_DEFINITION,
             ],
@@ -156,7 +155,6 @@ class TestDestroy(unittest.TestCase):
             [
                 TERRAFORM_BINARY, 'plan',
                 '-destroy',
-                '-var', 'aws_region={}'.format(session.region_name),
                 '-out', 'plan-{}'.format(time.return_value),
                 TERRAFORM_DESTROY_DEFINITION,
             ],
