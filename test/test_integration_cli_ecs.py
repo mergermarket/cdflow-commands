@@ -117,6 +117,12 @@ class TestReleaseCLI(unittest.TestCase):
             component_name,
             version
         )
+        latest_image_name = '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
+            123456789,
+            'us-north-4',
+            component_name,
+            'latest'
+        )
 
         cli.run([
             'release', '--platform-config', 'path/to/config',
@@ -130,7 +136,11 @@ class TestReleaseCLI(unittest.TestCase):
             RoleSessionName=mock_os.environ['JOB_NAME'],
         )
 
-        check_call.assert_any_call(['docker', 'build', '-t', image_name, '.'])
+        check_call.assert_any_call([
+            'docker', 'build',
+            '--cache-from', latest_image_name,
+            '-t', image_name, '.'
+        ])
         check_call.assert_any_call(['docker', 'push', image_name])
 
         mock_session.resource.return_value.Object.assert_called_once_with(
@@ -246,8 +256,18 @@ class TestReleaseCLI(unittest.TestCase):
             component_name,
             version
         )
+        latest_image_name = '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
+            123456789,
+            'us-north-4',
+            component_name,
+            'latest'
+        )
 
-        check_call.assert_any_call(['docker', 'build', '-t', image_name, '.'])
+        check_call.assert_any_call([
+            'docker', 'build',
+            '--cache-from', latest_image_name,
+            '-t', image_name, '.'
+        ])
         check_call.assert_any_call(['docker', 'push', image_name])
 
         mock_session.resource.return_value.Object.assert_called_once_with(
