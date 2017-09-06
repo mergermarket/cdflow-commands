@@ -117,14 +117,12 @@ class TestRelease(unittest.TestCase):
             # Then
             assert plugin_data == {'image_id': image_name}
 
-            check_call.assert_called_once_with(
-                [
-                    'docker',
-                    'build',
-                    '--cache-from', latest_image_name,
-                    '-t', image_name, '.'
-                ]
-            )
+            check_call.assert_called_once_with([
+                'docker',
+                'build',
+                '--cache-from', latest_image_name,
+                '-t', image_name, '.'
+            ])
 
     @given(text(alphabet=IDENTIFIER_ALPHABET, min_size=1, max_size=12))
     def test_tags_container_with_version(self, version):
@@ -145,14 +143,12 @@ class TestRelease(unittest.TestCase):
                 self._account_id, self._region, self._component_name, 'latest'
             )
 
-            check_call.assert_any_call(
-                [
-                    'docker',
-                    'build',
-                    '--cache-from', latest_image_name,
-                    '-t', image_name, '.'
-                ]
-            )
+            check_call.assert_any_call([
+                'docker',
+                'build',
+                '--cache-from', latest_image_name,
+                '-t', image_name, '.'
+            ])
 
     @given(fixed_dictionaries({
         'proxy_endpoint': text(

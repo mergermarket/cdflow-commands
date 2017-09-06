@@ -133,6 +133,6 @@ class ReleasePlugin:
         check_call(['docker', 'push', image_name])
 
     def _docker_tag_latest(self):
-        check_call(
-            ['docker', 'tag', self._image_name, self._latest_image_name]
-        )
+        check_call([
+            'docker', 'tag', self._image_name, self._latest_image_name
+        ])
