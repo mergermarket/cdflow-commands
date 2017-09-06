@@ -1,5 +1,4 @@
 from cdflow_commands.exceptions import UserFacingError
-from cdflow_commands.logger import logger
 
 from subprocess import CalledProcessError, check_call as _check_call
 
