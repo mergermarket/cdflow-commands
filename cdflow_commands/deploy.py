@@ -82,9 +82,6 @@ class Deploy:
     def _add_plan_parameters(self, parameters, secrets_file_path):
         parameters += [
             '-var', 'env={}'.format(self._environment),
-            '-var', 'aws_region={}'.format(
-                self._account_scheme.default_region
-            ),
             '-var-file', RELEASE_METADATA_FILE,
             '-var-file', self._platform_config_file_path,
             '-var-file', secrets_file_path,
