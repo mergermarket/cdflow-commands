@@ -1,11 +1,11 @@
 import os
-from subprocess import check_call
 from time import time
 
 from cdflow_commands.config import env_with_aws_credetials
 from cdflow_commands.constants import (
     CDFLOW_BASE_PATH, TERRAFORM_BINARY, TERRAFORM_DESTROY_DEFINITION
 )
+from cdflow_commands.process import check_call
 
 
 class Destroy:

@@ -5,7 +5,6 @@ import os
 from os import chmod, getcwd, path, mkdir
 from shutil import copytree, make_archive
 import shutil
-from subprocess import check_call
 from tempfile import TemporaryDirectory
 from time import time
 from zipfile import ZipFile
@@ -15,6 +14,7 @@ from cdflow_commands.constants import (
     PLATFORM_CONFIG_BASE_PATH, RELEASE_METADATA_FILE, TERRAFORM_BINARY
 )
 from cdflow_commands.logger import logger
+from cdflow_commands.process import check_call
 from cdflow_commands.zip_patch import _make_zipfile
 
 # Monkey patch the standard library...
