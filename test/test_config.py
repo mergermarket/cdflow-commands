@@ -92,9 +92,7 @@ class TestAssumeRole(unittest.TestCase):
 
         mock_sts = Mock()
         user_id = 'foo'
-        mock_sts.get_caller_identity.return_value = {
-            u'UserId': user_id,
-        }
+        mock_sts.get_caller_identity.return_value = {u'UserId': user_id}
         mock_sts.assume_role.return_value = {
             'Credentials': {
                 'AccessKeyId': 'dummy-access-key-id',
@@ -138,9 +136,7 @@ class TestAssumeRole(unittest.TestCase):
 
         mock_sts = Mock()
         user_id = 'foo'
-        mock_sts.get_caller_identity.return_value = {
-            u'UserId': user_id,
-        }
+        mock_sts.get_caller_identity.return_value = {u'UserId': user_id}
         mock_sts.assume_role.return_value = {
             'Credentials': {
                 'AccessKeyId': 'dummy-access-key-id',
