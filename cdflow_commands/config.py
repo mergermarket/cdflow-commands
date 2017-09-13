@@ -1,6 +1,6 @@
 import json
 from collections import namedtuple
-from re import DOTALL, match, sub
+from re import DOTALL, match
 from subprocess import CalledProcessError, check_output
 
 import yaml
@@ -96,16 +96,9 @@ def _validate_email(email):
         )
 
 
-def get_role_session_name(env):
-    if 'JOB_NAME' in env:
-        _validate_job_name(env['JOB_NAME'])
-        unsafe_session_name = env['JOB_NAME']
-    elif 'EMAIL' in env:
-        _validate_email(env['EMAIL'])
-        unsafe_session_name = env['EMAIL']
-    else:
-        raise NoJobNameOrEmailError()
-    return sub(r'[^\w+=,.@-]+', '-', unsafe_session_name)[:64]
+def get_role_session_name(sts_client):
+    caller_response = sts_client.get_caller_identity()
+    return caller_response.get('UserId')
 
 
 def get_component_name(component_name):
