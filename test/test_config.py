@@ -91,6 +91,10 @@ class TestAssumeRole(unittest.TestCase):
         MockSession.return_value = mock_session
 
         mock_sts = Mock()
+        user_id = 'foo'
+        mock_sts.get_caller_identity.return_value = {
+            u'UserId': user_id,
+        }
         mock_sts.assume_role.return_value = {
             'Credentials': {
                 'AccessKeyId': 'dummy-access-key-id',
@@ -107,16 +111,14 @@ class TestAssumeRole(unittest.TestCase):
         mock_root_session.client.return_value = mock_sts
 
         account_id = 123456789
-        session_name = 'dummy-session-name'
-        session = config.assume_role(
-            mock_root_session, account_id, session_name
-        )
+        session = config.assume_role(mock_root_session, account_id)
+
         assert session is mock_session
 
         mock_root_session.client.assert_called_once_with('sts')
         mock_sts.assume_role.assert_called_once_with(
             RoleArn='arn:aws:iam::{}:role/admin'.format(account_id),
-            RoleSessionName=session_name,
+            RoleSessionName=user_id,
         )
         MockSession.assert_called_once_with(
             'dummy-access-key-id',
@@ -135,6 +137,10 @@ class TestAssumeRole(unittest.TestCase):
         MockSession.return_value = mock_session
 
         mock_sts = Mock()
+        user_id = 'foo'
+        mock_sts.get_caller_identity.return_value = {
+            u'UserId': user_id,
+        }
         mock_sts.assume_role.return_value = {
             'Credentials': {
                 'AccessKeyId': 'dummy-access-key-id',
@@ -151,16 +157,15 @@ class TestAssumeRole(unittest.TestCase):
         mock_root_session.client.return_value = mock_sts
 
         account_id = 123456789
-        session_name = 'dummy-session-name'
         session = config.assume_role(
-            mock_root_session, account_id, session_name, 'us-west-4',
+            mock_root_session, account_id, region='us-west-4',
         )
         assert session is mock_session
 
         mock_root_session.client.assert_called_once_with('sts')
         mock_sts.assume_role.assert_called_once_with(
             RoleArn='arn:aws:iam::{}:role/admin'.format(account_id),
-            RoleSessionName=session_name,
+            RoleSessionName=user_id,
         )
         MockSession.assert_called_once_with(
             'dummy-access-key-id',

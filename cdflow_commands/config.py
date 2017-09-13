@@ -51,13 +51,14 @@ def load_manifest():
         )
 
 
-def assume_role(root_session, acccount_id, session_name, region=None):
+def assume_role(root_session, acccount_id, region=None):
+    sts = root_session.client('sts')
+    session_name = get_role_session_name(sts)
     logger.debug(
-        "Assuming role arn:aws:iam::{}:role/admin over session {}".format(
+        "Assuming role arn:aws:iam::{}:role/admin with session {}".format(
             acccount_id, session_name
         )
     )
-    sts = root_session.client('sts')
     response = sts.assume_role(
         RoleArn='arn:aws:iam::{}:role/admin'.format(acccount_id),
         RoleSessionName=session_name,
