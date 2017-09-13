@@ -23,8 +23,7 @@ from subprocess import check_output
 from boto3.session import Session
 
 from cdflow_commands.config import (
-    assume_role, get_component_name, get_role_session_name,
-    load_manifest, build_account_scheme
+    assume_role, get_component_name, load_manifest, build_account_scheme
 )
 from cdflow_commands.constants import (
     INFRASTRUCTURE_DEFINITIONS_PATH, TERRAFORM_DESTROY_DEFINITION,
@@ -74,10 +73,8 @@ def _run(argv):
         root_session.resource('s3'), manifest.account_scheme_url
     )
 
-    role_session_name = get_role_session_name(os.environ)
-
     release_account_session = assume_role(
-        root_session, account_scheme.release_account.id, role_session_name,
+        root_session, account_scheme.release_account.id,
         account_scheme.default_region,
     )
 
@@ -127,12 +124,10 @@ def run_deploy(
     environment = args['<environment>']
     component_name = get_component_name(args['--component'])
     version = args['<version>']
-    role_session_name = get_role_session_name(os.environ)
     account_id = account_scheme.account_for_environment(environment).id
 
     deploy_account_session = assume_role(
-        root_session, account_id, role_session_name,
-        account_scheme.default_region,
+        root_session, account_id, account_scheme.default_region,
     )
 
     with fetch_release(
@@ -165,13 +160,11 @@ def run_deploy(
 def run_destroy(root_session, account_scheme, manifest, args):
     environment = args['<environment>']
     component_name = get_component_name(args['--component'])
-    role_session_name = get_role_session_name(os.environ)
     account_id = account_scheme.account_for_environment(environment).id
 
     logger.debug('Assuming role in {}'.format(account_id))
     destroy_account_session = assume_role(
-        root_session, account_id, role_session_name,
-        account_scheme.default_region,
+        root_session, account_id, account_scheme.default_region,
     )
 
     initialise_terraform(

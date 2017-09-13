@@ -81,6 +81,8 @@ class TestReleaseCLI(unittest.TestCase):
         mock_os.environ = {'JOB_NAME': 'dummy-job-name'}
 
         mock_sts = Mock()
+        user_id = 'foo'
+        mock_sts.get_caller_identity.return_value = {u'UserId': user_id}
         mock_sts.assume_role.return_value = {
             'Credentials': {
                 'AccessKeyId': 'dummy-access-key-id',
@@ -133,7 +135,7 @@ class TestReleaseCLI(unittest.TestCase):
 
         mock_sts.assume_role.assert_called_once_with(
             RoleArn='arn:aws:iam::123456789:role/admin',
-            RoleSessionName=mock_os.environ['JOB_NAME'],
+            RoleSessionName=user_id,
         )
 
         check_call.assert_any_call([
