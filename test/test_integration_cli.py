@@ -14,7 +14,6 @@ import yaml
 BotoCreds = namedtuple('BotoCreds', ['access_key', 'secret_key', 'token'])
 
 
-@patch.dict('cdflow_commands.cli.os.environ', {'JOB_NAME': 'dummy-job-name'})
 @patch('cdflow_commands.secrets.credstash')
 @patch('cdflow_commands.release.os')
 @patch('cdflow_commands.release.ZipFile')
@@ -247,7 +246,6 @@ class TestDeployCLI(unittest.TestCase):
         )
 
 
-@patch.dict('cdflow_commands.cli.os.environ', {'JOB_NAME': 'dummy-job-name'})
 @patch('cdflow_commands.destroy.check_call')
 @patch('cdflow_commands.destroy.time')
 @patch('cdflow_commands.cli.rmtree')

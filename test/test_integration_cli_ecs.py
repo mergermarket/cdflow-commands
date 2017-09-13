@@ -78,8 +78,6 @@ class TestReleaseCLI(unittest.TestCase):
         mock_session.client.return_value = mock_ecr_client
         Session_from_config.return_value = mock_session
 
-        mock_os.environ = {'JOB_NAME': 'dummy-job-name'}
-
         mock_sts = Mock()
         user_id = 'foo'
         mock_sts.get_caller_identity.return_value = {u'UserId': user_id}
@@ -210,8 +208,6 @@ class TestReleaseCLI(unittest.TestCase):
         mock_session = Mock()
         mock_session.client.return_value = mock_ecr_client
         Session_from_config.return_value = mock_session
-
-        mock_os.environ = {'JOB_NAME': 'dummy-job-name'}
 
         mock_sts = Mock()
         mock_sts.assume_role.return_value = {

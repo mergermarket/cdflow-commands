@@ -1,6 +1,5 @@
 import json
 from collections import namedtuple
-from re import DOTALL, match
 from subprocess import CalledProcessError, check_output
 
 import yaml
@@ -23,10 +22,6 @@ class InvalidEmailError(UserFacingError):
 
 class InvalidURLError(UserFacingError):
     pass
-
-
-class NoJobNameOrEmailError(UserFacingFixedMessageError):
-    _message = 'JOB_NAME or EMAIL must be set'
 
 
 class NoGitRemoteError(UserFacingFixedMessageError):
@@ -81,20 +76,6 @@ def env_with_aws_credetials(env, boto_session):
         'AWS_DEFAULT_REGION': boto_session.region_name,
     })
     return result
-
-
-def _validate_job_name(job_name):
-    if len(job_name) < 6:
-        raise JobNameTooShortError(
-            'JOB_NAME must be at least 6 characters', job_name
-        )
-
-
-def _validate_email(email):
-    if not match(r'.+@([\w-]+\.)+\w+$', email, DOTALL):
-        raise InvalidEmailError(
-            'EMAIL does not contain a valid email address', email
-        )
 
 
 def get_role_session_name(sts_client):
