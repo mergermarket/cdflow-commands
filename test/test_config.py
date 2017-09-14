@@ -6,7 +6,7 @@ from string import ascii_letters, digits, printable
 from subprocess import CalledProcessError
 
 from cdflow_commands import config
-from hypothesis import example, given, assume
+from hypothesis import given, assume
 from hypothesis.strategies import composite, fixed_dictionaries, lists, text
 from mock import MagicMock, Mock, mock_open, patch
 
@@ -91,6 +91,8 @@ class TestAssumeRole(unittest.TestCase):
         MockSession.return_value = mock_session
 
         mock_sts = Mock()
+        user_id = 'foo'
+        mock_sts.get_caller_identity.return_value = {u'UserId': user_id}
         mock_sts.assume_role.return_value = {
             'Credentials': {
                 'AccessKeyId': 'dummy-access-key-id',
@@ -107,16 +109,14 @@ class TestAssumeRole(unittest.TestCase):
         mock_root_session.client.return_value = mock_sts
 
         account_id = 123456789
-        session_name = 'dummy-session-name'
-        session = config.assume_role(
-            mock_root_session, account_id, session_name
-        )
+        session = config.assume_role(mock_root_session, account_id)
+
         assert session is mock_session
 
         mock_root_session.client.assert_called_once_with('sts')
         mock_sts.assume_role.assert_called_once_with(
             RoleArn='arn:aws:iam::{}:role/admin'.format(account_id),
-            RoleSessionName=session_name,
+            RoleSessionName=user_id,
         )
         MockSession.assert_called_once_with(
             'dummy-access-key-id',
@@ -135,6 +135,8 @@ class TestAssumeRole(unittest.TestCase):
         MockSession.return_value = mock_session
 
         mock_sts = Mock()
+        user_id = 'foo'
+        mock_sts.get_caller_identity.return_value = {u'UserId': user_id}
         mock_sts.assume_role.return_value = {
             'Credentials': {
                 'AccessKeyId': 'dummy-access-key-id',
@@ -151,16 +153,15 @@ class TestAssumeRole(unittest.TestCase):
         mock_root_session.client.return_value = mock_sts
 
         account_id = 123456789
-        session_name = 'dummy-session-name'
         session = config.assume_role(
-            mock_root_session, account_id, session_name, 'us-west-4',
+            mock_root_session, account_id, region='us-west-4',
         )
         assert session is mock_session
 
         mock_root_session.client.assert_called_once_with('sts')
         mock_sts.assume_role.assert_called_once_with(
             RoleArn='arn:aws:iam::{}:role/admin'.format(account_id),
-            RoleSessionName=session_name,
+            RoleSessionName=user_id,
         )
         MockSession.assert_called_once_with(
             'dummy-access-key-id',
@@ -173,86 +174,28 @@ class TestAssumeRole(unittest.TestCase):
 class TestGetRoleSessionName(unittest.TestCase):
 
     @given(text(alphabet=ROLE_SAFE_ALPHABET, min_size=8, max_size=64))
-    def test_get_session_name_from_safe_job_name(self, job_name):
-        env = {
-            'JOB_NAME': job_name
+    def test_get_session_name_from_sts(self, user_id):
+        sts_client = Mock()
+        sts_client.get_caller_identity.return_value = {
+            u'Account': '111111111111',
+            u'UserId': user_id,
+            'ResponseMetadata': {
+                'RetryAttempts': 0,
+                'HTTPStatusCode': 200,
+                'RequestId': 'aaaaaaaa-1111-bbbb-2222-cccccccccccc',
+                'HTTPHeaders': {
+                    'x-amzn-requestid': 'aaaaaaaa-1111-bbbb-2222-cccccccccccc',
+                    'date': 'Wed, 13 Sep 2000 12:00:59 GMT',
+                    'content-length': '458',
+                    'content-type': 'text/xml'
+                }
+            },
+            u'Arn': 'arn:aws:sts::111111111111:assumed-role/admin/u@domain.com'
         }
-        role_session_name = config.get_role_session_name(env)
 
-        assert role_session_name == job_name
+        role_session_name = config.get_role_session_name(sts_client)
 
-    @given(text(alphabet=ROLE_UNSAFE_ALPHABET, min_size=8, max_size=64))
-    def test_get_session_name_from_unsafe_job_name(self, job_name):
-        env = {
-            'JOB_NAME': job_name
-        }
-        role_session_name = config.get_role_session_name(env)
-
-        for character in ROLE_UNSAFE_CHARACTERS:
-            assert character not in role_session_name
-
-    @given(text(alphabet=ROLE_UNSAFE_ALPHABET, min_size=8, max_size=100))
-    @example(
-        'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
-    )
-    def test_get_session_name_from_unsafe_job_name_truncated(self, job_name):
-        env = {
-            'JOB_NAME': job_name
-        }
-        role_session_name = config.get_role_session_name(env)
-
-        assert len(role_session_name) <= 64
-
-    @given(text(alphabet=ROLE_SAFE_ALPHABET, min_size=0, max_size=5))
-    def test_user_error_raised_for_too_short_job_name(self, job_name):
-        env = {
-            'JOB_NAME': job_name
-        }
-        self.assertRaises(
-            config.JobNameTooShortError,
-            config.get_role_session_name,
-            env
-        )
-
-    @given(email())
-    @example('user@example.co.uk')
-    def test_get_session_name_from_email(self, email):
-        env = {
-            'EMAIL': email
-        }
-        role_session_name = config.get_role_session_name(env)
-
-        for character in ROLE_UNSAFE_CHARACTERS:
-            assert character not in role_session_name
-
-    @given(email(min_size=100))
-    def test_get_session_name_from_unsafe_email_truncated(self, email):
-        env = {
-            'EMAIL': email
-        }
-        role_session_name = config.get_role_session_name(env)
-
-        assert len(role_session_name) <= 64
-
-    @given(text(alphabet=ascii_letters))
-    @example(r'Abc.example.com')
-    @example(r'john.doe@example..com')
-    def test_invalid_email_address(self, email):
-        env = {
-            'EMAIL': email
-        }
-        self.assertRaises(
-            config.InvalidEmailError,
-            config.get_role_session_name,
-            env
-        )
-
-    def test_user_error_when_no_job_name_or_email(self):
-        self.assertRaises(
-            config.NoJobNameOrEmailError,
-            config.get_role_session_name,
-            {}
-        )
+        assert role_session_name == user_id
 
 
 class TestGetComponentName(unittest.TestCase):

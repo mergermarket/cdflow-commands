@@ -1,6 +1,5 @@
 import json
 from collections import namedtuple
-from re import DOTALL, match, sub
 from subprocess import CalledProcessError, check_output
 
 import yaml
@@ -25,10 +24,6 @@ class InvalidURLError(UserFacingError):
     pass
 
 
-class NoJobNameOrEmailError(UserFacingFixedMessageError):
-    _message = 'JOB_NAME or EMAIL must be set'
-
-
 class NoGitRemoteError(UserFacingFixedMessageError):
     _message = 'No git remote configured - cannot infer component name'
 
@@ -51,13 +46,14 @@ def load_manifest():
         )
 
 
-def assume_role(root_session, acccount_id, session_name, region=None):
+def assume_role(root_session, acccount_id, region=None):
+    sts = root_session.client('sts')
+    session_name = get_role_session_name(sts)
     logger.debug(
-        "Assuming role arn:aws:iam::{}:role/admin over session {}".format(
+        "Assuming role arn:aws:iam::{}:role/admin with session {}".format(
             acccount_id, session_name
         )
     )
-    sts = root_session.client('sts')
     response = sts.assume_role(
         RoleArn='arn:aws:iam::{}:role/admin'.format(acccount_id),
         RoleSessionName=session_name,
@@ -82,30 +78,9 @@ def env_with_aws_credetials(env, boto_session):
     return result
 
 
-def _validate_job_name(job_name):
-    if len(job_name) < 6:
-        raise JobNameTooShortError(
-            'JOB_NAME must be at least 6 characters', job_name
-        )
-
-
-def _validate_email(email):
-    if not match(r'.+@([\w-]+\.)+\w+$', email, DOTALL):
-        raise InvalidEmailError(
-            'EMAIL does not contain a valid email address', email
-        )
-
-
-def get_role_session_name(env):
-    if 'JOB_NAME' in env:
-        _validate_job_name(env['JOB_NAME'])
-        unsafe_session_name = env['JOB_NAME']
-    elif 'EMAIL' in env:
-        _validate_email(env['EMAIL'])
-        unsafe_session_name = env['EMAIL']
-    else:
-        raise NoJobNameOrEmailError()
-    return sub(r'[^\w+=,.@-]+', '-', unsafe_session_name)[:64]
+def get_role_session_name(sts_client):
+    caller_response = sts_client.get_caller_identity()
+    return caller_response.get('UserId')
 
 
 def get_component_name(component_name):

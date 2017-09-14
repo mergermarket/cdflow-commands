@@ -106,10 +106,6 @@ class TestReleaseCLI(unittest.TestCase):
         }
         mock_root_session.client.return_value = mock_sts
 
-        mock_os.environ = {
-            'JOB_NAME': 'dummy-job-name'
-        }
-
         S3BucketFactory.return_value.get_bucket_name.return_value \
             = 'lambda-bucket'
 

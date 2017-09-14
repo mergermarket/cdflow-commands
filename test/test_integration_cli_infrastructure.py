@@ -66,8 +66,6 @@ class TestReleaseCLI(unittest.TestCase):
         }
         mock_root_session.resource.return_value = mock_s3_resource
 
-        mock_os.environ = {'JOB_NAME': 'dummy-job-name'}
-
         mock_sts = Mock()
         mock_sts.assume_role.return_value = {
             'Credentials': {
