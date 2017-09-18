@@ -2,6 +2,7 @@ import yaml
 import unittest
 from datetime import datetime
 from io import TextIOWrapper
+import re
 from string import ascii_letters, digits, printable
 from subprocess import CalledProcessError
 
@@ -196,6 +197,30 @@ class TestGetRoleSessionName(unittest.TestCase):
         role_session_name = config.get_role_session_name(sts_client)
 
         assert role_session_name == user_id
+
+    @given(text(min_size=8, max_size=64))
+    def test_get_safe_session_name(self, user_id):
+        sts_client = Mock()
+        sts_client.get_caller_identity.return_value = {
+            u'Account': '111111111111',
+            u'UserId': user_id,
+            'ResponseMetadata': {
+                'RetryAttempts': 0,
+                'HTTPStatusCode': 200,
+                'RequestId': 'aaaaaaaa-1111-bbbb-2222-cccccccccccc',
+                'HTTPHeaders': {
+                    'x-amzn-requestid': 'aaaaaaaa-1111-bbbb-2222-cccccccccccc',
+                    'date': 'Wed, 13 Sep 2000 12:00:59 GMT',
+                    'content-length': '458',
+                    'content-type': 'text/xml'
+                }
+            },
+            u'Arn': 'arn:aws:sts::111111111111:assumed-role/admin/u@domain.com'
+        }
+
+        role_session_name = config.get_role_session_name(sts_client)
+
+        assert not re.search(config.ILLEGAL_CHARACTERS, role_session_name)
 
 
 class TestGetComponentName(unittest.TestCase):
