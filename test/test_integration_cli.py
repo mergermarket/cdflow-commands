@@ -51,6 +51,7 @@ class TestDeployCLI(unittest.TestCase):
         _open.return_value.__enter__.return_value = mock_metadata_file
 
         mock_sts_client = Mock()
+        mock_sts_client.get_caller_identity.return_value = {'UserId': 'foo'}
         mock_sts_client.assume_role.return_value = {
             'Credentials': {
                 'AccessKeyId': 'dummy-access-key',
@@ -275,6 +276,7 @@ class TestDestroyCLI(unittest.TestCase):
         _open.return_value.__enter__.return_value = mock_metadata_file
 
         mock_sts_client = Mock()
+        mock_sts_client.get_caller_identity.return_value = {'UserId': 'foo'}
         mock_sts_client.assume_role.return_value = {
             'Credentials': {
                 'AccessKeyId': 'dummy-access-key',

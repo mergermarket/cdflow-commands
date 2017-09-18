@@ -67,6 +67,7 @@ class TestReleaseCLI(unittest.TestCase):
         mock_root_session.resource.return_value = mock_s3_resource
 
         mock_sts = Mock()
+        mock_sts.get_caller_identity.return_value = {'UserId': 'foo'}
         mock_sts.assume_role.return_value = {
             'Credentials': {
                 'AccessKeyId': 'dummy-access-key-id',

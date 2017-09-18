@@ -1,5 +1,6 @@
 import json
 from collections import namedtuple
+import re
 from subprocess import CalledProcessError, check_output
 
 import yaml
@@ -10,6 +11,9 @@ from cdflow_commands.exceptions import (
     UserFacingError, UserFacingFixedMessageError
 )
 from cdflow_commands.logger import logger
+
+
+ILLEGAL_CHARACTERS = '[^\w+=,.@-]+'
 
 
 class JobNameTooShortError(UserFacingError):
@@ -80,7 +84,8 @@ def env_with_aws_credetials(env, boto_session):
 
 def get_role_session_name(sts_client):
     caller_response = sts_client.get_caller_identity()
-    return caller_response.get('UserId')
+    user_id = caller_response.get('UserId')
+    return re.sub(ILLEGAL_CHARACTERS, '-', user_id)
 
 
 def get_component_name(component_name):
