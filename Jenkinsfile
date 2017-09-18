@@ -1,3 +1,5 @@
+// vim: filetype=groovy
+
 def slavePrefix = 'mmg'
 
 def currentVersion
@@ -41,7 +43,7 @@ def build(slavePrefix, dockerHubCredentialsId, imageName, registry) {
                 docker.build(imageNameTag).push()
             }
 
-            build job: 'platform/cdflow-test-service.temp', parameters: [string(name: 'CDFLOW_IMAGE_ID', value: imageNameTag) ]
+            build job: 'platform/cdflow-test-service', parameters: [string(name: 'CDFLOW_IMAGE_ID', value: imageNameTag) ]
         }
     }
 }
