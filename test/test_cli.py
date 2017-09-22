@@ -1,6 +1,6 @@
 import unittest
 
-from mock import patch
+from mock import patch, Mock, ANY
 
 from cdflow_commands import cli
 from cdflow_commands.exceptions import UnknownProjectTypeError, UserFacingError
@@ -125,3 +125,32 @@ class TestCliBuildPlugin(unittest.TestCase):
         )
 
         assert expected_message in str(context.exception)
+
+
+class TestMultiAccountDeploy(unittest.TestCase):
+
+    @patch('cdflow_commands.cli.get_secrets')
+    @patch('cdflow_commands.cli.initialise_terraform')
+    @patch('cdflow_commands.cli.Deploy')
+    @patch('cdflow_commands.cli.get_component_name')
+    @patch('cdflow_commands.cli.fetch_release')
+    @patch('cdflow_commands.cli.assume_role')
+    def test_role_not_assumed_for_multi_account_deploy(
+        self, assume_role, fetch_release, _1, _2, _3, _4
+    ):
+        # Given
+        account_scheme = Mock()
+        account_scheme.multiple_account_deploys = True
+        fetch_release.return_value.__enter__.return_value = 'dummy'
+
+        # When
+        args = {
+            '<environment>': ANY,
+            '<version>': ANY,
+            '--plan-only': False,
+            '--component': ANY
+        }
+        cli.run_deploy(Mock(), Mock(), account_scheme, Mock(), args)
+
+        # Then
+        assert not assume_role.called

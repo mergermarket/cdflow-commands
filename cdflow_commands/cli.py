@@ -126,9 +126,12 @@ def run_deploy(
     version = args['<version>']
     account_id = account_scheme.account_for_environment(environment).id
 
-    deploy_account_session = assume_role(
-        root_session, account_id, account_scheme.default_region,
-    )
+    if account_scheme.multiple_account_deploys:
+        deploy_account_session = root_session
+    else:
+        deploy_account_session = assume_role(
+            root_session, account_id, account_scheme.default_region,
+        )
 
     with fetch_release(
         release_account_session, account_scheme.release_bucket,
