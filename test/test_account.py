@@ -181,19 +181,38 @@ class TestAccountScheme(unittest.TestCase):
     def test_environment_accont_mapping_with_multiple_accounts(self, fixtures):
         # Given
         accounts = fixtures['accounts']
+
         prefix_a = fixtures['account_prefixes'][0]
         prefix_b = fixtures['account_prefixes'][1]
-        dev_account_a = accounts[0]['alias']
-        live_account_a = accounts[1]['alias']
-        dev_account_b = accounts[2]['alias']
-        live_account_b = accounts[3]['alias']
+
+        dev_account_a = accounts[0]
+        dev_account_b = accounts[1]
+        live_account_a = accounts[2]
+        live_account_b = accounts[3]
+
+        dev_alias_a = dev_account_a['alias']
+        dev_role_a = dev_account_a['role']
+        dev_id_a = dev_account_a['id']
+
+        dev_alias_b = dev_account_b['alias']
+        dev_role_b = dev_account_b['role']
+        dev_id_b = dev_account_b['id']
+
+        live_alias_a = live_account_a['alias']
+        live_role_a = live_account_a['role']
+        live_id_a = live_account_a['id']
+
+        live_alias_b = live_account_b['alias']
+        live_role_b = live_account_b['role']
+        live_id_b = live_account_b['id']
+
         live_environment = fixtures['environments'][0]
         environments = {
             live_environment: {
-                prefix_a: live_account_a, prefix_b: live_account_b
+                prefix_a: live_alias_a, prefix_b: live_alias_b
             },
             '*': {
-                prefix_a: dev_account_a, prefix_b: dev_account_b
+                prefix_a: dev_alias_a, prefix_b: dev_alias_b
             },
         }
 
@@ -202,7 +221,7 @@ class TestAccountScheme(unittest.TestCase):
                 a['alias']: {'id': a['id'], 'role': a['role']}
                 for a in accounts
             },
-            'release-account': dev_account_a,
+            'release-account': dev_alias_a,
             'release-bucket': 'releases',
             'default-region': 'eu-west-69',
             'environments': environments,
@@ -216,12 +235,35 @@ class TestAccountScheme(unittest.TestCase):
         for envionment in fixtures['environments']:
             with self.assertRaisesRegex(Exception, 'multiple account deploy'):
                 account_scheme.account_for_environment(envionment)
+
         live_env_accounts = account_scheme.accounts_for_environment(
             fixtures['environments'][0]
         )
-        assert live_env_accounts[prefix_a].alias == live_account_a
-        assert live_env_accounts[prefix_b].alias == live_account_b
+        assert live_env_accounts[prefix_a].alias == live_alias_a
+        assert live_env_accounts[prefix_b].alias == live_alias_b
+        self.assertEqual(
+            account_scheme.account_role_mapping(live_environment),
+            {
+                prefix_a: "arn:aws:iam::{}:role/{}".format(
+                    live_id_a, live_role_a
+                ),
+                prefix_b: "arn:aws:iam::{}:role/{}".format(
+                    live_id_b, live_role_b
+                )
+            }
+        )
         for environment in fixtures['environments'][1:]:
             env_accounts = account_scheme.accounts_for_environment(environment)
-            assert env_accounts[prefix_a].alias == dev_account_a
-            assert env_accounts[prefix_b].alias == dev_account_b
+            assert env_accounts[prefix_a].alias == dev_alias_a
+            assert env_accounts[prefix_b].alias == dev_alias_b
+            self.assertEqual(
+                account_scheme.account_role_mapping(environment),
+                {
+                    prefix_a: "arn:aws:iam::{}:role/{}".format(
+                        dev_id_a, dev_role_a
+                    ),
+                    prefix_b: "arn:aws:iam::{}:role/{}".format(
+                        dev_id_b, dev_role_b
+                    )
+                }
+            )

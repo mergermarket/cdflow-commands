@@ -121,3 +121,17 @@ class AccountScheme:
                 'multiple account deploy'
             )
         return self._environment_mapping[environment]
+
+    def account_role_mapping(self, environment):
+        if not self.multiple_account_deploys:
+            raise Exception(
+                'account_role_mapping not support when not a '
+                'multiple account deploy'
+            )
+        return {
+            prefix: "arn:aws:iam::{}:role/{}".format(
+                self._environment_mapping[environment][prefix].id,
+                self._environment_mapping[environment][prefix].role
+            )
+            for prefix in self._environment_mapping[environment]
+        }
