@@ -44,6 +44,7 @@ class TestDeploy(unittest.TestCase):
         secrets = fixtures['secrets']
 
         account_scheme = MagicMock(spec=AccountScheme)
+        account_scheme.multiple_account_deploys = False
         account_scheme.default_region = aws_region
         account = MagicMock(spec=Account)
         account.alias = account_alias
@@ -133,6 +134,7 @@ class TestDeploy(unittest.TestCase):
         secrets = fixtures['secrets']
 
         account_scheme = MagicMock(spec=AccountScheme)
+        account_scheme.multiple_account_deploys = False
         account_scheme.default_region = aws_region
         account = MagicMock(spec=Account)
         account.alias = account_alias
@@ -203,6 +205,7 @@ class TestDeploy(unittest.TestCase):
         secrets = fixtures['secrets']
 
         account_scheme = MagicMock(spec=AccountScheme)
+        account_scheme.multiple_account_deploys = False
         account_scheme.default_region = aws_region
         account = MagicMock(spec=Account)
         account.alias = account_alias
@@ -292,6 +295,7 @@ class TestDeploy(unittest.TestCase):
         secrets = fixtures['secrets']
 
         account_scheme = MagicMock(spec=AccountScheme)
+        account_scheme.multiple_account_deploys = False
         account_scheme.default_region = aws_region
         account = MagicMock(spec=Account)
         account.alias = account_alias
@@ -376,6 +380,7 @@ class TestDeploy(unittest.TestCase):
         secrets = fixtures['secrets']
 
         account_scheme = MagicMock(spec=AccountScheme)
+        account_scheme.multiple_account_deploys = False
         account_scheme.default_region = aws_region
         account = MagicMock(spec=Account)
         account.alias = account_alias
