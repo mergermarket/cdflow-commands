@@ -20,17 +20,17 @@ def account(draw):
 
 @composite
 def accounts(draw, min_size=1):
-    accounts = draw(lists(
-        elements=account(), min_size=min_size,
-        unique_by=lambda account: account['alias']
-    ))
+    accounts = []
     ids = set()
-    deduplicated_accounts = []
-    for a in accounts:
-        if a['id'] not in ids:
-            ids.add(a['id'])
-            deduplicated_accounts.append(a)
-    return deduplicated_accounts
+    aliases = set()
+    while len(accounts) < min_size:
+        candidate = draw(account())
+        if candidate['id'] in ids or candidate['alias'] in aliases:
+            continue
+        ids.add(candidate['id'])
+        aliases.add(candidate['alias'])
+        accounts.append(candidate)
+    return accounts
 
 
 class TestAccount(unittest.TestCase):
@@ -166,3 +166,62 @@ class TestAccountScheme(unittest.TestCase):
         for environment in fixtures['environments'][1:]:
             assert account_scheme.account_for_environment(environment).alias \
                 == dev_account
+
+    @given(fixed_dictionaries({
+        'account_prefixes': lists(
+            elements=text(alphabet=ascii_letters+digits, min_size=2),
+            unique=True, min_size=2,
+        ),
+        'accounts': accounts(min_size=4),
+        'environments': lists(
+            elements=text(alphabet=ascii_letters+digits, min_size=2),
+            unique=True, min_size=2,
+        ),
+    }))
+    def test_environment_accont_mapping_with_multiple_accounts(self, fixtures):
+        # Given
+        accounts = fixtures['accounts']
+        prefix_a = fixtures['account_prefixes'][0]
+        prefix_b = fixtures['account_prefixes'][1]
+        dev_account_a = accounts[0]['alias']
+        live_account_a = accounts[1]['alias']
+        dev_account_b = accounts[2]['alias']
+        live_account_b = accounts[3]['alias']
+        live_environment = fixtures['environments'][0]
+        environments = {
+            live_environment: {
+                prefix_a: live_account_a, prefix_b: live_account_b
+            },
+            '*': {
+                prefix_a: dev_account_a, prefix_b: dev_account_b
+            },
+        }
+
+        raw_scheme = {
+            'accounts': {
+                a['alias']: {'id': a['id'], 'role': a['role']}
+                for a in accounts
+            },
+            'release-account': dev_account_a,
+            'release-bucket': 'releases',
+            'default-region': 'eu-west-69',
+            'environments': environments,
+        }
+
+        # When
+        account_scheme = AccountScheme.create(raw_scheme)
+
+        # Then
+        assert account_scheme.multiple_account_deploys
+        for envionment in fixtures['environments']:
+            with self.assertRaisesRegex(Exception, 'multiple account deploy'):
+                account_scheme.account_for_environment(envionment)
+        live_env_accounts = account_scheme.accounts_for_environment(
+            fixtures['environments'][0]
+        )
+        assert live_env_accounts[prefix_a].alias == live_account_a
+        assert live_env_accounts[prefix_b].alias == live_account_b
+        for environment in fixtures['environments'][1:]:
+            env_accounts = account_scheme.accounts_for_environment(environment)
+            assert env_accounts[prefix_a].alias == dev_account_a
+            assert env_accounts[prefix_b].alias == dev_account_b
