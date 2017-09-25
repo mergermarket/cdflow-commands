@@ -59,12 +59,12 @@ def format_release_key(component_name, version):
 class Release:
 
     def __init__(
-        self, boto_session, release_bucket, platform_config_path, commit,
+        self, boto_session, release_bucket, platform_config_paths, commit,
         version, component_name, team
     ):
         self.boto_session = boto_session
         self._release_bucket = release_bucket
-        self._platform_config_path = platform_config_path
+        self._platform_config_paths = platform_config_paths
         self._commit = commit
         self._team = team
         self.version = version
@@ -144,10 +144,14 @@ class Release:
 
     def _copy_platform_config_files(self, base_dir):
         path_in_release = '{}/{}'.format(base_dir, PLATFORM_CONFIG_BASE_PATH)
-        logger.debug('Copying {} to {}'.format(
-            self._platform_config_path, path_in_release
-        ))
-        copytree(self._platform_config_path, path_in_release)
+        for platform_config_path in self._platform_config_paths:
+            logger.debug('Copying {} to {}'.format(
+                platform_config_path, path_in_release
+            ))
+            copytree(
+                platform_config_path, path_in_release,
+                ignore=['.git']
+            )
 
     def _copy_app_config_files(self, base_dir):
         path_in_release = '{}/{}'.format(base_dir, CONFIG_BASE_PATH)
