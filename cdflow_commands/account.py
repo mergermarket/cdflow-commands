@@ -75,16 +75,16 @@ class AccountScheme:
             in raw_scheme['accounts'].items()
         }
 
-        environment_value_types = [
+        environment_value_types = (
             type(a) for a in raw_scheme['environments'].values()
-        ]
+        )
         multiple_account_deploys = False
 
-        if all([t == str for t in environment_value_types]):
+        if all(t is str for t in environment_value_types):
             environment_mapping = cls._get_env_mapping(
                 raw_scheme, accounts
             )
-        elif all([t == dict for t in environment_value_types]):
+        elif all(t is dict for t in environment_value_types):
             multiple_account_deploys = True
             environment_mapping = \
                 cls._get_multiple_account_deploys_env_mapping(
