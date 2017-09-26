@@ -126,7 +126,7 @@ class TestReleaseArchive(unittest.TestCase):
                 '{}/{}-{}/platform-config'.format(
                     temp_dir, 'dummy-component', 'dummy-version'
                 ),
-                ignore=['.git']
+                ignore=ANY
             )
 
     @patch('cdflow_commands.release.mkdir')

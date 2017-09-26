@@ -3,7 +3,7 @@ from io import BytesIO
 import json
 import os
 from os import chmod, getcwd, path, mkdir
-from shutil import copytree, make_archive
+from shutil import copytree, make_archive, ignore_patterns
 import shutil
 from tempfile import TemporaryDirectory
 from time import time
@@ -150,7 +150,7 @@ class Release:
             ))
             copytree(
                 platform_config_path, path_in_release,
-                ignore=['.git']
+                ignore=ignore_patterns(['.git'])
             )
 
     def _copy_app_config_files(self, base_dir):
