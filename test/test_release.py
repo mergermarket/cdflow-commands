@@ -23,7 +23,7 @@ class TestRelease(unittest.TestCase):
         release = Release(
             boto_session=Mock(),
             release_bucket=ANY,
-            platform_config_path=ANY, commit=ANY, version=version,
+            platform_config_paths=[ANY], commit=ANY, version=version,
             component_name=ANY, team=ANY
         )
 
@@ -36,7 +36,7 @@ class TestRelease(unittest.TestCase):
         release = Release(
             boto_session=Mock(),
             release_bucket=ANY,
-            platform_config_path=ANY, commit=ANY, version=ANY,
+            platform_config_paths=[ANY], commit=ANY, version=ANY,
             component_name=component_name, team=ANY
         )
 
@@ -67,7 +67,7 @@ class TestReleaseArchive(unittest.TestCase):
         release = Release(
             boto_session=Mock(),
             release_bucket=ANY,
-            platform_config_path=ANY,
+            platform_config_paths=[ANY],
             commit='dummy',
             version='dummy-version',
             component_name='dummy-component',
@@ -102,11 +102,14 @@ class TestReleaseArchive(unittest.TestCase):
         # Given
         release_plugin = Mock()
         release_plugin.create.return_value = {}
-        platform_config_path = 'test-platform-config-path'
+        platform_config_paths = [
+            'test-platform-config-path-a',
+            'test-platform-config-path-b',
+        ]
         release = Release(
             boto_session=Mock(),
             release_bucket=ANY,
-            platform_config_path=platform_config_path, commit='dummy',
+            platform_config_paths=platform_config_paths, commit='dummy',
             version='dummy-version', component_name='dummy-component',
             team='dummy-team',
         )
@@ -117,11 +120,14 @@ class TestReleaseArchive(unittest.TestCase):
         release.create(release_plugin)
 
         # Then
-        copytree.assert_any_call(
-            platform_config_path, '{}/{}-{}/platform-config'.format(
-                temp_dir, 'dummy-component', 'dummy-version'
+        for platform_config_path in platform_config_paths:
+            copytree.assert_any_call(
+                platform_config_path,
+                '{}/{}-{}/platform-config'.format(
+                    temp_dir, 'dummy-component', 'dummy-version'
+                ),
+                ignore=['.git']
             )
-        )
 
     @patch('cdflow_commands.release.mkdir')
     @patch('cdflow_commands.release.open')
@@ -137,11 +143,11 @@ class TestReleaseArchive(unittest.TestCase):
         # Given
         release_plugin = Mock()
         release_plugin.create.return_value = {}
-        platform_config_path = 'test-platform-config-path'
+        platform_config_paths = ['test-platform-config-path']
         release = Release(
             boto_session=Mock(),
             release_bucket=ANY,
-            platform_config_path=platform_config_path, commit='dummy',
+            platform_config_paths=platform_config_paths, commit='dummy',
             version='dummy-version', component_name='dummy-component',
             team='dummy-team',
         )
@@ -173,11 +179,11 @@ class TestReleaseArchive(unittest.TestCase):
         # Given
         release_plugin = Mock()
         release_plugin.create.return_value = {}
-        platform_config_path = 'test-platform-config-path'
+        platform_config_paths = ['test-platform-config-path']
         release = Release(
             boto_session=Mock(),
             release_bucket=ANY,
-            platform_config_path=platform_config_path, commit='dummy',
+            platform_config_paths=platform_config_paths, commit='dummy',
             version='dummy-version', component_name='dummy-component',
             team='dummy-team',
         )
@@ -207,11 +213,11 @@ class TestReleaseArchive(unittest.TestCase):
         # Given
         release_plugin = Mock()
         release_plugin.create.return_value = {}
-        platform_config_path = 'test-platform-config-path'
+        platform_config_paths = 'test-platform-config-path'
         release = Release(
             boto_session=Mock(),
             release_bucket=ANY,
-            platform_config_path=platform_config_path, commit='dummy',
+            platform_config_paths=platform_config_paths, commit='dummy',
             version='dummy-version', component_name='dummy-component',
             team='dummy-team',
         )
@@ -251,7 +257,7 @@ class TestReleaseArchive(unittest.TestCase):
         release = Release(
             boto_session=Mock(),
             release_bucket=ANY,
-            platform_config_path='platform-config',
+            platform_config_paths='platform-config',
             commit=commit,
             version=version,
             component_name=component_name,
@@ -314,7 +320,7 @@ class TestReleaseArchive(unittest.TestCase):
         release = Release(
             boto_session=Mock(),
             release_bucket=ANY,
-            platform_config_path='test-platform-config-path',
+            platform_config_paths='test-platform-config-path',
             commit=commit,
             version=version,
             component_name=component_name,
@@ -362,7 +368,7 @@ class TestReleaseArchive(unittest.TestCase):
         release = Release(
             boto_session=mock_session,
             release_bucket=release_bucket,
-            platform_config_path='test-platform-config-path',
+            platform_config_paths='test-platform-config-path',
             commit=commit,
             version=version,
             component_name=component_name,

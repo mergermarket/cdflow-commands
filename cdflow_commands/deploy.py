@@ -59,15 +59,23 @@ class Deploy:
             self._plan_path = 'plan-{}'.format(time())
         return self._plan_path
 
-    @property
-    def _platform_config_file_path(self):
-        account = self._account_scheme.account_for_environment(
-            self._environment
-        )
-        return '{}/{}/{}.json'.format(
-            PLATFORM_CONFIG_BASE_PATH, account.alias,
-            self._boto_session.region_name
-        )
+    def _platform_config_file_paths(self):
+        if self._account_scheme.multiple_account_deploys:
+            accounts = self._account_scheme.accounts_for_environment(
+                self._environment
+            )
+        else:
+            accounts = [self._account_scheme.account_for_environment(
+                self._environment
+            )]
+
+        return [
+            '{}/{}/{}.json'.format(
+                PLATFORM_CONFIG_BASE_PATH, account.alias,
+                self._boto_session.region_name
+            )
+            for account in accounts
+        ]
 
     def _build_parameters(self, command, secrets_file_path=None):
         parameters = [TERRAFORM_BINARY, command, '-input=false']
@@ -83,11 +91,18 @@ class Deploy:
         parameters += [
             '-var', 'env={}'.format(self._environment),
             '-var-file', RELEASE_METADATA_FILE,
-            '-var-file', self._platform_config_file_path,
+        ]
+
+        for platform_config_path in self._platform_config_file_paths():
+            parameters += ['-var-file', platform_config_path]
+
+        parameters += [
             '-var-file', secrets_file_path,
             '-out', self.plan_path,
         ]
         parameters = self._add_environment_config_parameters(parameters)
+        if self._account_scheme.multiple_account_deploys:
+            parameters = self._add_account_role_mapping_parameter(parameters)
         parameters += [INFRASTRUCTURE_DEFINITIONS_PATH]
         return parameters
 
@@ -103,3 +118,10 @@ class Deploy:
             parameters += ['-var-file', GLOBAL_CONFIG_FILE]
 
         return parameters
+
+    def _add_account_role_mapping_parameter(self, parameters):
+        return parameters + [
+            '-var', 'accounts={}'.format(json.dumps(
+                self._account_scheme.account_role_mapping(self._environment)
+            ))
+        ]
