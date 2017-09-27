@@ -90,20 +90,20 @@ class TestReleaseArchive(unittest.TestCase):
             'terraform', 'get', '/cwd/infra',
         ], cwd='{}/{}-{}'.format(temp_dir, 'dummy-component', 'dummy-version'))
 
+    @patch('cdflow_commands.release.mkdir')
     @patch('cdflow_commands.release.open')
     @patch('cdflow_commands.release.check_call')
     @patch('cdflow_commands.release.make_archive')
     @patch('cdflow_commands.release.copytree')
     @patch('cdflow_commands.release.copyfile')
     @patch('cdflow_commands.release.isfile')
-    @patch('cdflow_commands.release.mkdir')
-    @patch('cdflow_commands.release.exists')
+    @patch('cdflow_commands.release.makedirs')
     @patch('cdflow_commands.release.isdir')
     @patch('cdflow_commands.release.listdir')
     @patch('cdflow_commands.release.TemporaryDirectory')
     def test_platform_config_added_to_release_bundle(
-        self, TemporaryDirectory, listdir, isdir, exists, mkdir, isfile,
-        copyfile, _1, _2, _3, _4
+        self, TemporaryDirectory, listdir, isdir, makedirs, isfile,
+        copyfile, _1, _2, _3, _4, _5
     ):
 
         # Given
@@ -131,9 +131,6 @@ class TestReleaseArchive(unittest.TestCase):
         }
         listdir.side_effect = lambda d: dirs[d]
         isdir.side_effect = lambda d: d in dirs
-        missing_dir = 'test-temp-dir/dummy-component-dummy-version/' \
-            'platform-config/alias2'
-        exists.side_effect = lambda d: d != missing_dir
         isfile.return_value = True
 
         # When
@@ -165,7 +162,21 @@ class TestReleaseArchive(unittest.TestCase):
             'test-temp-dir/dummy-component-dummy-version/'
             'platform-config/alias3/5.json',
         )
-        mkdir.assert_any_call(missing_dir)
+        makedirs.assert_any_call(
+            'test-temp-dir/dummy-component-dummy-version/'
+            'platform-config/alias1',
+            exist_ok=True
+        )
+        makedirs.assert_any_call(
+            'test-temp-dir/dummy-component-dummy-version/'
+            'platform-config/alias2',
+            exist_ok=True
+        )
+        makedirs.assert_any_call(
+            'test-temp-dir/dummy-component-dummy-version/'
+            'platform-config/alias3',
+            exist_ok=True
+        )
 
     @patch('cdflow_commands.release._copy_platform_config')
     @patch('cdflow_commands.release.mkdir')
