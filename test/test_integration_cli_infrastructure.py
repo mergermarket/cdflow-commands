@@ -11,6 +11,7 @@ from cdflow_commands import cli
 
 class TestReleaseCLI(unittest.TestCase):
 
+    @patch('cdflow_commands.release._copy_platform_config')
     @patch('cdflow_commands.release.os')
     @patch('cdflow_commands.release.copytree')
     @patch('cdflow_commands.release.check_call')
@@ -26,7 +27,7 @@ class TestReleaseCLI(unittest.TestCase):
     def test_release_is_a_no_op(
         self, check_output, mock_open, Session_from_config, Session_from_cli,
         rmtree, mock_os, check_output_cli, mock_open_release, make_archive,
-        check_call_release, copytree, mock_os_release,
+        check_call_release, copytree, mock_os_release, _
     ):
         mock_metadata_file = MagicMock(spec=TextIOWrapper)
         metadata = {

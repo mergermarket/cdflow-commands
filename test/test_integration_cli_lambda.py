@@ -12,6 +12,7 @@ from cdflow_commands.state import S3BucketFactory
 
 class TestReleaseCLI(unittest.TestCase):
 
+    @patch('cdflow_commands.release._copy_platform_config')
     @patch('cdflow_commands.cli.check_output')
     @patch('cdflow_commands.plugins.aws_lambda.ZipFile')
     @patch('cdflow_commands.plugins.aws_lambda.os')
@@ -34,7 +35,7 @@ class TestReleaseCLI(unittest.TestCase):
         self, check_output, mock_open_config, Session_from_config,
         Session_from_cli, rmtree, mock_os, mock_open_release, make_archive,
         check_call, copytree, mock_os_release, S3BucketFactory, mock_os_lambda,
-        ZipFile, check_output_cli,
+        ZipFile, check_output_cli, _
     ):
         # Given
         mock_metadata_file = MagicMock(spec=TextIOWrapper)

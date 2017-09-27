@@ -8,6 +8,7 @@ from mock import MagicMock, Mock, mock_open, patch
 import yaml
 
 
+@patch('cdflow_commands.release._copy_platform_config')
 @patch('cdflow_commands.cli.check_output')
 @patch('cdflow_commands.release.os')
 @patch('cdflow_commands.release.copytree')
@@ -26,7 +27,7 @@ class TestReleaseCLI(unittest.TestCase):
     def test_release_is_configured_and_created(
         self, check_call, check_output, mock_open, Session_from_config,
         Session_from_cli, rmtree, mock_os, mock_open_release, make_archive,
-        check_call_release, copytree, mock_os_release, check_output_cli,
+        check_call_release, copytree, mock_os_release, check_output_cli, _
     ):
         mock_metadata_file = MagicMock(spec=TextIOWrapper)
         metadata = {
@@ -157,7 +158,7 @@ class TestReleaseCLI(unittest.TestCase):
     def test_release_uses_component_name_from_origin(
         self, check_call, check_output, mock_open, Session_from_config,
         Session_from_cli, rmtree, mock_os, mock_open_release, make_archive,
-        check_call_release, copytree, mock_os_release, check_output_cli,
+        check_call_release, copytree, mock_os_release, check_output_cli, _
     ):
         mock_metadata_file = MagicMock(spec=TextIOWrapper)
         metadata = {
