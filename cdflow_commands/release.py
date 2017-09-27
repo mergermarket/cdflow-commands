@@ -2,12 +2,14 @@ from contextlib import contextmanager
 from io import BytesIO
 import json
 import os
-from os import chmod, getcwd, path, mkdir
-from shutil import copytree, make_archive, ignore_patterns
+from os import chmod, getcwd, path, mkdir, makedirs, listdir
+from os.path import isdir, isfile
+from shutil import copytree, make_archive, copyfile
 import shutil
 from tempfile import TemporaryDirectory
 from time import time
 from zipfile import ZipFile
+from re import match, search
 
 from cdflow_commands.constants import (
     CONFIG_BASE_PATH, INFRASTRUCTURE_DEFINITIONS_PATH,
@@ -56,6 +58,26 @@ def format_release_key(component_name, version):
     return '{}/{}-{}.zip'.format(component_name, component_name, version)
 
 
+def _copy_platform_config_files(source_dir, dest_dir):
+    makedirs(dest_dir, exist_ok=True)
+    for config in listdir(source_dir):
+        source = os.path.join(source_dir, config)
+        dest = os.path.join(dest_dir, config)
+        if search(r'\.json$', source) and isfile(source):
+            copyfile(source, dest)
+
+
+def _copy_platform_config(source_dir, dest_dir):
+    for item in listdir(source_dir):
+        if not match(r'^\w+$', item):
+            continue
+        source = os.path.join(source_dir, item)
+        if not isdir(source):
+            continue
+        dest = os.path.join(dest_dir, item)
+        _copy_platform_config_files(source, dest)
+
+
 class Release:
 
     def __init__(
@@ -86,7 +108,7 @@ class Release:
                     {} not found - Add if you want to include environment \
                     configuration
                     """.format(CONFIG_BASE_PATH))
-            self._copy_platform_config_files(base_dir)
+            self._copy_platform_configs(base_dir)
             self._copy_infra_files(base_dir)
 
             extra_data = plugin.create()
@@ -142,16 +164,13 @@ class Release:
             TERRAFORM_BINARY, 'get', infra_dir
         ], cwd=base_dir)
 
-    def _copy_platform_config_files(self, base_dir):
+    def _copy_platform_configs(self, base_dir):
         path_in_release = '{}/{}'.format(base_dir, PLATFORM_CONFIG_BASE_PATH)
         for platform_config_path in self._platform_config_paths:
             logger.debug('Copying {} to {}'.format(
                 platform_config_path, path_in_release
             ))
-            copytree(
-                platform_config_path, path_in_release,
-                ignore=ignore_patterns('.git')
-            )
+            _copy_platform_config(platform_config_path, path_in_release)
 
     def _copy_app_config_files(self, base_dir):
         path_in_release = '{}/{}'.format(base_dir, CONFIG_BASE_PATH)
