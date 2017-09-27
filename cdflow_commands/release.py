@@ -150,7 +150,7 @@ class Release:
             ))
             copytree(
                 platform_config_path, path_in_release,
-                ignore=ignore_patterns(['.git'])
+                ignore=ignore_patterns('.git')
             )
 
     def _copy_app_config_files(self, base_dir):
