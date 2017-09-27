@@ -19,9 +19,9 @@ from cdflow_commands.logger import logger
 from cdflow_commands.process import check_call
 from cdflow_commands.zip_patch import _make_zipfile
 
-# Monkey patch the standard library...
-# https://xkcd.com/292/
-shutil._ARCHIVE_FORMATS['zip'] = (_make_zipfile, [], 'ZIP file')
+
+shutil.unregister_archive_format('zip')
+shutil.register_archive_format('zip', _make_zipfile)
 
 
 @contextmanager
