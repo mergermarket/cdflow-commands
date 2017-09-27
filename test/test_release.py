@@ -50,6 +50,7 @@ class TestRelease(unittest.TestCase):
 )
 class TestReleaseArchive(unittest.TestCase):
 
+    @patch('cdflow_commands.release._copy_platform_config')
     @patch('cdflow_commands.release.open')
     @patch('cdflow_commands.release.make_archive')
     @patch('cdflow_commands.release.check_call')
@@ -58,7 +59,7 @@ class TestReleaseArchive(unittest.TestCase):
     @patch('cdflow_commands.release.getcwd')
     @patch('cdflow_commands.release.mkdir')
     def test_terraform_modules_fetched(
-        self, mkdir, getcwd, TemporaryDirectory, _, check_call, _1, _2
+        self, mkdir, getcwd, TemporaryDirectory, _, check_call, _1, _2, _3
     ):
 
         # Given
@@ -89,14 +90,20 @@ class TestReleaseArchive(unittest.TestCase):
             'terraform', 'get', '/cwd/infra',
         ], cwd='{}/{}-{}'.format(temp_dir, 'dummy-component', 'dummy-version'))
 
-    @patch('cdflow_commands.release.mkdir')
     @patch('cdflow_commands.release.open')
     @patch('cdflow_commands.release.check_call')
     @patch('cdflow_commands.release.make_archive')
     @patch('cdflow_commands.release.copytree')
+    @patch('cdflow_commands.release.copyfile')
+    @patch('cdflow_commands.release.isfile')
+    @patch('cdflow_commands.release.mkdir')
+    @patch('cdflow_commands.release.exists')
+    @patch('cdflow_commands.release.isdir')
+    @patch('cdflow_commands.release.listdir')
     @patch('cdflow_commands.release.TemporaryDirectory')
     def test_platform_config_added_to_release_bundle(
-        self, TemporaryDirectory, copytree, _, _1, _2, _3
+        self, TemporaryDirectory, listdir, isdir, exists, mkdir, isfile,
+        copyfile, _1, _2, _3, _4
     ):
 
         # Given
@@ -115,20 +122,52 @@ class TestReleaseArchive(unittest.TestCase):
         )
         temp_dir = 'test-temp-dir'
         TemporaryDirectory.return_value.__enter__.return_value = temp_dir
+        dirs = {
+            "test-platform-config-path-a": ["alias1", "alias2"],
+            "test-platform-config-path-b": ["alias3"],
+            "test-platform-config-path-a/alias1": ["1.json", "2.json"],
+            "test-platform-config-path-a/alias2": ["3.json"],
+            "test-platform-config-path-b/alias3": ["4.json", "5.json"],
+        }
+        listdir.side_effect = lambda d: dirs[d]
+        isdir.side_effect = lambda d: d in dirs
+        missing_dir = 'test-temp-dir/dummy-component-dummy-version/' \
+            'platform-config/alias2'
+        exists.side_effect = lambda d: d != missing_dir
+        isfile.return_value = True
 
         # When
         release.create(release_plugin)
 
         # Then
-        for platform_config_path in platform_config_paths:
-            copytree.assert_any_call(
-                platform_config_path,
-                '{}/{}-{}/platform-config'.format(
-                    temp_dir, 'dummy-component', 'dummy-version'
-                ),
-                ignore=ANY
-            )
+        copyfile.assert_any_call(
+            'test-platform-config-path-a/alias1/1.json',
+            'test-temp-dir/dummy-component-dummy-version/'
+            'platform-config/alias1/1.json',
+        )
+        copyfile.assert_any_call(
+            'test-platform-config-path-a/alias1/2.json',
+            'test-temp-dir/dummy-component-dummy-version/'
+            'platform-config/alias1/2.json',
+        )
+        copyfile.assert_any_call(
+            'test-platform-config-path-a/alias2/3.json',
+            'test-temp-dir/dummy-component-dummy-version/'
+            'platform-config/alias2/3.json',
+        )
+        copyfile.assert_any_call(
+            'test-platform-config-path-b/alias3/4.json',
+            'test-temp-dir/dummy-component-dummy-version/'
+            'platform-config/alias3/4.json',
+        )
+        copyfile.assert_any_call(
+            'test-platform-config-path-b/alias3/5.json',
+            'test-temp-dir/dummy-component-dummy-version/'
+            'platform-config/alias3/5.json',
+        )
+        mkdir.assert_any_call(missing_dir)
 
+    @patch('cdflow_commands.release._copy_platform_config')
     @patch('cdflow_commands.release.mkdir')
     @patch('cdflow_commands.release.open')
     @patch('cdflow_commands.release.check_call')
@@ -137,7 +176,7 @@ class TestReleaseArchive(unittest.TestCase):
     @patch('cdflow_commands.release.copytree')
     @patch('cdflow_commands.release.TemporaryDirectory')
     def test_app_config_added_to_release_bundle(
-        self, TemporaryDirectory, copytree, patch_path, _, _1, _2, _3
+        self, TemporaryDirectory, copytree, patch_path, _, _1, _2, _3, _4
     ):
 
         # Given
@@ -165,6 +204,7 @@ class TestReleaseArchive(unittest.TestCase):
             )
         )
 
+    @patch('cdflow_commands.release._copy_platform_config')
     @patch('cdflow_commands.release.mkdir')
     @patch('cdflow_commands.release.open')
     @patch('cdflow_commands.release.check_call')
@@ -173,7 +213,7 @@ class TestReleaseArchive(unittest.TestCase):
     @patch('cdflow_commands.release.copytree')
     @patch('cdflow_commands.release.TemporaryDirectory')
     def test_app_config_add_skipped_to_release_bundle_if_not_existing(
-        self, TemporaryDirectory, copytree, patch_path, _, _1, _2, _3
+        self, TemporaryDirectory, copytree, patch_path, _, _1, _2, _3, _4
     ):
 
         # Given
@@ -198,8 +238,9 @@ class TestReleaseArchive(unittest.TestCase):
         for args, kwargs in copytree.call_args_list:
             for arg in args:
                 self.assertNotEqual('config', arg)
-        self.assertEqual(copytree.call_count, 2)
+        self.assertEqual(copytree.call_count, 1)
 
+    @patch('cdflow_commands.release._copy_platform_config')
     @patch('cdflow_commands.release.mkdir')
     @patch('cdflow_commands.release.open')
     @patch('cdflow_commands.release.check_call')
@@ -207,7 +248,7 @@ class TestReleaseArchive(unittest.TestCase):
     @patch('cdflow_commands.release.copytree')
     @patch('cdflow_commands.release.TemporaryDirectory')
     def test_infra_directory_added_to_release_bundle(
-        self, TemporaryDirectory, copytree, _, _1, _2, _3
+        self, TemporaryDirectory, copytree, _, _1, _2, _3, _4
     ):
 
         # Given
@@ -269,6 +310,9 @@ class TestReleaseArchive(unittest.TestCase):
             stack.enter_context(patch('cdflow_commands.release.check_call'))
             stack.enter_context(patch('cdflow_commands.release.copytree'))
             stack.enter_context(patch('cdflow_commands.release.make_archive'))
+            stack.enter_context(
+                patch('cdflow_commands.release._copy_platform_config')
+            )
             TemporaryDirectory = stack.enter_context(
                 patch('cdflow_commands.release.TemporaryDirectory')
             )
@@ -300,6 +344,7 @@ class TestReleaseArchive(unittest.TestCase):
                 'release': dict(**base_release_metadata, **plugin_data)
             }))
 
+    @patch('cdflow_commands.release._copy_platform_config')
     @patch('cdflow_commands.release.mkdir')
     @patch('cdflow_commands.release.check_call')
     @patch('cdflow_commands.release.copytree')
@@ -307,7 +352,7 @@ class TestReleaseArchive(unittest.TestCase):
     @patch('cdflow_commands.release.TemporaryDirectory')
     @patch('cdflow_commands.release.open')
     def test_release_bundle_added_to_archive(
-        self, mock_open, TemporaryDirectory, make_archive, _, _1, _2
+        self, mock_open, TemporaryDirectory, make_archive, _, _1, _2, _3
     ):
 
         # Given
@@ -346,6 +391,7 @@ class TestReleaseArchive(unittest.TestCase):
             '{}-{}'.format(component_name, version),
         )
 
+    @patch('cdflow_commands.release._copy_platform_config')
     @patch('cdflow_commands.release.mkdir')
     @patch('cdflow_commands.release.check_call')
     @patch('cdflow_commands.release.copytree')
@@ -354,7 +400,7 @@ class TestReleaseArchive(unittest.TestCase):
     @patch('cdflow_commands.release.open')
     def test_create_uploads_archive(
         self, mock_open, TemporaryDirectory, make_archive, copytree,
-        check_call, mkdir,
+        check_call, mkdir, _
     ):
         # Given
         release_plugin = Mock()
