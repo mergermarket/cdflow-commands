@@ -2,8 +2,8 @@ from contextlib import contextmanager
 from io import BytesIO
 import json
 import os
-from os import chmod, getcwd, path, mkdir, listdir
-from os.path import exists, isdir, isfile
+from os import chmod, getcwd, path, mkdir, makedirs, listdir
+from os.path import isdir, isfile
 from shutil import copytree, make_archive, copyfile
 import shutil
 from tempfile import TemporaryDirectory
@@ -59,8 +59,7 @@ def format_release_key(component_name, version):
 
 
 def _copy_platform_config_files(source_dir, dest_dir):
-    if not exists(dest_dir):
-        mkdir(dest_dir)
+    makedirs(dest_dir, exist_ok=True)
     for config in listdir(source_dir):
         source = os.path.join(source_dir, config)
         dest = os.path.join(dest_dir, config)
