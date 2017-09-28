@@ -36,6 +36,7 @@ Manifest = namedtuple('Manifest', [
         'account_scheme_url',
         'team',
         'type',
+        'terraform_state_in_release_account',
     ]
 )
 
@@ -47,6 +48,7 @@ def load_manifest():
             manifest_data['account-scheme-url'],
             manifest_data['team'],
             manifest_data['type'],
+            manifest_data.get('terraform-state-in-release-account', False),
         )
 
 
