@@ -78,6 +78,28 @@ class TestLoadManifest(unittest.TestCase):
         assert manifest.account_scheme_url == fixtures['account-scheme-url']
         assert manifest.team == fixtures['team']
         assert manifest.type == fixtures['type']
+        assert manifest.terraform_state_in_release_account is False
+
+    def test_terraform_state_in_release_account(self):
+        # Given
+        mock_file = MagicMock(spec=TextIOWrapper)
+        mock_file.read.return_value = yaml.dump({
+            'account-scheme-url': 'dummy',
+            'team': 'dummy',
+            'type': 'dummy',
+            'terraform-state-in-release-account': True
+        })
+
+        with patch(
+            'cdflow_commands.config.open', new_callable=mock_open, create=True
+        ) as open_:
+            open_.return_value.__enter__.return_value = mock_file
+
+            # When
+            manifest = config.load_manifest()
+
+        # Then
+        assert manifest.terraform_state_in_release_account is True
 
 
 class TestAssumeRole(unittest.TestCase):

@@ -1,5 +1,4 @@
 import atexit
-import os
 from hashlib import sha1
 from os import mkdir, unlink
 from os.path import abspath
@@ -9,7 +8,6 @@ from textwrap import dedent
 
 from botocore.exceptions import ClientError
 
-from cdflow_commands.config import env_with_aws_credetials
 from cdflow_commands.exceptions import CDFlowError
 from cdflow_commands.logger import logger
 from cdflow_commands.process import check_call
@@ -76,6 +74,7 @@ def initialise_terraform_backend(
         f'{boto_session.region_name}, {key}, {lock_table_name}'
     )
 
+    credentials = boto_session.get_credentials()
     check_call(
         [
             'terraform', 'init',
@@ -84,11 +83,11 @@ def initialise_terraform_backend(
             f'-backend-config=region={boto_session.region_name}',
             f'-backend-config=key={key}',
             f'-backend-config=lock_table={lock_table_name}',
+            f'-backend-config=access_key={credentials.access_key}',
+            f'-backend-config=secret_key={credentials.secret_key}',
+            f'-backend-config=token={credentials.token}',
         ],
         cwd=directory,
-        env=env_with_aws_credetials(
-            os.environ, boto_session
-        )
     )
 
     from_path_statefile = abspath(
