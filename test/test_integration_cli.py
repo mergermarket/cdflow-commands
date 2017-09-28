@@ -164,8 +164,8 @@ class TestDeployCLI(unittest.TestCase):
 
         # Then
         check_call_state.assert_any_call(
-            ['terraform', 'init', ANY, ANY, ANY, ANY, ANY],
-            env=ANY, cwd=workdir+'/infra'
+            ['terraform', 'init', ANY, ANY, ANY, ANY, ANY, ANY, ANY, ANY],
+            cwd=workdir+'/infra'
         )
 
         check_call_deploy.assert_any_call(
@@ -384,8 +384,10 @@ class TestDestroyCLI(unittest.TestCase):
                 '-backend-config=region=us-north-4',
                 '-backend-config=key={}'.format(state_file_key),
                 '-backend-config=lock_table=terraform_locks',
+                '-backend-config=access_key=dummy-access-key-id',
+                '-backend-config=secret_key=dummy-secret-access-key',
+                '-backend-config=token=dummy-session-token',
             ],
-            env=ANY,
             cwd=ANY,
         )
 
@@ -428,8 +430,10 @@ class TestDestroyCLI(unittest.TestCase):
                 '-backend-config=region=us-north-4',
                 '-backend-config=key={}'.format(state_file_key),
                 '-backend-config=lock_table=terraform_locks',
+                '-backend-config=access_key={}'.format(aws_access_key_id),
+                '-backend-config=secret_key={}'.format(aws_secret_access_key),
+                '-backend-config=token={}'.format(aws_session_token),
             ],
-            env=ANY,
             cwd=ANY,
         )
 

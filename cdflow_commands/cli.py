@@ -86,7 +86,10 @@ def _run(argv):
             account_scheme, manifest, args,
         )
     elif args['destroy']:
-        run_destroy(root_session, account_scheme, manifest, args)
+        run_destroy(
+            root_session, release_account_session,
+            account_scheme, manifest, args
+        )
 
 
 def run_release(release_account_session, account_scheme, manifest, args):
@@ -141,9 +144,14 @@ def run_deploy(
         path_to_release = os.path.join(
             path_to_release, '{}-{}'.format(component_name, version)
         )
+        if manifest.terraform_state_in_release_account:
+            terraform_session = release_account_session
+        else:
+            terraform_session = deploy_account_session
+
         initialise_terraform(
             os.path.join(path_to_release, INFRASTRUCTURE_DEFINITIONS_PATH),
-            deploy_account_session, environment, component_name,
+            terraform_session, environment, component_name,
         )
 
         secrets = {
@@ -160,7 +168,9 @@ def run_deploy(
         deploy.run(args['--plan-only'])
 
 
-def run_destroy(root_session, account_scheme, manifest, args):
+def run_destroy(
+    root_session, release_account_session, account_scheme, manifest, args
+):
     environment = args['<environment>']
     component_name = get_component_name(args['--component'])
     account_id = account_scheme.account_for_environment(environment).id
@@ -170,8 +180,13 @@ def run_destroy(root_session, account_scheme, manifest, args):
         root_session, account_id, account_scheme.default_region,
     )
 
+    if manifest.terraform_state_in_release_account:
+        terraform_session = release_account_session
+    else:
+        terraform_session = destroy_account_session
+
     initialise_terraform(
-        TERRAFORM_DESTROY_DEFINITION, destroy_account_session,
+        TERRAFORM_DESTROY_DEFINITION, terraform_session,
         environment, component_name,
     )
 
