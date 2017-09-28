@@ -154,3 +154,69 @@ class TestMultiAccountDeploy(unittest.TestCase):
 
         # Then
         assert not assume_role.called
+
+
+class TestDeployStateInReleaseAccount(unittest.TestCase):
+
+    @patch('cdflow_commands.cli.assume_role')
+    @patch('cdflow_commands.cli.get_secrets')
+    @patch('cdflow_commands.cli.Deploy')
+    @patch('cdflow_commands.cli.get_component_name')
+    @patch('cdflow_commands.cli.fetch_release')
+    @patch('cdflow_commands.cli.initialise_terraform')
+    def test_role_not_assumed_for_multi_account_deploy(
+        self, initialise_terraform, fetch_release, _1, _2, _3, _4
+    ):
+        # Given
+        fetch_release.return_value.__enter__.return_value = 'dummy'
+        manifest = Mock()
+        manifest.terraform_state_in_release_account = True
+        release_account_session = Mock()
+
+        # When
+        args = {
+            '<environment>': ANY,
+            '<version>': ANY,
+            '--plan-only': False,
+            '--component': ANY
+        }
+        cli.run_deploy(Mock(), release_account_session, Mock(), manifest, args)
+
+        # Then
+        initialise_terraform.assert_called_once_with(
+            ANY, release_account_session, ANY, ANY
+        )
+
+
+class TestDestroyStateInReleaseAccount(unittest.TestCase):
+
+    @patch('cdflow_commands.cli.assume_role')
+    @patch('cdflow_commands.cli.get_secrets')
+    @patch('cdflow_commands.cli.Destroy')
+    @patch('cdflow_commands.cli.get_component_name')
+    @patch('cdflow_commands.cli.fetch_release')
+    @patch('cdflow_commands.cli.initialise_terraform')
+    def test_role_not_assumed_for_multi_account_deploy(
+        self, initialise_terraform, fetch_release, _1, _2, _3, _4
+    ):
+        # Given
+        fetch_release.return_value.__enter__.return_value = 'dummy'
+        manifest = Mock()
+        manifest.terraform_state_in_release_account = True
+        release_account_session = Mock()
+
+        # When
+        args = {
+            '<environment>': ANY,
+            '<version>': ANY,
+            '--plan-only': False,
+            '--component': ANY
+        }
+        cli.run_destroy(
+            Mock(), release_account_session, Mock(), manifest, args
+        )
+
+        # Then
+        initialise_terraform.assert_called_once_with(
+            ANY, release_account_session, ANY, ANY
+        )
