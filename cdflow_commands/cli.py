@@ -155,10 +155,15 @@ def run_deploy(
             terraform_session, environment, component_name,
         )
 
+        if manifest.secrets_in_release_account:
+            secrets_session = release_account_session
+        else:
+            secrets_session = deploy_account_session
+
         secrets = {
             'secrets': get_secrets(
                 environment, manifest.team,
-                component_name, deploy_account_session
+                component_name, secrets_session
             )
         }
 
