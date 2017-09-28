@@ -72,6 +72,7 @@ def _run(argv):
     account_scheme = build_account_scheme(
         root_session.resource('s3'), manifest.account_scheme_url
     )
+    root_session = Session(region_name=account_scheme.default_region)
 
     release_account_session = assume_role(
         root_session, account_scheme.release_account.id,
