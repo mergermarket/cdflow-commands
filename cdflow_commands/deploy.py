@@ -71,7 +71,7 @@ class Deploy:
 
         return [
             '{}/{}/{}.json'.format(
-                PLATFORM_CONFIG_BASE_PATH, account.alias,
+                PLATFORM_CONFIG_BASE_PATH, account,
                 self._boto_session.region_name
             )
             for account in accounts
