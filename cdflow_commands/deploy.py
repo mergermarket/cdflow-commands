@@ -63,7 +63,7 @@ class Deploy:
         if self._account_scheme.multiple_account_deploys:
             accounts = self._account_scheme.accounts_for_environment(
                 self._environment
-            )
+            ).values()
         else:
             accounts = [self._account_scheme.account_for_environment(
                 self._environment
@@ -71,7 +71,7 @@ class Deploy:
 
         return [
             '{}/{}/{}.json'.format(
-                PLATFORM_CONFIG_BASE_PATH, account,
+                PLATFORM_CONFIG_BASE_PATH, account.alias,
                 self._boto_session.region_name
             )
             for account in accounts
@@ -121,7 +121,11 @@ class Deploy:
 
     def _add_account_role_mapping_parameter(self, parameters):
         return parameters + [
-            '-var', 'accounts={}'.format(json.dumps(
-                self._account_scheme.account_role_mapping(self._environment)
+            '-var', 'accounts={{\n{}\n}}'.format("\n".join(
+                '{} = "{}"'.format(prefix, role)
+                for prefix, role
+                in self._account_scheme.account_role_mapping(
+                    self._environment
+                ).items()
             ))
         ]
