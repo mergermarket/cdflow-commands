@@ -3,7 +3,6 @@ from collections import namedtuple
 from contextlib import ExitStack
 from string import ascii_letters, digits
 from itertools import chain
-import json
 
 from hypothesis import given
 from hypothesis.strategies import (
@@ -485,10 +484,12 @@ class TestDeploy(unittest.TestCase):
         account_scheme.multiple_account_deploys = True
         account_scheme.default_region = aws_region
 
-        account_scheme.accounts_for_environment.return_value = [
-            create_mock_account(account_prefix + account_postfix)
+        account_scheme.accounts_for_environment.return_value = {
+            account_prefix: create_mock_account(
+                account_prefix + account_postfix
+            )
             for account_prefix in roles_by_account_prefix
-        ]
+        }
 
         account_scheme.account_role_mapping.return_value \
             = roles_by_account_prefix
@@ -547,8 +548,12 @@ class TestDeploy(unittest.TestCase):
                 ]) + [
                     '-var-file', secret_file_path,
                     '-out', 'plan-{}'.format(utcnow),
-                    '-var', 'accounts={}'.format(json.dumps(
-                        roles_by_account_prefix
+                    '-var', 'accounts={{\n{}\n}}'.format("\n".join(
+                        '{} = "{}"'.format(
+                            account_prefix,
+                            roles_by_account_prefix[account_prefix]
+                        )
+                        for account_prefix in roles_by_account_prefix
                     )),
                     'infra',
                 ],
