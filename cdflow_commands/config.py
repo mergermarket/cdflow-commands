@@ -80,9 +80,12 @@ def env_with_aws_credetials(env, boto_session):
     result.update({
         'AWS_ACCESS_KEY_ID': credentials.access_key,
         'AWS_SECRET_ACCESS_KEY': credentials.secret_key,
-        'AWS_SESSION_TOKEN': credentials.token,
         'AWS_DEFAULT_REGION': boto_session.region_name,
     })
+    if credentials.token is not None:
+        result.update({
+            'AWS_SESSION_TOKEN': credentials.token,
+        })
     return result
 
 
