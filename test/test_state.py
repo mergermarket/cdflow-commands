@@ -547,7 +547,8 @@ terraform_backend_input = fixed_dictionaries({
         alphabet=ascii_lowercase + digits + '-', min_size=3, max_size=63
     ),
     'environment_name': text(min_size=1),
-    'component_name': text(min_size=1)
+    'component_name': text(min_size=1),
+    'tfstate_filename': text(min_size=1),
 })
 
 
@@ -562,6 +563,7 @@ class TestTerraformBackendConfig(unittest.TestCase):
         lock_table_name = terraform_backend_input['lock_table_name']
         environment_name = terraform_backend_input['environment_name']
         component_name = terraform_backend_input['component_name']
+        tfstate_filename = terraform_backend_input['tfstate_filename']
         boto_session = MagicMock(spec=Session)
 
         with ExitStack() as stack:
@@ -577,7 +579,7 @@ class TestTerraformBackendConfig(unittest.TestCase):
 
             initialise_terraform_backend(
                 directory, boto_session, bucket_name, lock_table_name,
-                environment_name, component_name
+                environment_name, component_name, tfstate_filename
             )
 
         NamedTemporaryFile.assert_called_once_with(
@@ -599,10 +601,11 @@ class TestTerraformBackendConfig(unittest.TestCase):
         lock_table_name = terraform_backend_input['lock_table_name']
         environment_name = terraform_backend_input['environment_name']
         component_name = terraform_backend_input['component_name']
+        tfstate_filename = terraform_backend_input['tfstate_filename']
         boto_session = MagicMock(spec=Session)
 
         state_file_key = (
-            f'{environment_name}/{component_name}/terraform.tfstate'
+            f'{environment_name}/{component_name}/{tfstate_filename}'
         )
 
         with ExitStack() as stack:
@@ -617,7 +620,7 @@ class TestTerraformBackendConfig(unittest.TestCase):
 
             initialise_terraform_backend(
                 directory, boto_session, bucket_name, lock_table_name,
-                environment_name, component_name
+                environment_name, component_name, tfstate_filename
             )
 
         check_call.assert_called_once_with(
@@ -642,6 +645,7 @@ class TestTerraformBackendConfig(unittest.TestCase):
         lock_table_name = terraform_backend_input['lock_table_name']
         environment_name = terraform_backend_input['environment_name']
         component_name = terraform_backend_input['component_name']
+        tfstate_filename = terraform_backend_input['tfstate_filename']
         boto_session = MagicMock(spec=Session)
 
         with ExitStack() as stack:
@@ -654,7 +658,7 @@ class TestTerraformBackendConfig(unittest.TestCase):
 
             initialise_terraform_backend(
                 directory, boto_session, bucket_name, lock_table_name,
-                environment_name, component_name
+                environment_name, component_name, tfstate_filename
             )
 
         move.assert_has_calls(
@@ -687,6 +691,9 @@ class TestTerraformBackendConfig(unittest.TestCase):
         component_name = (
             test_fixtures['terraform_backend_input']['component_name']
         )
+        tfstate_filename = (
+            test_fixtures['terraform_backend_input']['tfstate_filename']
+        )
 
         backend_config_file_name = (
             f'cdflow_backend_{test_fixtures["temp_file_name"]}.tf'
@@ -705,7 +712,7 @@ class TestTerraformBackendConfig(unittest.TestCase):
 
             initialise_terraform_backend(
                 directory, boto_session, bucket_name, lock_table_name,
-                environment_name, component_name
+                environment_name, component_name, tfstate_filename
             )
 
         atexit.register.assert_called_once_with(
