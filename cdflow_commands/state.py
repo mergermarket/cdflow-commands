@@ -33,7 +33,7 @@ def remove_file(filepath):
 
 
 def initialise_terraform(
-    directory, boto_session, environment_name, component_name
+    directory, boto_session, environment_name, component_name, tfstate_filename
 ):
     lock_table_factory = LockTableFactory(boto_session)
 
@@ -46,13 +46,13 @@ def initialise_terraform(
         directory, boto_session,
         s3_bucket_factory.get_bucket_name(),
         lock_table_factory.get_table_name(),
-        environment_name, component_name
+        environment_name, component_name, tfstate_filename
     )
 
 
 def initialise_terraform_backend(
     directory, boto_session, bucket_name, lock_table_name,
-    environment_name, component_name
+    environment_name, component_name, tfstate_filename
 ):
     with NamedTemporaryFile(
         prefix='cdflow_backend_', suffix='.tf',
@@ -68,7 +68,7 @@ def initialise_terraform_backend(
         logger.debug(f'Registering {backend_file.name} to be removed at exit')
         atexit.register(remove_file, backend_file.name)
 
-    key = state_file_key(environment_name, component_name)
+    key = state_file_key(environment_name, component_name, tfstate_filename)
     logger.debug(
         f'Initialising backend in {directory} with {bucket_name}, '
         f'{boto_session.region_name}, {key}, {lock_table_name}'
@@ -110,11 +110,13 @@ def initialise_terraform_backend(
     move(from_path_plugins, to_path)
 
 
-def state_file_key(environment_name, component_name):
-    return f'{environment_name}/{component_name}/terraform.tfstate'
+def state_file_key(environment_name, component_name, tfstate_filename):
+    return f'{environment_name}/{component_name}/{tfstate_filename}'
 
 
-def remove_state(boto_session, environment_name, component_name):
+def remove_state(
+    boto_session, environment_name, component_name, tfstate_filename
+):
     s3_bucket_factory = S3BucketFactory(
         boto_session,
         '123456789'  # account_id - need to remove from logic in the factory
@@ -122,7 +124,7 @@ def remove_state(boto_session, environment_name, component_name):
 
     bucket_name = s3_bucket_factory.get_bucket_name()
 
-    key = state_file_key(environment_name, component_name)
+    key = state_file_key(environment_name, component_name, tfstate_filename)
 
     s3_client = boto_session.client('s3')
     s3_client.delete_object(Bucket=bucket_name, Key=key)
