@@ -1,14 +1,16 @@
 import json
+import subprocess
 import unittest
 from collections import namedtuple
 from io import TextIOWrapper
 
+import yaml
+
 from cdflow_commands import cli
 from cdflow_commands.constants import (
-    CDFLOW_BASE_PATH, TERRAFORM_BINARY, TERRAFORM_DESTROY_DEFINITION,
+    CDFLOW_BASE_PATH, TERRAFORM_BINARY, TERRAFORM_DESTROY_DEFINITION
 )
 from mock import ANY, MagicMock, Mock, patch
-import yaml
 
 
 BotoCreds = namedtuple('BotoCreds', ['access_key', 'secret_key', 'token'])
@@ -19,6 +21,7 @@ BotoCreds = namedtuple('BotoCreds', ['access_key', 'secret_key', 'token'])
 @patch('cdflow_commands.release.ZipFile')
 @patch('cdflow_commands.release.TemporaryDirectory')
 @patch('cdflow_commands.deploy.os')
+@patch('cdflow_commands.deploy.Popen')
 @patch('cdflow_commands.deploy.check_call')
 @patch('cdflow_commands.deploy.time')
 @patch('cdflow_commands.deploy.NamedTemporaryFile')
@@ -36,9 +39,9 @@ class TestDeployCLI(unittest.TestCase):
     def setup_mocks(
         self, atexit, move, check_call_state, NamedTemporaryFile_state,
         check_output, _open, Session_from_config, Session_from_cli, rmtree,
-        NamedTemporaryFile_deploy, time,
-        check_call_deploy, mock_os_deploy, TemporaryDirectory, ZipFile,
-        mock_os_release, credstash,
+        NamedTemporaryFile_deploy, time, check_call_deploy, popen_call,
+        mock_os_deploy, TemporaryDirectory, ZipFile, mock_os_release,
+        credstash,
     ):
         mock_metadata_file = MagicMock(spec=TextIOWrapper)
         metadata = {
@@ -138,15 +141,25 @@ class TestDeployCLI(unittest.TestCase):
 
         credstash.listSecrets.return_value = []
 
+        process_mock = Mock()
+        attrs = {
+            'communicate.return_value': (
+                ''.encode('utf-8'),
+                ''.encode('utf-8')
+            )
+        }
+        process_mock.configure_mock(**attrs)
+        popen_call.return_value = process_mock
+
         return (
-            check_call_state, check_call_deploy, TemporaryDirectory,
-            mock_assumed_session, NamedTemporaryFile_deploy, time,
-            aws_access_key_id, aws_secret_access_key, aws_session_token,
-            rmtree, component_name,
+            check_call_state, check_call_deploy, popen_call,
+            TemporaryDirectory, mock_assumed_session,
+            NamedTemporaryFile_deploy, time, aws_access_key_id,
+            aws_secret_access_key, aws_session_token, rmtree, component_name,
         )
 
     def test_deploy_is_configured_and_run(self, *args):
-        check_call_state, check_call_deploy, TemporaryDirectory, \
+        check_call_state, check_call_deploy, popen_call, TemporaryDirectory, \
             mock_assumed_session, NamedTemporaryFile_deploy, time, \
             aws_access_key_id, aws_secret_access_key, aws_session_token, \
             rmtree, component_name = self.setup_mocks(*args)
@@ -168,7 +181,7 @@ class TestDeployCLI(unittest.TestCase):
             cwd=workdir+'/infra'
         )
 
-        check_call_deploy.assert_any_call(
+        popen_call.assert_any_call(
             [
                 'terraform', 'plan', '-input=false',
                 '-var', 'env=live',
@@ -180,6 +193,7 @@ class TestDeployCLI(unittest.TestCase):
                 '-out', 'plan-{}'.format(time.return_value),
                 'infra',
             ],
+            cwd=workdir,
             env={
                 'foo': 'bar',
                 'AWS_ACCESS_KEY_ID': aws_access_key_id,
@@ -187,7 +201,7 @@ class TestDeployCLI(unittest.TestCase):
                 'AWS_SESSION_TOKEN': aws_session_token,
                 'AWS_DEFAULT_REGION': mock_assumed_session.region_name
             },
-            cwd=workdir,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
 
         check_call_deploy.assert_any_call(
@@ -208,7 +222,7 @@ class TestDeployCLI(unittest.TestCase):
         rmtree.assert_called_once_with('.terraform/')
 
     def test_deploy_is_planned_with_flag(self, *args):
-        check_call_state, check_call_deploy, TemporaryDirectory, \
+        check_call_state, check_call_deploy, popen_call, TemporaryDirectory, \
             mock_assumed_session, NamedTemporaryFile_deploy, time, \
             aws_access_key_id, aws_secret_access_key, aws_session_token, \
             rmtree, component_name = self.setup_mocks(*args)
@@ -224,7 +238,7 @@ class TestDeployCLI(unittest.TestCase):
         cli.run(['deploy', 'live', version, '--plan-only'])
 
         # Then
-        check_call_deploy.assert_called_once_with(
+        popen_call.assert_called_once_with(
             [
                 'terraform', 'plan', '-input=false',
                 '-var', 'env=live',
@@ -236,6 +250,7 @@ class TestDeployCLI(unittest.TestCase):
                 '-out', 'plan-{}'.format(time.return_value),
                 'infra',
             ],
+            cwd=workdir,
             env={
                 'foo': 'bar',
                 'AWS_ACCESS_KEY_ID': aws_access_key_id,
@@ -243,7 +258,7 @@ class TestDeployCLI(unittest.TestCase):
                 'AWS_SESSION_TOKEN': aws_session_token,
                 'AWS_DEFAULT_REGION': mock_assumed_session.region_name,
             },
-            cwd=workdir,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
 
 
