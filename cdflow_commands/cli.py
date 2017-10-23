@@ -153,6 +153,7 @@ def run_deploy(
         initialise_terraform(
             os.path.join(path_to_release, INFRASTRUCTURE_DEFINITIONS_PATH),
             terraform_session, environment, component_name,
+            manifest.tfstate_filename
         )
 
         if manifest.secrets_in_release_account:
@@ -193,7 +194,7 @@ def run_destroy(
 
     initialise_terraform(
         TERRAFORM_DESTROY_DEFINITION, terraform_session,
-        environment, component_name,
+        environment, component_name, manifest.tfstate_filename
     )
 
     destroy = Destroy(destroy_account_session)
@@ -208,7 +209,10 @@ def run_destroy(
 
     if not plan_only:
         logger.info('Destroying {} in {}'.format(component_name, environment))
-        remove_state(destroy_account_session, environment, component_name)
+        remove_state(
+            destroy_account_session, environment, component_name,
+            manifest.tfstate_filename
+        )
 
 
 def conditionally_set_debug(verbose):
