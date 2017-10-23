@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 from os import path
 from tempfile import NamedTemporaryFile
 from time import time
@@ -11,6 +12,8 @@ from cdflow_commands.constants import (
 )
 from cdflow_commands.logger import logger
 from cdflow_commands.process import check_call
+import subprocess
+import re
 
 
 class Deploy:
@@ -37,12 +40,23 @@ class Deploy:
             secrets_file.flush()
             command = self._build_parameters('plan', secrets_file.name)
             logger.debug(f'Running {command}')
-            check_call(
+
+            process = subprocess.Popen(
                 command, cwd=self._release_path,
                 env=env_with_aws_credetials(
                     os.environ, self._boto_session
                 ),
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE
             )
+
+            while True:
+                out = process.stdout.read(1)
+                if out == '' and process.poll() is not None:
+                    break
+                if out != '':
+                    processed_out = re.sub(r'([\]+"value[\]+":[\]+")(?:[a-zA-Z0-8+-._ ]+)([\]+")', '\g<1>xxx\g<2>', out.decode('utf-8'))
+                    sys.stdout.write(processed_out)
+                    sys.stdout.flush()
 
     def _apply(self):
         check_call(
