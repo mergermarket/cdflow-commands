@@ -12,6 +12,7 @@ from cdflow_commands.constants import (
 )
 from cdflow_commands.logger import logger
 from cdflow_commands.process import check_call
+from subprocess import Popen
 import subprocess
 import re
 
@@ -32,6 +33,26 @@ class Deploy:
         if not plan_only:
             self._apply()
 
+    def _get_secrets_values(self):
+        if self._secrets.get('secrets'):
+            return self._secrets.get('secrets').values()
+        return []
+
+    def _plan_process_and_print_out(self, out, secrets_pattern):
+        if out:
+            processed_out = re.sub(
+                secrets_pattern,
+                '*******',
+                out.decode('utf-8')
+            )
+            sys.stdout.write(processed_out)
+            sys.stdout.flush()
+
+    def _plan_process_and_print_err(self, err):
+        if err:
+            sys.stderr.write(err.decode('utf-8'))
+            sys.stderr.flush()
+
     def _plan(self):
         with NamedTemporaryFile(mode='w+', encoding='utf-8') \
                 as secrets_file:
@@ -41,7 +62,12 @@ class Deploy:
             command = self._build_parameters('plan', secrets_file.name)
             logger.debug(f'Running {command}')
 
-            process = subprocess.Popen(
+            secrets_to_obfuscate_pattern = '|'.join([
+                re.escape(secret)
+                for secret in self._get_secrets_values()
+            ])
+
+            process = Popen(
                 command, cwd=self._release_path,
                 env=env_with_aws_credetials(
                     os.environ, self._boto_session
@@ -50,13 +76,14 @@ class Deploy:
             )
 
             while True:
-                out = process.stdout.read(1)
-                if out == '' and process.poll() is not None:
+                (out, err) = process.communicate()
+                self._plan_process_and_print_out(
+                    out, secrets_to_obfuscate_pattern
+                )
+                self._plan_process_and_print_err(err)
+
+                if process.poll() is not None:
                     break
-                if out != '':
-                    processed_out = re.sub(r'([\]+"value[\]+":[\]+")(?:[a-zA-Z0-8+-._ ]+)([\]+")', '\g<1>xxx\g<2>', out.decode('utf-8'))
-                    sys.stdout.write(processed_out)
-                    sys.stdout.flush()
 
     def _apply(self):
         check_call(
