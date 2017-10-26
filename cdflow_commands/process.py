@@ -1,7 +1,6 @@
 from cdflow_commands.exceptions import UserFacingError
 
 from subprocess import check_call as _check_call
-from subprocess import Popen as _popen
 from subprocess import CalledProcessError
 
 
