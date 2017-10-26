@@ -1,10 +1,10 @@
 import random
-import subprocess
 import unittest
 from collections import namedtuple
 from contextlib import ExitStack
 from itertools import chain
 from string import ascii_letters, digits
+from subprocess import PIPE
 
 from cdflow_commands.account import Account, AccountScheme
 from cdflow_commands.deploy import Deploy
@@ -131,7 +131,7 @@ class TestDeploy(unittest.TestCase):
                     'AWS_SESSION_TOKEN': credentials.token,
                     'AWS_DEFAULT_REGION': aws_region,
                 },
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                stdout=PIPE, stderr=PIPE
             )
 
     @given(fixed_dictionaries({
@@ -331,7 +331,7 @@ class TestDeploy(unittest.TestCase):
                     'AWS_SESSION_TOKEN': credentials.token,
                     'AWS_DEFAULT_REGION': aws_region,
                 },
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                stdout=PIPE, stderr=PIPE
             )
             check_call.assert_not_called()
 
@@ -430,7 +430,7 @@ class TestDeploy(unittest.TestCase):
                     'AWS_SESSION_TOKEN': credentials.token,
                     'AWS_DEFAULT_REGION': aws_region,
                 },
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                stdout=PIPE, stderr=PIPE
             )
 
             check_call.assert_called()
@@ -536,7 +536,7 @@ class TestDeploy(unittest.TestCase):
                     'AWS_SESSION_TOKEN': credentials.token,
                     'AWS_DEFAULT_REGION': aws_region,
                 },
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                stdout=PIPE, stderr=PIPE
             )
             check_call.assert_called()
 
@@ -665,7 +665,7 @@ class TestDeploy(unittest.TestCase):
                     'AWS_SESSION_TOKEN': credentials.token,
                     'AWS_DEFAULT_REGION': aws_region,
                 },
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                stdout=PIPE, stderr=PIPE
             )
 
             check_call.assert_called()

@@ -12,8 +12,7 @@ from cdflow_commands.constants import (
 )
 from cdflow_commands.logger import logger
 from cdflow_commands.process import check_call
-from subprocess import Popen
-import subprocess
+from subprocess import Popen, PIPE
 import re
 
 
@@ -72,7 +71,7 @@ class Deploy:
                 env=env_with_aws_credetials(
                     os.environ, self._boto_session
                 ),
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                stdout=PIPE, stderr=PIPE
             )
 
             while True:

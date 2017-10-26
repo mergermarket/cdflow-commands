@@ -1,8 +1,8 @@
 import json
-import subprocess
 import unittest
 from collections import namedtuple
 from io import TextIOWrapper
+from subprocess import PIPE
 
 import yaml
 
@@ -201,7 +201,7 @@ class TestDeployCLI(unittest.TestCase):
                 'AWS_SESSION_TOKEN': aws_session_token,
                 'AWS_DEFAULT_REGION': mock_assumed_session.region_name
             },
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            stdout=PIPE, stderr=PIPE
         )
 
         check_call_deploy.assert_any_call(
@@ -258,7 +258,7 @@ class TestDeployCLI(unittest.TestCase):
                 'AWS_SESSION_TOKEN': aws_session_token,
                 'AWS_DEFAULT_REGION': mock_assumed_session.region_name,
             },
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            stdout=PIPE, stderr=PIPE
         )
 
 
