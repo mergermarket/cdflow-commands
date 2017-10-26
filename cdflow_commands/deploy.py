@@ -45,7 +45,9 @@ class Deploy:
                     '*******',
                     out.decode('utf-8')
                 )
-            sys.stdout.write(out)
+                out = out.encode('utf-8')
+
+            sys.stdout.write(out.decode('utf-8'))
             sys.stdout.flush()
 
     def _print_err(self, err):
