@@ -38,7 +38,7 @@ class Deploy:
             return self._secrets.get('secrets').values()
         return []
 
-    def _plan_process_and_print_out(self, out, secrets_pattern):
+    def _print_obfuscated_output(self, out, secrets_pattern):
         if out:
             processed_out = re.sub(
                 secrets_pattern,
@@ -48,7 +48,7 @@ class Deploy:
             sys.stdout.write(processed_out)
             sys.stdout.flush()
 
-    def _plan_process_and_print_err(self, err):
+    def _print_err(self, err):
         if err:
             sys.stderr.write(err.decode('utf-8'))
             sys.stderr.flush()
@@ -77,10 +77,10 @@ class Deploy:
 
             while True:
                 (out, err) = process.communicate()
-                self._plan_process_and_print_out(
+                self._print_obfuscated_output(
                     out, secrets_to_obfuscate_pattern
                 )
-                self._plan_process_and_print_err(err)
+                self._print_err(err)
 
                 if process.poll() is not None:
                     break
