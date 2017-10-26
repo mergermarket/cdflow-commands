@@ -144,11 +144,11 @@ class TestDeploy(unittest.TestCase):
         'token': text(alphabet=ALNUM),
         'aws_region': text(alphabet=ALNUM),
         'secrets': dictionaries(
-            keys=text(min_size=2), values=text(min_size=2).filter(
+            keys=text(min_size=2), values=text(min_size=8).filter(
                 lambda v: len(v.replace('*', '')) > 0
             ), min_size=1
         ),
-        'plan_output': text(min_size=16)
+        'plan_output': text(alphabet=ALNUM, min_size=16)
     }))
     def test_deploy_runs_terraform_apply_obfuscates_secrets(self, fixtures):
         environment = fixtures['environment']
@@ -159,7 +159,7 @@ class TestDeploy(unittest.TestCase):
         secret_key = fixtures['secret_key']
         token = fixtures['token']
         aws_region = fixtures['aws_region']
-        secrets = fixtures['secrets']
+        secrets = {'secrets': fixtures['secrets']}
         plan_output = fixtures['plan_output']
 
         account_scheme = MagicMock(spec=AccountScheme)
@@ -202,7 +202,9 @@ class TestDeploy(unittest.TestCase):
             attrs = {
                 'communicate.return_value': (
                     (
-                        plan_output + random.choice(list(secrets.values()))
+                        plan_output + random.choice(list(
+                            secrets['secrets'].values()
+                        ))
                     ).encode('utf-8'),
                     ''.encode('utf-8')
                 )
@@ -228,7 +230,7 @@ class TestDeploy(unittest.TestCase):
                 }
             )
 
-            for value in secrets.values():
+            for value in secrets['secrets'].values():
                 assert value not in mock_stdout.write.call_args[0][0]
 
     @given(fixed_dictionaries({
