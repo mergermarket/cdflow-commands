@@ -1,18 +1,18 @@
+import random
 import unittest
 from collections import namedtuple
 from contextlib import ExitStack
-from string import ascii_letters, digits
 from itertools import chain
+from string import ascii_letters, digits
+from subprocess import PIPE
 
+from cdflow_commands.account import Account, AccountScheme
+from cdflow_commands.deploy import Deploy
 from hypothesis import given
 from hypothesis.strategies import (
-    dictionaries, fixed_dictionaries, text, sampled_from
+    dictionaries, fixed_dictionaries, sampled_from, text
 )
-from mock import patch, Mock, MagicMock
-
-from cdflow_commands.account import AccountScheme, Account
-from cdflow_commands.deploy import Deploy
-
+from mock import MagicMock, Mock, patch
 
 BotoCredentials = namedtuple(
     'BotoCredentials', ['access_key', 'secret_key', 'token']
@@ -71,6 +71,9 @@ class TestDeploy(unittest.TestCase):
             path_exists = stack.enter_context(
                 patch('cdflow_commands.deploy.path.exists')
             )
+            popen_call = stack.enter_context(
+                patch('cdflow_commands.deploy.Popen')
+            )
             check_call = stack.enter_context(
                 patch('cdflow_commands.deploy.check_call')
             )
@@ -84,10 +87,21 @@ class TestDeploy(unittest.TestCase):
 
             time.return_value = utcnow
 
+            process_mock = Mock()
+            attrs = {
+                'communicate.return_value': (
+                    ''.encode('utf-8'),
+                    ''.encode('utf-8')
+                )
+            }
+            process_mock.configure_mock(**attrs)
+            popen_call.return_value = process_mock
+
             secret_file_path = NamedTemporaryFile.return_value.__enter__\
                 .return_value.name
 
             mock_os.environ = {}
+            check_call.return_value = ''
 
             def mock_path_exists(path):
                 if path == 'config/{}.json'.format(environment):
@@ -97,7 +111,7 @@ class TestDeploy(unittest.TestCase):
 
             deploy.run()
 
-            check_call.assert_any_call(
+            popen_call.assert_any_call(
                 [
                     'terraform', 'plan', '-input=false',
                     '-var', 'env={}'.format(environment),
@@ -116,7 +130,8 @@ class TestDeploy(unittest.TestCase):
                     'AWS_SECRET_ACCESS_KEY': credentials.secret_key,
                     'AWS_SESSION_TOKEN': credentials.token,
                     'AWS_DEFAULT_REGION': aws_region,
-                }
+                },
+                stdout=PIPE, stderr=PIPE
             )
 
     @given(fixed_dictionaries({
@@ -128,9 +143,14 @@ class TestDeploy(unittest.TestCase):
         'secret_key': text(alphabet=ALNUM),
         'token': text(alphabet=ALNUM),
         'aws_region': text(alphabet=ALNUM),
-        'secrets': dictionaries(keys=text(), values=text()),
+        'secrets': dictionaries(
+            keys=text(min_size=2), values=text(min_size=2).filter(
+                lambda v: len(v.replace('*', '')) > 0
+            ), min_size=1
+        ),
+        'plan_output': text(min_size=16)
     }))
-    def test_deploy_runs_terraform_apply(self, fixtures):
+    def test_deploy_runs_terraform_apply_obfuscates_secrets(self, fixtures):
         environment = fixtures['environment']
         release_path = fixtures['release_path']
         account_alias = fixtures['account_alias']
@@ -140,6 +160,7 @@ class TestDeploy(unittest.TestCase):
         token = fixtures['token']
         aws_region = fixtures['aws_region']
         secrets = fixtures['secrets']
+        plan_output = fixtures['plan_output']
 
         account_scheme = MagicMock(spec=AccountScheme)
         account_scheme.multiple_account_deploys = False
@@ -164,12 +185,30 @@ class TestDeploy(unittest.TestCase):
             check_call = stack.enter_context(
                 patch('cdflow_commands.deploy.check_call')
             )
+            popen_call = stack.enter_context(
+                patch('cdflow_commands.deploy.Popen')
+            )
             mock_os = stack.enter_context(patch('cdflow_commands.deploy.os'))
             time = stack.enter_context(
                 patch('cdflow_commands.deploy.time')
             )
+            mock_stdout = stack.enter_context(
+                patch('cdflow_commands.deploy.sys.stdout')
+            )
 
             time.return_value = utcnow
+
+            process_mock = Mock()
+            attrs = {
+                'communicate.return_value': (
+                    (
+                        plan_output + random.choice(list(secrets.values()))
+                    ).encode('utf-8'),
+                    ''.encode('utf-8')
+                )
+            }
+            process_mock.configure_mock(**attrs)
+            popen_call.return_value = process_mock
 
             mock_os.environ = {}
 
@@ -188,6 +227,9 @@ class TestDeploy(unittest.TestCase):
                     'AWS_DEFAULT_REGION': aws_region,
                 }
             )
+
+            for value in secrets.values():
+                assert value not in mock_stdout.write.call_args[0][0]
 
     @given(fixed_dictionaries({
         'environment': text(alphabet=ALNUM),
@@ -236,12 +278,25 @@ class TestDeploy(unittest.TestCase):
             check_call = stack.enter_context(
                 patch('cdflow_commands.deploy.check_call')
             )
+            popen_call = stack.enter_context(
+                patch('cdflow_commands.deploy.Popen')
+            )
             mock_os = stack.enter_context(patch('cdflow_commands.deploy.os'))
             time = stack.enter_context(
                 patch('cdflow_commands.deploy.time')
             )
 
             time.return_value = utcnow
+
+            process_mock = Mock()
+            attrs = {
+                'communicate.return_value': (
+                    ''.encode('utf-8'),
+                    ''.encode('utf-8')
+                )
+            }
+            process_mock.configure_mock(**attrs)
+            popen_call.return_value = process_mock
 
             secret_file_path = NamedTemporaryFile.return_value.__enter__\
                 .return_value.name
@@ -256,7 +311,7 @@ class TestDeploy(unittest.TestCase):
 
             deploy.run(plan_only=True)
 
-            check_call.assert_called_once_with(
+            popen_call.assert_called_once_with(
                 [
                     'terraform', 'plan', '-input=false',
                     '-var', 'env={}'.format(environment),
@@ -275,8 +330,10 @@ class TestDeploy(unittest.TestCase):
                     'AWS_SECRET_ACCESS_KEY': credentials.secret_key,
                     'AWS_SESSION_TOKEN': credentials.token,
                     'AWS_DEFAULT_REGION': aws_region,
-                }
+                },
+                stdout=PIPE, stderr=PIPE
             )
+            check_call.assert_not_called()
 
     @given(fixed_dictionaries({
         'environment': text(alphabet=ALNUM),
@@ -322,6 +379,9 @@ class TestDeploy(unittest.TestCase):
             check_call = stack.enter_context(
                 patch('cdflow_commands.deploy.check_call')
             )
+            popen_call = stack.enter_context(
+                patch('cdflow_commands.deploy.Popen')
+            )
             NamedTemporaryFile = stack.enter_context(
                 patch('cdflow_commands.deploy.NamedTemporaryFile')
             )
@@ -332,6 +392,16 @@ class TestDeploy(unittest.TestCase):
 
             time.return_value = utcnow
 
+            process_mock = Mock()
+            attrs = {
+                'communicate.return_value': (
+                    ''.encode('utf-8'),
+                    ''.encode('utf-8')
+                )
+            }
+            process_mock.configure_mock(**attrs)
+            popen_call.return_value = process_mock
+
             secret_file_path = NamedTemporaryFile.return_value.__enter__\
                 .return_value.name
 
@@ -341,7 +411,7 @@ class TestDeploy(unittest.TestCase):
 
             deploy.run()
 
-            check_call.assert_any_call(
+            popen_call.assert_any_call(
                 [
                     'terraform', 'plan', '-input=false',
                     '-var', 'env={}'.format(environment),
@@ -359,8 +429,11 @@ class TestDeploy(unittest.TestCase):
                     'AWS_SECRET_ACCESS_KEY': credentials.secret_key,
                     'AWS_SESSION_TOKEN': credentials.token,
                     'AWS_DEFAULT_REGION': aws_region,
-                }
+                },
+                stdout=PIPE, stderr=PIPE
             )
+
+            check_call.assert_called()
 
     @given(fixed_dictionaries({
         'environment': text(alphabet=ALNUM),
@@ -406,6 +479,9 @@ class TestDeploy(unittest.TestCase):
             check_call = stack.enter_context(
                 patch('cdflow_commands.deploy.check_call')
             )
+            popen_call = stack.enter_context(
+                patch('cdflow_commands.deploy.Popen')
+            )
             NamedTemporaryFile = stack.enter_context(
                 patch('cdflow_commands.deploy.NamedTemporaryFile')
             )
@@ -415,6 +491,16 @@ class TestDeploy(unittest.TestCase):
             )
 
             time.return_value = utcnow
+
+            process_mock = Mock()
+            attrs = {
+                'communicate.return_value': (
+                    ''.encode('utf-8'),
+                    ''.encode('utf-8')
+                )
+            }
+            process_mock.configure_mock(**attrs)
+            popen_call.return_value = process_mock
 
             secret_file_path = NamedTemporaryFile.return_value.__enter__\
                 .return_value.name
@@ -430,7 +516,7 @@ class TestDeploy(unittest.TestCase):
 
             deploy.run()
 
-            check_call.assert_any_call(
+            popen_call.assert_any_call(
                 [
                     'terraform', 'plan', '-input=false',
                     '-var', 'env={}'.format(environment),
@@ -449,8 +535,10 @@ class TestDeploy(unittest.TestCase):
                     'AWS_SECRET_ACCESS_KEY': credentials.secret_key,
                     'AWS_SESSION_TOKEN': credentials.token,
                     'AWS_DEFAULT_REGION': aws_region,
-                }
+                },
+                stdout=PIPE, stderr=PIPE
             )
+            check_call.assert_called()
 
     @given(fixed_dictionaries({
         'environment': text(alphabet=ALNUM),
@@ -466,7 +554,7 @@ class TestDeploy(unittest.TestCase):
         'secret_key': text(alphabet=ALNUM),
         'token': text(alphabet=ALNUM),
         'aws_region': text(alphabet=ALNUM),
-        'secrets': dictionaries(keys=text(), values=text()),
+        'secrets': dictionaries(keys=text(min_size=2), values=text(min_size=2))
     }))
     def test_account_role_mappings(self, fixtures):
         environment = fixtures['environment']
@@ -510,6 +598,9 @@ class TestDeploy(unittest.TestCase):
             check_call = stack.enter_context(
                 patch('cdflow_commands.deploy.check_call')
             )
+            popen_call = stack.enter_context(
+                patch('cdflow_commands.deploy.Popen')
+            )
             NamedTemporaryFile = stack.enter_context(
                 patch('cdflow_commands.deploy.NamedTemporaryFile')
             )
@@ -519,6 +610,16 @@ class TestDeploy(unittest.TestCase):
             )
 
             time.return_value = utcnow
+
+            process_mock = Mock()
+            attrs = {
+                'communicate.return_value': (
+                    ''.encode('utf-8'),
+                    ''.encode('utf-8')
+                )
+            }
+            process_mock.configure_mock(**attrs)
+            popen_call.return_value = process_mock
 
             secret_file_path = NamedTemporaryFile.return_value.__enter__\
                 .return_value.name
@@ -532,7 +633,7 @@ class TestDeploy(unittest.TestCase):
             def flatten(x):
                 return list(chain(*x))
 
-            check_call.assert_any_call(
+            popen_call.assert_any_call(
                 [
                     'terraform', 'plan', '-input=false',
                     '-var', 'env={}'.format(environment),
@@ -563,5 +664,8 @@ class TestDeploy(unittest.TestCase):
                     'AWS_SECRET_ACCESS_KEY': credentials.secret_key,
                     'AWS_SESSION_TOKEN': credentials.token,
                     'AWS_DEFAULT_REGION': aws_region,
-                }
+                },
+                stdout=PIPE, stderr=PIPE
             )
+
+            check_call.assert_called()

@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 from os import path
 from tempfile import NamedTemporaryFile
 from time import time
@@ -11,6 +12,8 @@ from cdflow_commands.constants import (
 )
 from cdflow_commands.logger import logger
 from cdflow_commands.process import check_call
+from subprocess import Popen, PIPE
+import re
 
 
 class Deploy:
@@ -29,6 +32,26 @@ class Deploy:
         if not plan_only:
             self._apply()
 
+    def _get_secrets_values(self):
+        if self._secrets.get('secrets'):
+            return self._secrets.get('secrets').values()
+        return []
+
+    def _print_obfuscated_output(self, out, secrets_pattern):
+        if out:
+            processed_out = re.sub(
+                secrets_pattern,
+                '*******',
+                out.decode('utf-8')
+            )
+            sys.stdout.write(processed_out)
+            sys.stdout.flush()
+
+    def _print_err(self, err):
+        if err:
+            sys.stderr.write(err.decode('utf-8'))
+            sys.stderr.flush()
+
     def _plan(self):
         with NamedTemporaryFile(mode='w+', encoding='utf-8') \
                 as secrets_file:
@@ -37,12 +60,29 @@ class Deploy:
             secrets_file.flush()
             command = self._build_parameters('plan', secrets_file.name)
             logger.debug(f'Running {command}')
-            check_call(
+
+            secrets_to_obfuscate_pattern = '|'.join([
+                re.escape(secret)
+                for secret in self._get_secrets_values()
+            ])
+
+            process = Popen(
                 command, cwd=self._release_path,
                 env=env_with_aws_credetials(
                     os.environ, self._boto_session
                 ),
+                stdout=PIPE, stderr=PIPE
             )
+
+            while True:
+                (out, err) = process.communicate()
+                self._print_obfuscated_output(
+                    out, secrets_to_obfuscate_pattern
+                )
+                self._print_err(err)
+
+                if process.poll() is not None:
+                    break
 
     def _apply(self):
         check_call(
