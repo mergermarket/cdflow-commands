@@ -33,6 +33,7 @@ class ReleasePlugin:
         if self._release.version:
             self._ensure_ecr_repo_exists()
             self._ensure_ecr_policy_set()
+            self._ensure_ecr_lifecycle_policy_set()
             self._docker_login()
             self._docker_push(self._image_name)
             self._docker_tag_latest()
@@ -114,6 +115,31 @@ class ReleasePlugin:
                     ]
                 } for account_id in sorted(account_ids)]
             }, sort_keys=True)
+        )
+
+    def _ensure_ecr_lifecycle_policy_set(self):
+        lifecycle_policy = json.dumps({
+            "rules": [
+                {
+                    "rulePriority": 1,
+                    "description": "Keep 500 tagged images (we tag all images), expire all others", # noqa
+                    "selection": {
+                        "tagStatus": "tagged",
+                        "tagPrefixList": ["1", "2", "3", "4", "5", "6", "7", "8", "9"], # noqa
+                        "countType": "imageCountMoreThan",
+                        "countNumber": 500
+                    },
+                    "action": {
+                        "type": "expire"
+                    }
+                }
+            ]
+        })
+
+        self._boto_ecr_client.put_lifecycle_policy(
+            registryId=self._account_scheme.release_account.id,
+            repositoryName=self._release.component_name,
+            lifecyclePolicyText=lifecycle_policy
         )
 
     def _docker_login(self):
