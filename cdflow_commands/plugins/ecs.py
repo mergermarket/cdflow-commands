@@ -33,6 +33,7 @@ class ReleasePlugin:
         if self._release.version:
             self._ensure_ecr_repo_exists()
             self._ensure_ecr_policy_set()
+            self._ensure_ecr_lifecycle_policy_set()
             self._docker_login()
             self._docker_push(self._image_name)
             self._docker_tag_latest()
@@ -115,6 +116,48 @@ class ReleasePlugin:
                 } for account_id in sorted(account_ids)]
             }, sort_keys=True)
         )
+
+    def _is_ecr_lifecycle_policy_not_set(self, account_id, component):
+        try:
+            self._boto_ecr_client.get_lifecycle_policy(
+                registryId=account_id,
+                repositoryName=component
+            )
+            return False
+        except ClientError as e:
+            if e.response['Error']['Code'] !=\
+                    'LifecyclePolicyNotFoundException':
+                raise
+            return True
+
+    def _ensure_ecr_lifecycle_policy_set(self):
+        if self._is_ecr_lifecycle_policy_not_set(
+            self._account_scheme.release_account.id,
+            self._release.component_name
+        ):
+            lifecycle_policy = json.dumps({
+                "rules": [
+                    {
+                        "rulePriority": 1,
+                        "description": "Keep 500 tagged images (we tag all images), expire all others", # noqa
+                        "selection": {
+                            "tagStatus": "tagged",
+                            "tagPrefixList": ["1", "2", "3", "4", "5", "6", "7", "8", "9"], # noqa
+                            "countType": "imageCountMoreThan",
+                            "countNumber": 500
+                        },
+                        "action": {
+                            "type": "expire"
+                        }
+                    }
+                ]
+            })
+
+            self._boto_ecr_client.put_lifecycle_policy(
+                registryId=self._account_scheme.release_account.id,
+                repositoryName=self._release.component_name,
+                lifecyclePolicyText=lifecycle_policy
+            )
 
     def _docker_login(self):
         response = self._boto_ecr_client.get_authorization_token()
