@@ -366,6 +366,101 @@ class TestRelease(unittest.TestCase):
                 }, sort_keys=True)
             )
 
+    @given(fixed_dictionaries({
+        'component_name': text(
+            alphabet=IDENTIFIER_ALPHABET, min_size=8, max_size=16
+        ),
+        'accounts': lists(
+            elements=account(), min_size=2, max_size=4,
+            unique_by=lambda account: account['alias']
+        ),
+    }))
+    def test_lifecycle_policy_gets_created_when_missing(self, fixtures):
+        component_name = fixtures['component_name']
+        accounts = fixtures['accounts']
+
+        account_ids = [account['id'] for account in accounts]
+        assume(len(set(account_ids)) == len(account_ids))
+
+        self._release.component_name = component_name
+        account_scheme = AccountScheme.create({
+            'accounts': {
+                account['alias']: {
+                    'id': account['id'],
+                    'role': account['role']
+                }
+                for account in accounts
+            },
+            'release-account': accounts[0]['alias'],
+            'default-region': self._region,
+            'release-bucket': 'dummy',
+            'environments': {
+                'live': accounts[0]['alias'],
+            },
+        })
+        plugin = ReleasePlugin(self._release, account_scheme)
+        self._ecr_client.get_lifecycle_policy = Mock()
+        self._ecr_client.get_lifecycle_policy.side_effect = ClientError(
+            {'Error': {'Code': 'LifecyclePolicyNotFoundException'}},
+            None
+        )
+        self._ecr_client.put_lifecycle_policy = Mock()
+
+        with patch('cdflow_commands.plugins.ecs.check_call'):
+            plugin.create()
+
+            self._ecr_client.get_lifecycle_policy.assert_called_once_with(
+                registryId=accounts[0].get('id'),
+                repositoryName=component_name
+            )
+            self._ecr_client.put_lifecycle_policy.assert_called_once()
+
+    @given(fixed_dictionaries({
+        'component_name': text(
+            alphabet=IDENTIFIER_ALPHABET, min_size=8, max_size=16
+        ),
+        'accounts': lists(
+            elements=account(), min_size=2, max_size=4,
+            unique_by=lambda account: account['alias']
+        ),
+    }))
+    def test_lifecycle_policy_doesnt_get_created_when_exists(self, fixtures):
+        component_name = fixtures['component_name']
+        accounts = fixtures['accounts']
+
+        account_ids = [account['id'] for account in accounts]
+        assume(len(set(account_ids)) == len(account_ids))
+
+        self._release.component_name = component_name
+        account_scheme = AccountScheme.create({
+            'accounts': {
+                account['alias']: {
+                    'id': account['id'],
+                    'role': account['role']
+                }
+                for account in accounts
+            },
+            'release-account': accounts[0]['alias'],
+            'default-region': self._region,
+            'release-bucket': 'dummy',
+            'environments': {
+                'live': accounts[0]['alias'],
+            },
+        })
+        plugin = ReleasePlugin(self._release, account_scheme)
+        self._ecr_client.get_lifecycle_policy = Mock()
+        self._ecr_client.get_lifecycle_policy.return_value = "qwerty"
+        self._ecr_client.put_lifecycle_policy = Mock()
+
+        with patch('cdflow_commands.plugins.ecs.check_call'):
+            plugin.create()
+
+            self._ecr_client.get_lifecycle_policy.assert_called_once_with(
+                registryId=accounts[0].get('id'),
+                repositoryName=component_name
+            )
+            self._ecr_client.put_lifecycle_policy.assert_not_called()
+
     @patch('cdflow_commands.plugins.ecs.check_call')
     @patch('cdflow_commands.plugins.ecs.path')
     def test_runs_on_docker_build_script_if_one_is_present(
