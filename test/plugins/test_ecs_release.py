@@ -288,7 +288,7 @@ class TestRelease(unittest.TestCase):
             # When & Then
             self.assertRaises(ClientError, self._plugin.create)
 
-    def test_no_policy_with_no_extra_deploy_accounts(self):
+    def test_no_policy_when_only_one_account(self):
         # Given
         self._release.deploy_account_ids = [
             self._account_id
