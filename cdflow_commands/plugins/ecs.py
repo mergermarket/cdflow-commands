@@ -33,7 +33,7 @@ class ReleasePlugin:
         if self._release.version:
             self._ensure_ecr_repo_exists()
             self._ensure_ecr_policy_set()
-            #self._ensure_ecr_lifecycle_policy_set()
+            # self._ensure_ecr_lifecycle_policy_set()
             self._docker_login()
             self._docker_push(self._image_name)
             self._docker_tag_latest()
