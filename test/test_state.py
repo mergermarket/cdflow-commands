@@ -94,7 +94,6 @@ class TestS3BucketFactory(unittest.TestCase):
         self.assertRaises(AssertionError, s3_bucket_factory.get_bucket_name)
 
     def test_handle_untagged_buckets(self):
-
         # Given
         session = Mock()
         session.region_name = 'dummy-region-name'
@@ -123,6 +122,51 @@ class TestS3BucketFactory(unittest.TestCase):
                     'Error': {
                         'Code': 'NoSuchTagSet',
                         'Message': 'The TagSet does not exist'
+                    }
+                }, 'GetBucketTagging')
+        s3_client.get_bucket_tagging = get_bucket_tagging
+
+        s3_client.get_bucket_location.return_value = {
+            'LocationConstraint': session.region_name
+        }
+
+        s3_bucket_factory = S3BucketFactory(session, 'dummy-account-id')
+
+        # When
+        bucket = s3_bucket_factory.get_bucket_name()
+
+        # Then
+        assert bucket == 'state-bucket'
+
+    def test_handle_missing_buckets(self):
+        # Given
+        session = Mock()
+        session.region_name = 'dummy-region-name'
+        s3_client = Mock()
+        session.client.return_value = s3_client
+
+        s3_client.list_buckets.return_value = {
+            'Buckets': [
+                {'Name': 'another-bucket'},
+                {'Name': 'state-bucket'}
+            ]
+        }
+
+        def get_bucket_tagging(Bucket):
+            if Bucket == 'state-bucket':
+                return {
+                    'TagSet': [
+                        {
+                            'Key': TFSTATE_TAG_NAME,
+                            'Value': TAG_VALUE,
+                        }
+                    ]
+                }
+            else:
+                raise ClientError({
+                    'Error': {
+                        'Code': 'NoSuchBucket',
+                        'Message': 'The bucket does not exist'
                     }
                 }, 'GetBucketTagging')
         s3_client.get_bucket_tagging = get_bucket_tagging
