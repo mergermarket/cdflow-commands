@@ -241,6 +241,7 @@ class S3BucketFactory:
             return bucket_name
 
     def _bucket_has_tag(self, bucket_name, bucket_tag):
+        logger.debug(f'Checking for tag {bucket_tag} on bucket {bucket_name}')
         tags = self._get_bucket_tags(bucket_name)
         return tags.get(bucket_tag) == TAG_VALUE
 
@@ -249,6 +250,8 @@ class S3BucketFactory:
             Bucket=bucket_name
         )
         region = region_response['LocationConstraint']
+
+        logger.debug(f'Checking bucket {bucket_name} region {region}')
 
         if self._aws_region == 'us-east-1' and region is None:
             return True
