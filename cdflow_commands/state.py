@@ -264,7 +264,8 @@ class S3BucketFactory:
                 Bucket=bucket_name
             )['TagSet']
         except ClientError as e:
-            if e.response.get('Error', {}).get('Code') == 'NoSuchTagSet':
+            code = e.response.get('Error', {}).get('Code')
+            if code in ('NoSuchTagSet', 'NoSuchBucket'):
                 return {}
             raise
         return {tag['Key']: tag['Value'] for tag in tags}
