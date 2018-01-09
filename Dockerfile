@@ -9,6 +9,7 @@ ENV TERRAFORM_PROVIDER_NULL_VERSION=1.0.0
 ENV TERRAFORM_PROVIDER_TEMPLATE_VERSION=1.0.0
 ENV TERRAFORM_PROVIDER_ACME_VERSION=0.3.0
 ENV TERRAFORM_PROVIDER_EXTERNAL_VERSION=1.0.0
+ENV TERRAFORM_PROVIDER_TLS_VERSION=1.0.1
 
 RUN echo http://dl-cdn.alpinelinux.org/alpine/latest-stable/main >> /etc/apk/repositories
 RUN apk update
@@ -31,6 +32,8 @@ RUN cd /tmp && \
         unzip terraform-provider-acme_*_linux_amd64.zip -d /usr/bin && \
     curl -sSLO https://releases.hashicorp.com/terraform-provider-external/$TERRAFORM_PROVIDER_EXTERNAL_VERSION/terraform-provider-external_${TERRAFORM_PROVIDER_EXTERNAL_VERSION}_linux_amd64.zip && \
         unzip terraform-provider-external_*_linux_amd64.zip -d /usr/bin && \
+    curl -sSLO https://releases.hashicorp.com/terraform-provider-tls/$TERRAFORM_PROVIDER_TLS_VERSION/terraform-provider-tls_${TERRAFORM_PROVIDER_TLS_VERSION}_linux_amd64.zip && \
+        unzip terraform-provider-tls*_linux_amd64.zip -d /usr/bin && \
     rm -rf /tmp/* && \
     rm -rf /var/tmp/*
 
