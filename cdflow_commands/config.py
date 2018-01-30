@@ -102,6 +102,11 @@ def get_component_name(component_name):
         return component_name
     return _get_component_name_from_git_remote()
 
+def get_release_data(release_data):
+    if release_data:
+        return release_data
+    return []
+
 
 def _get_component_name_from_git_remote():
     try:
