@@ -24,7 +24,7 @@ class TestRelease(unittest.TestCase):
             boto_session=Mock(),
             release_bucket=ANY,
             platform_config_paths=[ANY],
-            release_data=["1:1"], commit=ANY, version=version,
+            release_data=["1=1"], commit=ANY, version=version,
             component_name=ANY, team=ANY
         )
 
@@ -38,7 +38,7 @@ class TestRelease(unittest.TestCase):
             boto_session=Mock(),
             release_bucket=ANY,
             platform_config_paths=[ANY],
-            release_data=["1:1"], commit=ANY, version=ANY,
+            release_data=["1=1"], commit=ANY, version=ANY,
             component_name=component_name, team=ANY
         )
 
@@ -71,7 +71,7 @@ class TestReleaseArchive(unittest.TestCase):
             boto_session=Mock(),
             release_bucket=ANY,
             platform_config_paths=[ANY],
-            release_data=["1:1"],
+            release_data=["1=1"],
             commit='dummy',
             version='dummy-version',
             component_name='dummy-component',
@@ -116,7 +116,7 @@ class TestReleaseArchive(unittest.TestCase):
             'test-platform-config-path-a',
             'test-platform-config-path-b',
         ]
-        release_data = ["ami_id:ami-a12345", "foo:bar"]
+        release_data = ["ami_id=ami-a12345", "foo=bar"]
         release = Release(
             boto_session=Mock(),
             release_bucket=ANY,
@@ -199,7 +199,7 @@ class TestReleaseArchive(unittest.TestCase):
         release_plugin = Mock()
         release_plugin.create.return_value = {}
         platform_config_paths = ['test-platform-config-path']
-        release_data = ["ami_id:ami-a12345", "foo:bar"]
+        release_data = ["ami_id=ami-a12345", "foo=bar"]
         release = Release(
             boto_session=Mock(),
             release_bucket=ANY,
@@ -239,7 +239,7 @@ class TestReleaseArchive(unittest.TestCase):
         release_plugin = Mock()
         release_plugin.create.return_value = {}
         platform_config_paths = ['test-platform-config-path']
-        release_data = ["ami_id:ami-a12345", "foo:bar"]
+        release_data = ["ami_id=ami-a12345", "foo=bar"]
         release = Release(
             boto_session=Mock(),
             release_bucket=ANY,
@@ -277,7 +277,7 @@ class TestReleaseArchive(unittest.TestCase):
         release_plugin = Mock()
         release_plugin.create.return_value = {}
         platform_config_paths = 'test-platform-config-path'
-        release_data = ["ami_id:ami-a12345", "foo:bar"]
+        release_data = ["ami_id=ami-a12345", "foo=bar"]
         release = Release(
             boto_session=Mock(),
             release_bucket=ANY,
@@ -315,7 +315,7 @@ class TestReleaseArchive(unittest.TestCase):
         team = fixtures['team']
         plugin_data = fixtures['plugin_data']
         temp_dir = fixtures['temp_dir']
-        release_data = ["1234:2345"]
+        release_data = ["1234=2345"]
 
         release_plugin = Mock()
         release_plugin.create.return_value = plugin_data
@@ -356,7 +356,7 @@ class TestReleaseArchive(unittest.TestCase):
                 'team': team,
             }
 
-            release_map = dict(item.split(':', 1) for item in release_data)
+            release_map = dict(item.split('=', 1) for item in release_data)
             # When
             release.create(release_plugin)
 
@@ -395,7 +395,7 @@ class TestReleaseArchive(unittest.TestCase):
             boto_session=Mock(),
             release_bucket=ANY,
             platform_config_paths='test-platform-config-path',
-            release_data=["1234:5678"],
+            release_data=["1234=5678"],
             commit=commit,
             version=version,
             component_name=component_name,
@@ -445,7 +445,7 @@ class TestReleaseArchive(unittest.TestCase):
             boto_session=mock_session,
             release_bucket=release_bucket,
             platform_config_paths='test-platform-config-path',
-            release_data=["1234:5678"],
+            release_data=["1234=5678"],
             commit=commit,
             version=version,
             component_name=component_name,
