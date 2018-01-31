@@ -23,7 +23,7 @@ from subprocess import check_output
 from boto3.session import Session
 
 from cdflow_commands.config import (
-    assume_role, get_component_name, get_release_data, load_manifest, build_account_scheme
+    assume_role, get_component_name, load_manifest, build_account_scheme
 )
 from cdflow_commands.constants import (
     INFRASTRUCTURE_DEFINITIONS_PATH, TERRAFORM_DESTROY_DEFINITION,
