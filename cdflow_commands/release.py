@@ -134,7 +134,7 @@ class Release:
             'team': self._team,
         }
 
-        release_map = dict(item.split(':', 1) for item in release_data)
+        release_map = dict(item.split('=', 1) for item in release_data)
 
         with open(path.join(base_dir, RELEASE_METADATA_FILE), 'w') as f:
             f.write(json.dumps({

@@ -5,7 +5,7 @@ Create and manage software services using continuous delivery.
 
 Usage:
     cdflow release (--platform-config <platform_config>)...
-                   [--release-data=key:value]... <version> [options]
+                   [--release-data=key=value]... <version> [options]
     cdflow deploy <environment> <version> [options]
     cdflow destroy <environment> [options]
 
