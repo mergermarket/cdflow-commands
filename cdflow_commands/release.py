@@ -81,12 +81,14 @@ def _copy_platform_config(source_dir, dest_dir):
 class Release:
 
     def __init__(
-        self, boto_session, release_bucket, platform_config_paths, commit,
+        self, boto_session, release_bucket, platform_config_paths,
+        release_data, commit,
         version, component_name, team
     ):
         self.boto_session = boto_session
         self._release_bucket = release_bucket
         self._platform_config_paths = platform_config_paths
+        self.release_data = release_data
         self._commit = commit
         self._team = team
         self.version = version
@@ -113,7 +115,9 @@ class Release:
 
             extra_data = plugin.create()
 
-            self._generate_release_metadata(base_dir, extra_data)
+            self._generate_release_metadata(base_dir,
+                                            self.release_data,
+                                            extra_data)
 
             release_archive = make_archive(
                 base_dir, 'zip', temp_dir,
@@ -122,7 +126,7 @@ class Release:
 
             self._upload_archive(release_archive)
 
-    def _generate_release_metadata(self, base_dir, extra_data):
+    def _generate_release_metadata(self, base_dir, release_data, extra_data):
         base_data = {
             'commit': self._commit,
             'version': self.version,
@@ -130,9 +134,11 @@ class Release:
             'team': self._team,
         }
 
+        release_map = dict(item.split('=', 1) for item in release_data)
+
         with open(path.join(base_dir, RELEASE_METADATA_FILE), 'w') as f:
             f.write(json.dumps({
-                'release': dict(**base_data, **extra_data)
+                'release': dict(**base_data, **release_map, **extra_data)
             }))
 
     def _setup_base_dir(self, temp_dir):

@@ -4,7 +4,8 @@ cdflow
 Create and manage software services using continuous delivery.
 
 Usage:
-    cdflow release (--platform-config <platform_config>)... <version> [options]
+    cdflow release (--platform-config <platform_config>)...
+                   [--release-data=key=value]... <version> [options]
     cdflow deploy <environment> <version> [options]
     cdflow destroy <environment> [options]
 
@@ -97,11 +98,11 @@ def run_release(release_account_session, account_scheme, manifest, args):
     commit = check_output(
         ['git', 'rev-parse', 'HEAD']
     ).decode('utf-8').strip()
-
     release = Release(
         boto_session=release_account_session,
         release_bucket=account_scheme.release_bucket,
         platform_config_paths=args['<platform_config>'],
+        release_data=args['--release-data'],
         version=args['<version>'],
         commit=commit,
         component_name=get_component_name(args['--component']),
