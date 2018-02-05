@@ -1,7 +1,5 @@
 // vim: filetype=groovy
 
-def slavePrefix = 'mmg'
-
 def currentVersion
 def nextVersion
 
@@ -16,11 +14,11 @@ def dockerHubCredentialsId = 'dockerhub'
 def imageName = 'mergermarket/cdflow-commands'
 
 try {
-    build(slavePrefix, dockerHubCredentialsId, imageName, registry)
+    build(dockerHubCredentialsId, imageName, registry)
 
     input 'Do you want to proceed?'
 
-    publish(slavePrefix, githubCredentialsId, dockerHubCredentialsId, imageName, registry)
+    publish(githubCredentialsId, dockerHubCredentialsId, imageName, registry)
 }
 catch (e) {
     currentBuild.result = 'FAILURE'
@@ -28,9 +26,9 @@ catch (e) {
     throw e
 }
 
-def build(slavePrefix, dockerHubCredentialsId, imageName, registry) {
+def build(dockerHubCredentialsId, imageName, registry) {
     stage("Build") {
-        node ("${slavePrefix}dev") {
+        node ("swarm2") {
             checkout scm
             currentVersion = sh(returnStdout: true, script: 'git describe --abbrev=0 --tags').trim().toInteger()
             remote = sh(returnStdout: true, script: "git config remote.origin.url").trim()
@@ -51,9 +49,9 @@ def build(slavePrefix, dockerHubCredentialsId, imageName, registry) {
     }
 }
 
-def publish(slavePrefix, githubCredentialsId, dockerHubCredentialsId, imageName, registry) {
+def publish(githubCredentialsId, dockerHubCredentialsId, imageName, registry) {
     stage("Publish Release") {
-        node ("${slavePrefix}dev") {
+        node ("swarm2") {
             withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: githubCredentialsId, usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD']]) {
                 git url: remote, commitId: commit, credentialsId: githubCredentialsId
                 def author = sh(returnStdout: true, script: "git --no-pager show -s --format='%an' ${commit}").trim()
