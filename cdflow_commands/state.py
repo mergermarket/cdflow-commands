@@ -82,7 +82,7 @@ def initialise_terraform_backend(
             f'-backend-config=bucket={bucket_name}',
             f'-backend-config=region={boto_session.region_name}',
             f'-backend-config=key={key}',
-            f'-backend-config=lock_table={lock_table_name}',
+            f'-backend-config=dynamodb_table={lock_table_name}',
             f'-backend-config=access_key={credentials.access_key}',
             f'-backend-config=secret_key={credentials.secret_key}',
             f'-backend-config=token={credentials.token}',

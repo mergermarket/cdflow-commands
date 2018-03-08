@@ -674,7 +674,7 @@ class TestTerraformBackendConfig(unittest.TestCase):
                 f'-backend-config=bucket={bucket_name}',
                 f'-backend-config=region={boto_session.region_name}',
                 f'-backend-config=key={state_file_key}',
-                f'-backend-config=lock_table={lock_table_name}',
+                f'-backend-config=dynamodb_table={lock_table_name}',
                 ANY,
                 ANY,
                 ANY,
