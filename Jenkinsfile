@@ -16,8 +16,6 @@ def imageName = 'mergermarket/cdflow-commands'
 try {
     build(dockerHubCredentialsId, imageName, registry)
 
-    input 'Do you want to proceed?'
-
     publish(githubCredentialsId, dockerHubCredentialsId, imageName, registry)
 }
 catch (e) {
