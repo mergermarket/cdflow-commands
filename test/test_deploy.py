@@ -8,6 +8,7 @@ from subprocess import PIPE
 
 from cdflow_commands.account import Account, AccountScheme
 from cdflow_commands.deploy import Deploy
+from cdflow_commands.exceptions import UserFacingError
 from hypothesis import given
 from hypothesis.strategies import (
     dictionaries, fixed_dictionaries, sampled_from, text
@@ -88,6 +89,7 @@ class TestDeploy(unittest.TestCase):
             time.return_value = utcnow
 
             process_mock = Mock()
+            process_mock.poll.return_value = 0
             attrs = {
                 'communicate.return_value': (
                     ''.encode('utf-8'),
@@ -199,6 +201,7 @@ class TestDeploy(unittest.TestCase):
             time.return_value = utcnow
 
             process_mock = Mock()
+            process_mock.poll.return_value = 0
             attrs = {
                 'communicate.return_value': (
                     (
@@ -232,6 +235,86 @@ class TestDeploy(unittest.TestCase):
 
             for value in secrets['secrets'].values():
                 assert value not in mock_stdout.write.call_args[0][0]
+
+    @given(fixed_dictionaries({
+        'environment': text(alphabet=ALNUM),
+        'release_path': text(alphabet=ALNUM),
+        'account_alias': text(alphabet=ALNUM),
+        'utcnow': text(alphabet=digits),
+        'access_key': text(alphabet=ALNUM),
+        'secret_key': text(alphabet=ALNUM),
+        'token': text(alphabet=ALNUM),
+        'aws_region': text(alphabet=ALNUM),
+        'secrets': dictionaries(
+            keys=text(min_size=2), values=text(min_size=8).filter(
+                lambda v: len(v.replace('*', '')) > 0
+            ), min_size=1
+        ),
+        'plan_output': text(alphabet=ALNUM, min_size=16)
+    }))
+    def test_deploy_does_not_run_apply_if_plan_fails(self, fixtures):
+        environment = fixtures['environment']
+        release_path = fixtures['release_path']
+        account_alias = fixtures['account_alias']
+        utcnow = fixtures['utcnow']
+        access_key = fixtures['access_key']
+        secret_key = fixtures['secret_key']
+        token = fixtures['token']
+        aws_region = fixtures['aws_region']
+
+        account_scheme = MagicMock(spec=AccountScheme)
+        account_scheme.multiple_account_deploys = False
+        account_scheme.default_region = aws_region
+        account_scheme.account_for_environment.return_value = \
+            create_mock_account(account_alias)
+
+        boto_session = Mock()
+        boto_session.region_name = aws_region
+        credentials = BotoCredentials(access_key, secret_key, token)
+        boto_session.get_credentials.return_value = credentials
+
+        deploy = Deploy(
+            environment, release_path, {}, account_scheme, boto_session,
+        )
+
+        with ExitStack() as stack:
+            stack.enter_context(patch('cdflow_commands.deploy.path.exists'))
+            stack.enter_context(
+                patch('cdflow_commands.deploy.NamedTemporaryFile')
+            )
+            check_call = stack.enter_context(
+                patch('cdflow_commands.deploy.check_call')
+            )
+            popen_call = stack.enter_context(
+                patch('cdflow_commands.deploy.Popen')
+            )
+            mock_os = stack.enter_context(patch('cdflow_commands.deploy.os'))
+            time = stack.enter_context(
+                patch('cdflow_commands.deploy.time')
+            )
+
+            time.return_value = utcnow
+
+            process_mock = Mock()
+            process_mock.poll.return_value = 1
+            attrs = {
+                'communicate.return_value': (
+                    ''.encode('utf-8'),
+                    ''.encode('utf-8')
+                )
+            }
+            process_mock.configure_mock(**attrs)
+            popen_call.return_value = process_mock
+
+            mock_os.environ = {}
+
+            self.assertRaises(UserFacingError, deploy.run)
+
+            for call_args in check_call.call_args_list:
+                args, kwargs = call_args
+                command_args = args[0]
+                if command_args[0] == 'terraform':
+                    assert not command_args[1] == 'apply'
 
     @given(fixed_dictionaries({
         'environment': text(alphabet=ALNUM),
@@ -291,6 +374,7 @@ class TestDeploy(unittest.TestCase):
             time.return_value = utcnow
 
             process_mock = Mock()
+            process_mock.poll.return_value = 0
             attrs = {
                 'communicate.return_value': (
                     ''.encode('utf-8'),
@@ -395,6 +479,7 @@ class TestDeploy(unittest.TestCase):
             time.return_value = utcnow
 
             process_mock = Mock()
+            process_mock.poll.return_value = 0
             attrs = {
                 'communicate.return_value': (
                     ''.encode('utf-8'),
@@ -495,6 +580,7 @@ class TestDeploy(unittest.TestCase):
             time.return_value = utcnow
 
             process_mock = Mock()
+            process_mock.poll.return_value = 0
             attrs = {
                 'communicate.return_value': (
                     ''.encode('utf-8'),
@@ -614,6 +700,7 @@ class TestDeploy(unittest.TestCase):
             time.return_value = utcnow
 
             process_mock = Mock()
+            process_mock.poll.return_value = 0
             attrs = {
                 'communicate.return_value': (
                     ''.encode('utf-8'),

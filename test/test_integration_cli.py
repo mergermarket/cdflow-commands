@@ -142,6 +142,7 @@ class TestDeployCLI(unittest.TestCase):
         credstash.listSecrets.return_value = []
 
         process_mock = Mock()
+        process_mock.poll.return_value = 0
         attrs = {
             'communicate.return_value': (
                 ''.encode('utf-8'),

@@ -10,10 +10,15 @@ from cdflow_commands.constants import (
     CONFIG_BASE_PATH, GLOBAL_CONFIG_FILE, INFRASTRUCTURE_DEFINITIONS_PATH,
     PLATFORM_CONFIG_BASE_PATH, RELEASE_METADATA_FILE, TERRAFORM_BINARY
 )
+from cdflow_commands.exceptions import UserFacingError
 from cdflow_commands.logger import logger
 from cdflow_commands.process import check_call
 from subprocess import Popen, PIPE
 import re
+
+
+class TerraformApplyError(UserFacingError):
+    pass
 
 
 class Deploy:
@@ -28,7 +33,11 @@ class Deploy:
         self._boto_session = boto_session
 
     def run(self, plan_only=False):
-        self._plan()
+        plan_exit_code = self._plan()
+        if plan_exit_code != 0:
+            raise TerraformApplyError(
+                f'terraform plan exited with {plan_exit_code}'
+            )
         if not plan_only:
             self._apply()
 
@@ -77,8 +86,9 @@ class Deploy:
                 self._print_obfuscated_output(out)
                 self._print_err(err)
 
-                if process.poll() is not None:
-                    break
+                exit_code = process.poll()
+                if exit_code is not None:
+                    return exit_code
 
     def _apply(self):
         check_call(
