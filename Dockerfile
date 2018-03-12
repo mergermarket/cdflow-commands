@@ -42,7 +42,7 @@ RUN cd /tmp && \
     curl -sSLO https://releases.hashicorp.com/terraform-provider-archive/$TERRAFORM_PROVIDER_ARCHIVE_VERSION/terraform-provider-archive_${TERRAFORM_PROVIDER_ARCHIVE_VERSION}_linux_amd64.zip && \
         unzip terraform-provider-archive*_linux_amd64.zip -d /usr/bin && \
     curl -sSLO https://releases.hashicorp.com/terraform-provider-random/$TERRAFORM_PROVIDER_RANDOM_VERSION/terraform-provider-random_${TERRAFORM_PROVIDER_RANDOM_VERSION}_linux_amd64.zip && \
-        unzip terraform-provider-archive*_linux_amd64.zip -d /usr/bin && \
+        unzip terraform-provider-random*_linux_amd64.zip -d /usr/bin && \
     rm -rf /tmp/* && \
     rm -rf /var/tmp/*
 
