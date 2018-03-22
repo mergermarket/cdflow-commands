@@ -76,7 +76,8 @@ def initialise_terraform_backend(
     check_call(
         [
             'terraform', 'init',
-            f'-get-plugins=false',
+            '-get=false',
+            '-get-plugins=false',
             f'-backend-config=bucket={bucket_name}',
             f'-backend-config=region={boto_session.region_name}',
             f'-backend-config=key={key}',
