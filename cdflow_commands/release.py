@@ -98,7 +98,7 @@ class Release:
         with TemporaryDirectory() as temp_dir:
             base_dir = self._setup_base_dir(temp_dir)
 
-            self._run_terraform_get(
+            self._run_terraform_init(
                 base_dir,
                 '{}/{}'.format(getcwd(), INFRASTRUCTURE_DEFINITIONS_PATH)
             )
@@ -162,12 +162,12 @@ class Release:
             }},
         )
 
-    def _run_terraform_get(self, base_dir, infra_dir):
+    def _run_terraform_init(self, base_dir, infra_dir):
         logger.debug(
             'Getting Terraform modules defined in {}'.format(infra_dir)
         )
         check_call([
-            TERRAFORM_BINARY, 'get', infra_dir
+            TERRAFORM_BINARY, 'init', infra_dir
         ], cwd=base_dir)
 
     def _copy_platform_configs(self, base_dir):

@@ -670,6 +670,7 @@ class TestTerraformBackendConfig(unittest.TestCase):
         check_call.assert_called_once_with(
             [
                 'terraform', 'init',
+                '-get=false',
                 '-get-plugins=false',
                 f'-backend-config=bucket={bucket_name}',
                 f'-backend-config=region={boto_session.region_name}',

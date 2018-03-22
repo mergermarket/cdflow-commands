@@ -60,7 +60,7 @@ class TestReleaseArchive(unittest.TestCase):
     @patch('cdflow_commands.release.TemporaryDirectory')
     @patch('cdflow_commands.release.getcwd')
     @patch('cdflow_commands.release.mkdir')
-    def test_terraform_modules_fetched(
+    def test_terraform_is_initialised(
         self, mkdir, getcwd, TemporaryDirectory, _, check_call, _1, _2, _3
     ):
 
@@ -90,7 +90,7 @@ class TestReleaseArchive(unittest.TestCase):
             temp_dir, 'dummy-component', 'dummy-version'
         ))
         check_call.assert_any_call([
-            'terraform', 'get', '/cwd/infra',
+            'terraform', 'init', '/cwd/infra',
         ], cwd='{}/{}-{}'.format(temp_dir, 'dummy-component', 'dummy-version'))
 
     @patch('cdflow_commands.release.mkdir')
