@@ -8,7 +8,7 @@ def commit
 
 def registry = "registry.hub.docker.com"
 
-def githubCredentialsId = "github-build-user"
+def githubCredentialsId = "github-credentials"
 
 def dockerHubCredentialsId = 'dockerhub'
 def imageName = 'mergermarket/cdflow-commands'
