@@ -58,7 +58,7 @@ def publish(githubCredentialsId, dockerHubCredentialsId, imageName, registry) {
                     git config user.name '${author}'
                     git config user.email '${email}'
                     git tag -a '${nextVersion}' -m 'Version ${nextVersion}'
-                    git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/mergermarket/cdflow-commands --tags
+                    git push 'https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/mergermarket/cdflow-commands' --tags
                 """
             }
 
