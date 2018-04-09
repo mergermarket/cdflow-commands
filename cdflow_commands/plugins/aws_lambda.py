@@ -8,8 +8,6 @@ from cdflow_commands.state import S3BucketFactory
 
 class ReleasePlugin:
 
-    _BUCKET_NAME = 'cdflow-lambda-releases'
-
     def __init__(self, release, account_scheme):
         self._boto_session = release.boto_session
         self._component_name = release.component_name
@@ -32,7 +30,7 @@ class ReleasePlugin:
             self._boto_session, self._account_scheme.release_account.id
         )
         created_bucket_name = s3_bucket_factory.get_bucket_name(
-            self._BUCKET_NAME
+            self._account_scheme.lambda_bucket
         )
         self._upload_zip_to_bucket(
             created_bucket_name, zipped_folder.filename
