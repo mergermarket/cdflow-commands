@@ -14,12 +14,13 @@ class AccountScheme:
     DEFAULT_ENV_KEY = '*'
 
     def __init__(
-        self, accounts, release_account, release_bucket,
+        self, accounts, release_account, release_bucket, lambda_bucket,
         default_region, environment_mapping, multiple_account_deploys
     ):
         self.accounts = accounts
         self.release_account = release_account
         self.release_bucket = release_bucket
+        self.lambda_bucket = lambda_bucket
         self.default_region = default_region
         self._environment_mapping = environment_mapping
         self.multiple_account_deploys = multiple_account_deploys
@@ -97,6 +98,7 @@ class AccountScheme:
             set(accounts.values()),
             accounts[raw_scheme['release-account']],
             raw_scheme['release-bucket'],
+            raw_scheme.get('lambda-bucket', ''),
             raw_scheme['default-region'],
             environment_mapping,
             multiple_account_deploys

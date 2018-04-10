@@ -50,6 +50,7 @@ class TestAccountScheme(unittest.TestCase):
         'account': account(),
         'region': text(min_size=1),
         'release-bucket': text(),
+        'lambda-bucket': text()
     }))
     def test_create_account_scheme_from_json(self, fixtures):
         raw_scheme = {
@@ -60,6 +61,7 @@ class TestAccountScheme(unittest.TestCase):
                 }
             },
             'release-bucket': fixtures['release-bucket'],
+            'lambda-bucket': fixtures['lambda-bucket'],
             'release-account': fixtures['account']['alias'],
             'default-region': fixtures['region'],
             'environments': {},
@@ -72,6 +74,7 @@ class TestAccountScheme(unittest.TestCase):
         assert account_scheme.default_region == fixtures['region']
         assert account_scheme.accounts == {account_scheme.release_account}
         assert account_scheme.release_bucket == fixtures['release-bucket']
+        assert account_scheme.lambda_bucket == fixtures['lambda-bucket']
 
     @given(accounts())
     def test_deploy_account_ids(self, accounts):
