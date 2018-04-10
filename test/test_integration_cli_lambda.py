@@ -7,7 +7,6 @@ from mock import Mock, MagicMock, patch, mock_open
 import yaml
 
 from cdflow_commands import cli
-from cdflow_commands.state import S3BucketFactory
 
 
 class TestReleaseCLI(unittest.TestCase):
@@ -16,10 +15,6 @@ class TestReleaseCLI(unittest.TestCase):
     @patch('cdflow_commands.cli.check_output')
     @patch('cdflow_commands.plugins.aws_lambda.ZipFile')
     @patch('cdflow_commands.plugins.aws_lambda.os')
-    @patch(
-        'cdflow_commands.plugins.aws_lambda.S3BucketFactory',
-        autospec=S3BucketFactory
-    )
     @patch('cdflow_commands.release.os')
     @patch('cdflow_commands.release.copytree')
     @patch('cdflow_commands.release.check_call')
@@ -34,7 +29,7 @@ class TestReleaseCLI(unittest.TestCase):
     def test_release_package_is_created(
         self, check_output, mock_open_config, Session_from_config,
         Session_from_cli, rmtree, mock_os, mock_open_release, make_archive,
-        check_call, copytree, mock_os_release, S3BucketFactory, mock_os_lambda,
+        check_call, copytree, mock_os_release, mock_os_lambda,
         ZipFile, check_output_cli, _
     ):
         # Given
@@ -65,6 +60,7 @@ class TestReleaseCLI(unittest.TestCase):
             'release-account': 'foodev',
             'release-bucket': 'releases',
             'default-region': 'us-north-4',
+            'lambda-bucket': 'dummy-lambda-bucket',
             'environments': {
                 'live': 'foodev',
             },
@@ -108,9 +104,6 @@ class TestReleaseCLI(unittest.TestCase):
         }
         mock_root_session.client.return_value = mock_sts
 
-        S3BucketFactory.return_value.get_bucket_name.return_value \
-            = 'lambda-bucket'
-
         component_name = 'dummy-component'
         version = '6.1.7'
 
@@ -129,7 +122,7 @@ class TestReleaseCLI(unittest.TestCase):
         # Then
         mock_s3_client.upload_file.assert_called_once_with(
             ZipFile.return_value.__enter__.return_value.filename,
-            'lambda-bucket',
+            'dummy-lambda-bucket',
             'dummy-component/dummy-component-6.1.7.zip'
         )
 
