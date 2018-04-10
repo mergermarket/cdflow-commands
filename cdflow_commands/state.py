@@ -13,7 +13,7 @@ from cdflow_commands.logger import logger
 from cdflow_commands.process import check_call
 
 TFSTATE_NAME_PREFIX = 'cdflow-tfstate'
-LAMBDA_BUCKET_NAME = 'cdflow-lambda-releases'
+LAMBDA_BUCKET_PREFIX = 'cdflow-lambda-releases'
 TFSTATE_TAG_NAME = 'is-cdflow-tfstate-bucket'
 LAMBDA_TAG_NAME = 'is-cdflow-lambda-bucket'
 TAG_VALUE = 'true'
@@ -209,7 +209,7 @@ class S3BucketFactory:
 
         if bucket_name_prefix == TFSTATE_NAME_PREFIX:
             bucket_tag = TFSTATE_TAG_NAME
-        if bucket_name_prefix == LAMBDA_BUCKET_NAME:
+        if LAMBDA_BUCKET_PREFIX in bucket_name_prefix:
             bucket_tag = LAMBDA_TAG_NAME
 
         buckets = {
@@ -278,7 +278,7 @@ class S3BucketFactory:
                     attempt, bucket_name_prefix
                 )
             else:
-                bucket_name = LAMBDA_BUCKET_NAME
+                bucket_name = bucket_name_prefix
             if self._attempt_to_create_bucket(bucket_name):
                 logger.debug(
                     's3 bucket with name: {} created'.format(bucket_name)

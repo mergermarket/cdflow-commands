@@ -36,6 +36,7 @@ class TestLambdaReleasePlugin(unittest.TestCase):
             'release-account': 'dummy',
             'default-region': self._region,
             'release-bucket': 'dummy',
+            'lambda-bucket': 'dummy-lambda-bucket',
             'environments': {
                 'live': 'dummy',
             },
@@ -84,7 +85,7 @@ class TestLambdaReleasePlugin(unittest.TestCase):
         self._plugin.create()
         # Then
         s3_bucket_factory_mock.get_bucket_name.assert_called_once_with(
-            'cdflow-lambda-releases'
+            'dummy-lambda-bucket'
         )
 
     @patch('cdflow_commands.plugins.aws_lambda.os')
