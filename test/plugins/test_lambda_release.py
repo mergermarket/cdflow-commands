@@ -5,7 +5,6 @@ from mock import Mock, patch, MagicMock
 from cdflow_commands.account import AccountScheme
 from cdflow_commands.plugins.aws_lambda import ReleasePlugin
 from cdflow_commands.release import Release
-from cdflow_commands.state import S3BucketFactory
 
 
 class TestLambdaReleasePlugin(unittest.TestCase):
@@ -46,16 +45,14 @@ class TestLambdaReleasePlugin(unittest.TestCase):
 
     @patch('cdflow_commands.plugins.aws_lambda.os')
     @patch('cdflow_commands.plugins.aws_lambda.ZipFile')
-    @patch('cdflow_commands.plugins.aws_lambda.S3BucketFactory')
     def test_release_returns_release_data(
-        self, S3BucketFactory, zip_file, mock_os
+        self, zip_file, mock_os
     ):
-        S3BucketFactory.return_value.get_bucket_name.return_value = 'bucket'
 
         plugin_data = self._plugin.create()
 
         assert plugin_data == {
-            's3_bucket': 'bucket',
+            's3_bucket': 'dummy-lambda-bucket',
             's3_key': '{}/{}-{}.zip'.format(
                 self._component_name, self._component_name, self._version
             ),
@@ -63,8 +60,7 @@ class TestLambdaReleasePlugin(unittest.TestCase):
 
     @patch('cdflow_commands.plugins.aws_lambda.os')
     @patch('cdflow_commands.plugins.aws_lambda.ZipFile')
-    @patch('cdflow_commands.plugins.aws_lambda.S3BucketFactory')
-    def test_release_creates_zip_from_directory(self, _, zip_file, mock_os):
+    def test_release_creates_zip_from_directory(self, zip_file, mock_os):
         self._plugin.create()
         zip_file.assert_called_once_with(
             '{}.zip'.format(self._component_name), 'w'
@@ -72,39 +68,15 @@ class TestLambdaReleasePlugin(unittest.TestCase):
 
     @patch('cdflow_commands.plugins.aws_lambda.os')
     @patch('cdflow_commands.plugins.aws_lambda.ZipFile')
-    @patch(
-        'cdflow_commands.plugins.aws_lambda.S3BucketFactory',
-        autospec=S3BucketFactory
-    )
-    def test_release_gets_bucket_name(
-        self, s3_bucket_factory, zip_file, mock_os
-    ):
-        # Given
-        s3_bucket_factory_mock = s3_bucket_factory.return_value = Mock()
-        # When
-        self._plugin.create()
-        # Then
-        s3_bucket_factory_mock.get_bucket_name.assert_called_once_with(
-            'dummy-lambda-bucket'
-        )
-
-    @patch('cdflow_commands.plugins.aws_lambda.os')
-    @patch('cdflow_commands.plugins.aws_lambda.ZipFile')
-    @patch(
-        'cdflow_commands.plugins.aws_lambda.S3BucketFactory',
-        autospec=S3BucketFactory
-    )
     def test_release_pushes_to_s3(
-        self, mock_lambda_s3_factory, zip_file, mock_os
+        self, zip_file, mock_os
     ):
         boto_s3_client = Mock()
         self._release.boto_session.client.return_value = boto_s3_client
-        mock_lambda_s3_factory.return_value.get_bucket_name.return_value \
-            = 'lambda-bucket'
         self._plugin.create()
         boto_s3_client.upload_file.assert_called_once_with(
             zip_file().__enter__().filename,
-            'lambda-bucket',
+            'dummy-lambda-bucket',
             '{}/{}-{}.zip'.format(
                 self._component_name, self._component_name, self._version
             )
@@ -112,7 +84,6 @@ class TestLambdaReleasePlugin(unittest.TestCase):
 
     @patch('cdflow_commands.plugins.aws_lambda.os')
     @patch('cdflow_commands.plugins.aws_lambda.ZipFile')
-    @patch('cdflow_commands.plugins.aws_lambda.S3BucketFactory')
-    def test_release_cleans_up_zip_after_push(self, _, zip_file, mock_os):
+    def test_release_cleans_up_zip_after_push(self, zip_file, mock_os):
         self._plugin.create()
         mock_os.remove.assert_called_once_with(zip_file().__enter__().filename)
