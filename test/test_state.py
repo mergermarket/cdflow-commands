@@ -9,7 +9,8 @@ from boto3.session import Session
 from botocore.exceptions import ClientError
 from cdflow_commands.state import (
     TFSTATE_TAG_NAME, TAG_VALUE, IncorrectSchemaError, LockTableFactory,
-    S3BucketFactory, initialise_terraform_backend, remove_file
+    S3BucketFactory, initialise_terraform_backend, remove_file,
+    LAMBDA_BUCKET_PREFIX, LAMBDA_TAG_NAME
 )
 from hypothesis import given
 from hypothesis.strategies import fixed_dictionaries, text
@@ -60,6 +61,50 @@ class TestS3BucketFactory(unittest.TestCase):
             Bucket=bucket_name
         )
         assert retrieved_bucket_name == bucket_name
+
+    @given(text())
+    def test_get_existing_lambda_bucket(self, bucket_name):
+        # Given
+        session = Mock()
+        session.region_name = 'dummy-region'
+        s3_client = Mock()
+        session.client.return_value = s3_client
+        lambda_bucket_name = '{}-{}'.format(LAMBDA_BUCKET_PREFIX, bucket_name)
+
+        s3_client.list_buckets.return_value = {
+            'Buckets': [
+                {'Name': lambda_bucket_name}
+            ]
+        }
+        s3_client.get_bucket_tagging.return_value = {
+            'TagSet': [
+                {
+                    'Key': LAMBDA_TAG_NAME,
+                    'Value': TAG_VALUE,
+                }
+            ]
+        }
+        s3_client.get_bucket_location.return_value = {
+            'LocationConstraint': session.region_name
+        }
+
+        s3_bucket_factory = S3BucketFactory(session, 'dummy-account-id')
+
+        # When
+        retrieved_bucket_name = s3_bucket_factory.get_bucket_name(
+            lambda_bucket_name
+        )
+
+        # Then
+        session.client.called_once_with('s3')
+        s3_client.list_buckets.assert_called_once_with()
+        s3_client.get_bucket_tagging.assert_called_once_with(
+            Bucket=lambda_bucket_name
+        )
+        s3_client.get_bucket_location.assert_called_once_with(
+            Bucket=lambda_bucket_name
+        )
+        assert retrieved_bucket_name == lambda_bucket_name
 
     def test_assertion_error_on_multiple_buckets(self):
 
