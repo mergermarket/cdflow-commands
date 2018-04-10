@@ -209,7 +209,7 @@ class S3BucketFactory:
 
         if bucket_name_prefix == TFSTATE_NAME_PREFIX:
             bucket_tag = TFSTATE_TAG_NAME
-        if LAMBDA_BUCKET_PREFIX in bucket_name_prefix:
+        else:
             bucket_tag = LAMBDA_TAG_NAME
 
         buckets = {
