@@ -3,7 +3,6 @@ from zipfile import ZipFile
 from contextlib import contextmanager
 
 from cdflow_commands.logger import logger
-from cdflow_commands.state import S3BucketFactory
 
 
 class ReleasePlugin:
@@ -26,19 +25,13 @@ class ReleasePlugin:
 
     def create(self):
         zipped_folder = self._zip_up_component()
-        s3_bucket_factory = S3BucketFactory(
-            self._boto_session, self._account_scheme.release_account.id
-        )
-        created_bucket_name = s3_bucket_factory.get_bucket_name(
-            self._account_scheme.lambda_bucket
-        )
         self._upload_zip_to_bucket(
-            created_bucket_name, zipped_folder.filename
+            self._account_scheme.lambda_bucket, zipped_folder.filename
         )
         self._remove_zipped_folder(zipped_folder.filename)
 
         return {
-            's3_bucket': created_bucket_name,
+            's3_bucket': self._account_scheme.lambda_bucket,
             's3_key': self._lambda_s3_key,
         }
 
