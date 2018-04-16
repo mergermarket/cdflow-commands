@@ -1,6 +1,7 @@
 import unittest
 from contextlib import ExitStack
 from io import BufferedRandom
+from os.path import join
 from re import match
 from string import ascii_letters, ascii_lowercase, digits
 from textwrap import dedent
@@ -568,7 +569,10 @@ class TestLockTableFactory(unittest.TestCase):
 
 
 terraform_backend_input = fixed_dictionaries({
-    'directory': text(min_size=1).filter(
+    'base_directory': text(min_size=1).filter(
+        lambda t: '/' not in t and '.' not in t
+    ),
+    'sub_directory': text(min_size=1).filter(
         lambda t: '/' not in t and '.' not in t
     ),
     'aws_region': text(min_size=1),
@@ -590,7 +594,8 @@ class TestTerraformBackendConfig(unittest.TestCase):
     def test_backend_config_written_into_infra_code(
         self, terraform_backend_input
     ):
-        directory = terraform_backend_input['directory']
+        base_directory = terraform_backend_input['base_directory']
+        sub_directory = terraform_backend_input['sub_directory']
         bucket_name = terraform_backend_input['bucket_name']
         lock_table_name = terraform_backend_input['lock_table_name']
         environment_name = terraform_backend_input['environment_name']
@@ -600,7 +605,6 @@ class TestTerraformBackendConfig(unittest.TestCase):
 
         with ExitStack() as stack:
             stack.enter_context(patch('cdflow_commands.state.check_call'))
-            stack.enter_context(patch('cdflow_commands.state.move'))
             stack.enter_context(patch('cdflow_commands.state.atexit'))
             NamedTemporaryFile = stack.enter_context(
                 patch('cdflow_commands.state.NamedTemporaryFile')
@@ -610,13 +614,14 @@ class TestTerraformBackendConfig(unittest.TestCase):
             NamedTemporaryFile.return_value.__enter__.return_value = mock_file
 
             initialise_terraform_backend(
-                directory, boto_session, bucket_name, lock_table_name,
+                base_directory, sub_directory, boto_session,
+                bucket_name, lock_table_name,
                 environment_name, component_name, tfstate_filename
             )
 
         NamedTemporaryFile.assert_called_once_with(
             prefix='cdflow_backend_', suffix='.tf',
-            dir=directory, delete=False, mode='w+'
+            dir=join(base_directory, sub_directory), delete=False, mode='w+'
         )
 
         mock_file.write.assert_called_once_with(dedent('''
@@ -628,7 +633,8 @@ class TestTerraformBackendConfig(unittest.TestCase):
 
     @given(terraform_backend_input)
     def test_backend_is_initialised(self, terraform_backend_input):
-        directory = terraform_backend_input['directory']
+        base_directory = terraform_backend_input['base_directory']
+        sub_directory = terraform_backend_input['sub_directory']
         bucket_name = terraform_backend_input['bucket_name']
         lock_table_name = terraform_backend_input['lock_table_name']
         environment_name = terraform_backend_input['environment_name']
@@ -644,14 +650,14 @@ class TestTerraformBackendConfig(unittest.TestCase):
             stack.enter_context(
                 patch('cdflow_commands.state.NamedTemporaryFile')
             )
-            stack.enter_context(patch('cdflow_commands.state.move'))
             stack.enter_context(patch('cdflow_commands.state.atexit'))
             check_call = stack.enter_context(
                 patch('cdflow_commands.state.check_call')
             )
 
             initialise_terraform_backend(
-                directory, boto_session, bucket_name, lock_table_name,
+                base_directory, sub_directory, boto_session,
+                bucket_name, lock_table_name,
                 environment_name, component_name, tfstate_filename
             )
 
@@ -667,42 +673,9 @@ class TestTerraformBackendConfig(unittest.TestCase):
                 ANY,
                 ANY,
                 ANY,
+                join(base_directory, sub_directory),
             ],
-            cwd=directory
-        )
-
-    @given(terraform_backend_input)
-    def test_state_file_is_moved_to_root(self, terraform_backend_input):
-        directory = terraform_backend_input['directory']
-        bucket_name = terraform_backend_input['bucket_name']
-        lock_table_name = terraform_backend_input['lock_table_name']
-        environment_name = terraform_backend_input['environment_name']
-        component_name = terraform_backend_input['component_name']
-        tfstate_filename = terraform_backend_input['tfstate_filename']
-        boto_session = MagicMock(spec=Session)
-
-        with ExitStack() as stack:
-            stack.enter_context(
-                patch('cdflow_commands.state.NamedTemporaryFile')
-            )
-            stack.enter_context(patch('cdflow_commands.state.check_call'))
-            stack.enter_context(patch('cdflow_commands.state.atexit'))
-            move = stack.enter_context(patch('cdflow_commands.state.move'))
-
-            initialise_terraform_backend(
-                directory, boto_session, bucket_name, lock_table_name,
-                environment_name, component_name, tfstate_filename
-            )
-
-        move.assert_has_calls(
-            move(
-                f'/cdflow/{directory}/.terraform/terraform.tfstate',
-                '/cdflow/.terraform'
-            ),
-            move(
-                f'/cdflow/{directory}/.terraform/plugins',
-                '/cdflow/.terraform'
-            )
+            cwd=base_directory,
         )
 
     @given(fixed_dictionaries({
@@ -712,7 +685,9 @@ class TestTerraformBackendConfig(unittest.TestCase):
         )
     }))
     def test_config_file_is_removed_at_exit(self, test_fixtures):
-        directory = test_fixtures['terraform_backend_input']['directory']
+        terraform_backend_input = test_fixtures['terraform_backend_input']
+        base_directory = terraform_backend_input['base_directory']
+        sub_directory = terraform_backend_input['sub_directory']
         bucket_name = test_fixtures['terraform_backend_input']['bucket_name']
         boto_session = MagicMock(spec=Session)
         lock_table_name = (
@@ -734,7 +709,6 @@ class TestTerraformBackendConfig(unittest.TestCase):
 
         with ExitStack() as stack:
             stack.enter_context(patch('cdflow_commands.state.check_call'))
-            stack.enter_context(patch('cdflow_commands.state.move'))
             NamedTemporaryFile = stack.enter_context(
                 patch('cdflow_commands.state.NamedTemporaryFile')
             )
@@ -744,7 +718,8 @@ class TestTerraformBackendConfig(unittest.TestCase):
                 backend_config_file_name
 
             initialise_terraform_backend(
-                directory, boto_session, bucket_name, lock_table_name,
+                base_directory, sub_directory, boto_session,
+                bucket_name, lock_table_name,
                 environment_name, component_name, tfstate_filename
             )
 
