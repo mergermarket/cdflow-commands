@@ -1,8 +1,7 @@
 import atexit
 from hashlib import sha1
-from os import mkdir, unlink
-from os.path import abspath
-from shutil import move
+from os import unlink
+from os.path import join
 from tempfile import NamedTemporaryFile
 from textwrap import dedent
 
@@ -46,12 +45,13 @@ def initialise_terraform(
 
 
 def initialise_terraform_backend(
-    directory, boto_session, bucket_name, lock_table_name,
+    base_directory, sub_directory, boto_session, bucket_name, lock_table_name,
     environment_name, component_name, tfstate_filename
 ):
+    working_directory = join(base_directory, sub_directory)
     with NamedTemporaryFile(
         prefix='cdflow_backend_', suffix='.tf',
-        dir=directory, delete=False, mode='w+'
+        dir=working_directory, delete=False, mode='w+'
     ) as backend_file:
         logger.debug(f'Writing backend config to {backend_file.name}')
         backend_file.write(dedent('''
@@ -65,7 +65,7 @@ def initialise_terraform_backend(
 
     key = state_file_key(environment_name, component_name, tfstate_filename)
     logger.debug(
-        f'Initialising backend in {directory} with {bucket_name}, '
+        f'Initialising backend in {working_directory} with {bucket_name}, '
         f'{boto_session.region_name}, {key}, {lock_table_name}'
     )
 
@@ -82,28 +82,10 @@ def initialise_terraform_backend(
             f'-backend-config=access_key={credentials.access_key}',
             f'-backend-config=secret_key={credentials.secret_key}',
             f'-backend-config=token={credentials.token}',
+            working_directory,
         ],
-        cwd=directory,
+        cwd=base_directory,
     )
-
-    from_path_statefile = abspath(
-        f'{directory}/.terraform/terraform.tfstate'
-    )
-    from_path_plugins = abspath(
-        f'{directory}/.terraform/plugins'
-    )
-    to_path = abspath(f'{directory}/../.terraform/')
-
-    try:
-        mkdir(to_path)
-    except OSError:
-        logger.debug(f'{to_path} already exists - not creating')
-
-    logger.debug(f'Moving {from_path_statefile} to {to_path}')
-    move(from_path_statefile, to_path)
-
-    logger.debug(f'Moving {from_path_plugins} to {to_path}')
-    move(from_path_plugins, to_path)
 
 
 def state_file_key(environment_name, component_name, tfstate_filename):
