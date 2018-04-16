@@ -35,10 +35,7 @@ def initialise_terraform(
 ):
     lock_table_factory = LockTableFactory(boto_session)
 
-    s3_bucket_factory = S3BucketFactory(
-        boto_session,
-        '123456789'  # account_id - need to remove from logic in the factory
-    )
+    s3_bucket_factory = S3BucketFactory(boto_session)
 
     initialise_terraform_backend(
         directory, boto_session,
@@ -116,10 +113,7 @@ def state_file_key(environment_name, component_name, tfstate_filename):
 def remove_state(
     boto_session, environment_name, component_name, tfstate_filename
 ):
-    s3_bucket_factory = S3BucketFactory(
-        boto_session,
-        '123456789'  # account_id - need to remove from logic in the factory
-    )
+    s3_bucket_factory = S3BucketFactory(boto_session)
 
     bucket_name = s3_bucket_factory.get_bucket_name()
 
@@ -192,10 +186,9 @@ class LockTableFactory:
 
 class S3BucketFactory:
 
-    def __init__(self, boto_session, account_id):
+    def __init__(self, boto_session):
         self._boto_session = boto_session
         self._aws_region = boto_session.region_name
-        self._account_id = account_id
 
     @property
     def _boto_s3_client(self):
@@ -325,7 +318,7 @@ class S3BucketFactory:
         )
 
     def _generate_bucket_name(self, attempt, bucket_name_prefix):
-        parts = map(str, [self._aws_region, self._account_id, attempt])
+        parts = map(str, [self._aws_region, attempt])
         concatenated = ''.join(parts)
         return '{}-{}'.format(
             bucket_name_prefix,

@@ -45,7 +45,7 @@ class TestS3BucketFactory(unittest.TestCase):
             'LocationConstraint': session.region_name
         }
 
-        s3_bucket_factory = S3BucketFactory(session, 'dummy-account-id')
+        s3_bucket_factory = S3BucketFactory(session)
 
         # When
         retrieved_bucket_name = s3_bucket_factory.get_bucket_name()
@@ -88,7 +88,7 @@ class TestS3BucketFactory(unittest.TestCase):
             'LocationConstraint': session.region_name
         }
 
-        s3_bucket_factory = S3BucketFactory(session, 'dummy-account-id')
+        s3_bucket_factory = S3BucketFactory(session)
 
         # When & Then
         self.assertRaises(AssertionError, s3_bucket_factory.get_bucket_name)
@@ -130,7 +130,7 @@ class TestS3BucketFactory(unittest.TestCase):
             'LocationConstraint': session.region_name
         }
 
-        s3_bucket_factory = S3BucketFactory(session, 'dummy-account-id')
+        s3_bucket_factory = S3BucketFactory(session)
 
         # When
         bucket = s3_bucket_factory.get_bucket_name()
@@ -175,7 +175,7 @@ class TestS3BucketFactory(unittest.TestCase):
             'LocationConstraint': session.region_name
         }
 
-        s3_bucket_factory = S3BucketFactory(session, 'dummy-account-id')
+        s3_bucket_factory = S3BucketFactory(session)
 
         # When
         bucket = s3_bucket_factory.get_bucket_name()
@@ -196,7 +196,7 @@ class TestS3BucketFactory(unittest.TestCase):
             ]
         }
 
-        s3_bucket_factory = S3BucketFactory(session, 'dummy-account-id')
+        s3_bucket_factory = S3BucketFactory(session)
         # When
         bucket_name = s3_bucket_factory.get_bucket_name()
 
@@ -230,7 +230,7 @@ class TestS3BucketFactory(unittest.TestCase):
             ]
         }
 
-        s3_bucket_factory = S3BucketFactory(session, 'dummy-account-id')
+        s3_bucket_factory = S3BucketFactory(session)
         # When
         bucket_name = s3_bucket_factory.get_bucket_name()
 
@@ -279,7 +279,7 @@ class TestS3BucketFactory(unittest.TestCase):
             'LocationConstraint': None
         }
 
-        s3_bucket_factory = S3BucketFactory(session, 'dummy-account-id')
+        s3_bucket_factory = S3BucketFactory(session)
         # When
         bucket_name = s3_bucket_factory.get_bucket_name()
 
@@ -311,7 +311,7 @@ class TestS3BucketFactory(unittest.TestCase):
             'LocationConstraint': 'other-region'
         }
 
-        s3_bucket_factory = S3BucketFactory(session, 'dummy-account-id')
+        s3_bucket_factory = S3BucketFactory(session)
         # When
         bucket_name = s3_bucket_factory.get_bucket_name()
 
@@ -335,7 +335,7 @@ class TestS3BucketFactory(unittest.TestCase):
             }
         )
 
-    def test_bucket_name_generally_unique_based_on_account_and_region(self):
+    def test_bucket_name_generally_unique_based_on_region(self):
 
         # Given
         session = Mock()
@@ -348,29 +348,17 @@ class TestS3BucketFactory(unittest.TestCase):
 
         # When
         session.region_name = 'region-1'
-        bucket = S3BucketFactory(
-            session, 'account-id-1'
-        ).get_bucket_name()
-        duplicate_bucket = S3BucketFactory(
-            session, 'account-id-1'
-        ).get_bucket_name()
-        bucket_different_account = S3BucketFactory(
-            session, 'account-id-2'
-        ).get_bucket_name()
+        bucket = S3BucketFactory(session).get_bucket_name()
+        duplicate_bucket = S3BucketFactory(session).get_bucket_name()
         session.region_name = 'region-2'
-        bucket_different_region = S3BucketFactory(
-            session, 'account-id-1'
-        ).get_bucket_name()
+        bucket_different_region = S3BucketFactory(session).get_bucket_name()
 
         # Then
         assert match(NEW_BUCKET_PATTERN, bucket)
         assert match(NEW_BUCKET_PATTERN, duplicate_bucket)
         assert match(NEW_BUCKET_PATTERN, bucket_different_region)
-        assert match(NEW_BUCKET_PATTERN, bucket_different_account)
         assert bucket == duplicate_bucket
         assert bucket != bucket_different_region
-        assert bucket != bucket_different_account
-        assert bucket_different_region != bucket_different_account
 
     def test_bucket_name_when_bucket_not_available(self):
         # Given
@@ -392,7 +380,7 @@ class TestS3BucketFactory(unittest.TestCase):
             {}
         ]
 
-        s3_bucket_factory = S3BucketFactory(session, 'dummy-account-id')
+        s3_bucket_factory = S3BucketFactory(session)
 
         # When
         bucket_name = s3_bucket_factory.get_bucket_name()
@@ -427,7 +415,7 @@ class TestS3BucketFactory(unittest.TestCase):
             {}
         ]
 
-        s3_bucket_factory = S3BucketFactory(session, 'dummy-account-id')
+        s3_bucket_factory = S3BucketFactory(session)
 
         # When
         bucket_name = s3_bucket_factory.get_bucket_name()
