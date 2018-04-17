@@ -3,7 +3,7 @@ from time import time
 
 from cdflow_commands.config import env_with_aws_credetials
 from cdflow_commands.constants import (
-    CDFLOW_BASE_PATH, TERRAFORM_BINARY, TERRAFORM_DESTROY_DEFINITION
+    TERRAFORM_BINARY, TERRAFORM_DESTROY_DEFINITION, DESTROY_BASE_PATH,
 )
 from cdflow_commands.process import check_call
 
@@ -28,7 +28,7 @@ class Destroy:
             env=env_with_aws_credetials(
                 os.environ, self._boto_session
             ),
-            cwd=CDFLOW_BASE_PATH,
+            cwd=DESTROY_BASE_PATH,
         )
 
     def _destroy(self):
@@ -37,7 +37,7 @@ class Destroy:
             env=env_with_aws_credetials(
                 os.environ, self._boto_session
             ),
-            cwd=CDFLOW_BASE_PATH,
+            cwd=DESTROY_BASE_PATH,
         )
 
     @property

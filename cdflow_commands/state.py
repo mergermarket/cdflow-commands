@@ -30,14 +30,15 @@ def remove_file(filepath):
 
 
 def initialise_terraform(
-    directory, boto_session, environment_name, component_name, tfstate_filename
+    base_directory, sub_directory, boto_session,
+    environment_name, component_name, tfstate_filename,
 ):
     lock_table_factory = LockTableFactory(boto_session)
 
     s3_bucket_factory = S3BucketFactory(boto_session)
 
     initialise_terraform_backend(
-        directory, boto_session,
+        base_directory, sub_directory, boto_session,
         s3_bucket_factory.get_bucket_name(),
         lock_table_factory.get_table_name(),
         environment_name, component_name, tfstate_filename

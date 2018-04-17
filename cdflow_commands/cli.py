@@ -26,9 +26,7 @@ from boto3.session import Session
 from cdflow_commands.config import (
     assume_role, get_component_name, load_manifest, build_account_scheme
 )
-from cdflow_commands.constants import (
-    INFRASTRUCTURE_DEFINITIONS_PATH, TERRAFORM_DESTROY_DEFINITION,
-)
+from cdflow_commands.constants import INFRASTRUCTURE_DEFINITIONS_PATH
 from cdflow_commands.deploy import Deploy
 from cdflow_commands.destroy import Destroy
 from cdflow_commands.exceptions import UnknownProjectTypeError, UserFacingError
@@ -152,7 +150,7 @@ def run_deploy(
             terraform_session = deploy_account_session
 
         initialise_terraform(
-            os.path.join(path_to_release, INFRASTRUCTURE_DEFINITIONS_PATH),
+            path_to_release, INFRASTRUCTURE_DEFINITIONS_PATH,
             terraform_session, environment, component_name,
             manifest.tfstate_filename
         )
@@ -194,7 +192,7 @@ def run_destroy(
         terraform_session = destroy_account_session
 
     initialise_terraform(
-        TERRAFORM_DESTROY_DEFINITION, terraform_session,
+        '/', 'tmp', terraform_session,
         environment, component_name, manifest.tfstate_filename
     )
 

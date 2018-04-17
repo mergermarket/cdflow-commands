@@ -184,7 +184,7 @@ class TestDeployStateInReleaseAccount(unittest.TestCase):
 
         # Then
         initialise_terraform.assert_called_once_with(
-            ANY, release_account_session, ANY, ANY, ANY
+            ANY, ANY, release_account_session, ANY, ANY, ANY
         )
 
 
@@ -218,5 +218,5 @@ class TestDestroyStateInReleaseAccount(unittest.TestCase):
 
         # Then
         initialise_terraform.assert_called_once_with(
-            ANY, release_account_session, ANY, ANY, ANY
+            ANY, ANY, release_account_session, ANY, ANY, ANY
         )
