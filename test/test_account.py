@@ -33,6 +33,16 @@ def accounts(draw, min_size=1):
     return accounts
 
 
+def dedupe_accounts(accounts):
+    aliases = set()
+    for account in accounts:
+        if account['alias'] not in aliases:
+            aliases.add(account['alias'])
+        else:
+            return False
+    return True
+
+
 class TestAccount(unittest.TestCase):
 
     @given(account())
@@ -76,7 +86,11 @@ class TestAccountScheme(unittest.TestCase):
         assert account_scheme.release_bucket == fixtures['release-bucket']
         assert account_scheme.lambda_bucket == fixtures['lambda-bucket']
 
-    @given(accounts())
+    @given(lists(
+            elements=account(),
+            min_size=1,
+            unique_by=lambda a: a['id'],
+    ).filter(dedupe_accounts))
     def test_deploy_account_ids(self, accounts):
         raw_scheme = {
             'accounts': {
@@ -98,7 +112,11 @@ class TestAccountScheme(unittest.TestCase):
         assert list(sorted(account_scheme.account_ids)) == expected_account_ids
 
     @given(fixed_dictionaries({
-        'accounts': accounts(min_size=2),
+        'accounts': lists(
+            elements=account(),
+            min_size=2,
+            unique_by=lambda a: a['id'],
+        ).filter(dedupe_accounts),
         'environments': lists(
             elements=text(alphabet=ascii_letters+digits, min_size=2),
             unique=True, min_size=2,
@@ -135,7 +153,11 @@ class TestAccountScheme(unittest.TestCase):
                 == dev_account
 
     @given(fixed_dictionaries({
-        'accounts': accounts(min_size=2),
+        'accounts': lists(
+            elements=account(),
+            min_size=2,
+            unique_by=lambda a: a['id'],
+        ).filter(dedupe_accounts),
         'environments': lists(
             elements=text(alphabet=ascii_letters+digits, min_size=2),
             unique=True, min_size=2,
@@ -175,7 +197,11 @@ class TestAccountScheme(unittest.TestCase):
             elements=text(alphabet=ascii_letters+digits, min_size=2),
             unique=True, min_size=2,
         ),
-        'accounts': accounts(min_size=4),
+        'accounts': lists(
+            elements=account(),
+            min_size=4,
+            unique_by=lambda a: a['id'],
+        ).filter(dedupe_accounts),
         'environments': lists(
             elements=text(alphabet=ascii_letters+digits, min_size=2),
             unique=True, min_size=2,
