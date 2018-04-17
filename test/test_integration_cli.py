@@ -2,13 +2,14 @@ import json
 import unittest
 from collections import namedtuple
 from io import TextIOWrapper
+from os.path import join
 from subprocess import PIPE
 
 import yaml
 
 from cdflow_commands import cli
 from cdflow_commands.constants import (
-    CDFLOW_BASE_PATH, TERRAFORM_BINARY, TERRAFORM_DESTROY_DEFINITION
+    TERRAFORM_BINARY, INFRASTRUCTURE_DEFINITIONS_PATH, DESTROY_BASE_PATH,
 )
 from mock import ANY, MagicMock, Mock, patch
 
@@ -32,12 +33,11 @@ BotoCreds = namedtuple('BotoCreds', ['access_key', 'secret_key', 'token'])
 @patch('cdflow_commands.config.check_output')
 @patch('cdflow_commands.state.NamedTemporaryFile')
 @patch('cdflow_commands.state.check_call')
-@patch('cdflow_commands.state.move')
 @patch('cdflow_commands.state.atexit')
 class TestDeployCLI(unittest.TestCase):
 
     def setup_mocks(
-        self, atexit, move, check_call_state, NamedTemporaryFile_state,
+        self, atexit, check_call_state, NamedTemporaryFile_state,
         check_output, _open, Session_from_config, Session_from_cli, rmtree,
         NamedTemporaryFile_deploy, time, check_call_deploy, popen_call,
         mock_os_deploy, TemporaryDirectory, ZipFile, mock_os_release,
@@ -178,8 +178,12 @@ class TestDeployCLI(unittest.TestCase):
 
         # Then
         check_call_state.assert_any_call(
-            ['terraform', 'init', ANY, ANY, ANY, ANY, ANY, ANY, ANY, ANY, ANY],
-            cwd=workdir+'/infra'
+            [
+                'terraform', 'init',
+                ANY, ANY, ANY, ANY, ANY, ANY, ANY, ANY, ANY,
+                join(workdir, INFRASTRUCTURE_DEFINITIONS_PATH),
+            ],
+            cwd=workdir,
         )
 
         popen_call.assert_any_call(
@@ -272,12 +276,11 @@ class TestDeployCLI(unittest.TestCase):
 @patch('cdflow_commands.config.check_output')
 @patch('cdflow_commands.state.NamedTemporaryFile')
 @patch('cdflow_commands.state.check_call')
-@patch('cdflow_commands.state.move')
 @patch('cdflow_commands.state.atexit')
 class TestDestroyCLI(unittest.TestCase):
 
     def setup_mocks(
-        self, atexit, move, check_call_state, NamedTemporaryFile_state,
+        self, atexit, check_call_state, NamedTemporaryFile_state,
         check_output, _open, Session_from_config, Session_from_cli, rmtree,
         time, check_call_destroy,
     ):
@@ -404,23 +407,24 @@ class TestDestroyCLI(unittest.TestCase):
                 '-backend-config=access_key=dummy-access-key-id',
                 '-backend-config=secret_key=dummy-secret-access-key',
                 '-backend-config=token=dummy-session-token',
+                '/tmp',
             ],
-            cwd=ANY,
+            cwd='/',
         )
 
         check_call_destroy.assert_any_call(
             [
                 TERRAFORM_BINARY, 'plan', '-destroy',
-                '-out', ANY, TERRAFORM_DESTROY_DEFINITION,
+                '-out', ANY, '/tmp',
             ],
             env=ANY,
-            cwd=CDFLOW_BASE_PATH,
+            cwd=DESTROY_BASE_PATH,
         )
 
         check_call_destroy.assert_any_call(
             [TERRAFORM_BINARY, 'apply', ANY],
             env=ANY,
-            cwd=CDFLOW_BASE_PATH,
+            cwd=DESTROY_BASE_PATH,
         )
 
         remove_state_mock_s3.delete_object.assert_called_once_with(
@@ -451,17 +455,18 @@ class TestDestroyCLI(unittest.TestCase):
                 '-backend-config=access_key={}'.format(aws_access_key_id),
                 '-backend-config=secret_key={}'.format(aws_secret_access_key),
                 '-backend-config=token={}'.format(aws_session_token),
+                '/tmp',
             ],
-            cwd=ANY,
+            cwd='/',
         )
 
         check_call_destroy.assert_called_once_with(
             [
                 TERRAFORM_BINARY, 'plan', '-destroy',
-                '-out', ANY, TERRAFORM_DESTROY_DEFINITION,
+                '-out', ANY, '/tmp',
             ],
             env=ANY,
-            cwd=CDFLOW_BASE_PATH,
+            cwd=DESTROY_BASE_PATH,
         )
 
         remove_state_mock_s3.delete_object.assert_not_called()

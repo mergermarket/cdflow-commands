@@ -8,7 +8,7 @@ from mock import Mock, patch
 
 from cdflow_commands.destroy import Destroy
 from cdflow_commands.constants import (
-    CDFLOW_BASE_PATH, TERRAFORM_BINARY, TERRAFORM_DESTROY_DEFINITION,
+    TERRAFORM_BINARY, TERRAFORM_DESTROY_DEFINITION, DESTROY_BASE_PATH,
 )
 
 
@@ -67,7 +67,7 @@ class TestDestroy(unittest.TestCase):
                 'AWS_SESSION_TOKEN': aws_session_token,
                 'AWS_DEFAULT_REGION': fixtures['region'],
             },
-            cwd=CDFLOW_BASE_PATH,
+            cwd=DESTROY_BASE_PATH,
         )
 
     @given(fixed_dictionaries({
@@ -113,7 +113,7 @@ class TestDestroy(unittest.TestCase):
                 'AWS_SESSION_TOKEN': aws_session_token,
                 'AWS_DEFAULT_REGION': fixtures['region'],
             },
-            cwd=CDFLOW_BASE_PATH,
+            cwd=DESTROY_BASE_PATH,
         )
 
     @given(fixed_dictionaries({
@@ -164,5 +164,5 @@ class TestDestroy(unittest.TestCase):
                 'AWS_SESSION_TOKEN': aws_session_token,
                 'AWS_DEFAULT_REGION': fixtures['region'],
             },
-            cwd=CDFLOW_BASE_PATH,
+            cwd=DESTROY_BASE_PATH,
         )
