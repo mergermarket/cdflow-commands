@@ -10,6 +10,7 @@ import yaml
 from cdflow_commands import cli
 from cdflow_commands.constants import (
     TERRAFORM_BINARY, INFRASTRUCTURE_DEFINITIONS_PATH, DESTROY_BASE_PATH,
+    TERRAFORM_DESTROY_DEFINITION,
 )
 from mock import ANY, MagicMock, Mock, patch
 
@@ -407,15 +408,15 @@ class TestDestroyCLI(unittest.TestCase):
                 '-backend-config=access_key=dummy-access-key-id',
                 '-backend-config=secret_key=dummy-secret-access-key',
                 '-backend-config=token=dummy-session-token',
-                '/tmp',
+                TERRAFORM_DESTROY_DEFINITION,
             ],
-            cwd='/',
+            cwd=DESTROY_BASE_PATH,
         )
 
         check_call_destroy.assert_any_call(
             [
                 TERRAFORM_BINARY, 'plan', '-destroy',
-                '-out', ANY, '/tmp',
+                '-out', ANY, TERRAFORM_DESTROY_DEFINITION,
             ],
             env=ANY,
             cwd=DESTROY_BASE_PATH,
@@ -455,15 +456,15 @@ class TestDestroyCLI(unittest.TestCase):
                 '-backend-config=access_key={}'.format(aws_access_key_id),
                 '-backend-config=secret_key={}'.format(aws_secret_access_key),
                 '-backend-config=token={}'.format(aws_session_token),
-                '/tmp',
+                TERRAFORM_DESTROY_DEFINITION,
             ],
-            cwd='/',
+            cwd=DESTROY_BASE_PATH,
         )
 
         check_call_destroy.assert_called_once_with(
             [
                 TERRAFORM_BINARY, 'plan', '-destroy',
-                '-out', ANY, '/tmp',
+                '-out', ANY, TERRAFORM_DESTROY_DEFINITION,
             ],
             env=ANY,
             cwd=DESTROY_BASE_PATH,
