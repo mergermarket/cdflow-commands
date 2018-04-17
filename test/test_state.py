@@ -727,14 +727,14 @@ class TestTerraformBackendConfig(unittest.TestCase):
             remove_file, backend_config_file_name
         )
 
-    @given(text(average_size=10))
+    @given(text())
     def test_remove_file_function(self, filepath):
         with patch('cdflow_commands.state.unlink') as unlink:
             remove_file(filepath)
 
         unlink.assert_called_once_with(filepath)
 
-    @given(text(average_size=10))
+    @given(text())
     def test_remove_file_function_handles_missing_file(self, filepath):
         with patch('cdflow_commands.state.unlink') as unlink:
             unlink.side_effect = OSError('File not found')
