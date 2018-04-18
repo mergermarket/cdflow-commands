@@ -35,7 +35,9 @@ from cdflow_commands.plugins.ecs import ReleasePlugin as ECSReleasePlugin
 from cdflow_commands.plugins.aws_lambda import (
     ReleasePlugin as LambdaReleasePlugin
 )
-from cdflow_commands.release import Release, fetch_release
+from cdflow_commands.release import (
+    Release, fetch_release, find_latest_release_version,
+)
 from cdflow_commands.secrets import get_secrets
 from cdflow_commands.state import initialise_terraform, remove_state
 from docopt import docopt
@@ -186,32 +188,45 @@ def run_destroy(
         root_session, account_id, account_scheme.default_region,
     )
 
-    if manifest.terraform_state_in_release_account:
-        terraform_session = release_account_session
-    else:
-        terraform_session = destroy_account_session
-
-    initialise_terraform(
-        '/', 'tmp', terraform_session,
-        environment, component_name, manifest.tfstate_filename
+    version = find_latest_release_version(
+        release_account_session, account_scheme.release_bucket, component_name,
     )
 
-    destroy = Destroy(destroy_account_session)
+    with fetch_release(
+        release_account_session, account_scheme.release_bucket,
+        component_name, version,
+    ) as path_to_release:
+        logger.debug('Unpacked release: {}'.format(path_to_release))
+        path_to_release = os.path.join(
+            path_to_release, '{}-{}'.format(component_name, version)
+        )
+        if manifest.terraform_state_in_release_account:
+            terraform_session = release_account_session
+        else:
+            terraform_session = destroy_account_session
 
-    plan_only = args['--plan-only']
-
-    logger.info(
-        'Planning destruction of {} in {}'.format(component_name, environment)
-    )
-
-    destroy.run(plan_only)
-
-    if not plan_only:
-        logger.info('Destroying {} in {}'.format(component_name, environment))
-        remove_state(
-            destroy_account_session, environment, component_name,
+        initialise_terraform(
+            path_to_release, INFRASTRUCTURE_DEFINITIONS_PATH,
+            terraform_session, environment, component_name,
             manifest.tfstate_filename
         )
+
+        destroy = Destroy(destroy_account_session, path_to_release)
+
+        plan_only = args['--plan-only']
+
+        logger.info(
+            f'Planning destruction of {component_name} in {environment}'
+        )
+
+        destroy.run(plan_only)
+
+        if not plan_only:
+            logger.info(f'Destroying {component_name} in {environment}')
+            remove_state(
+                destroy_account_session, environment, component_name,
+                manifest.tfstate_filename
+            )
 
 
 def conditionally_set_debug(verbose):

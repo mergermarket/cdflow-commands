@@ -9,8 +9,7 @@ import yaml
 
 from cdflow_commands import cli
 from cdflow_commands.constants import (
-    TERRAFORM_BINARY, INFRASTRUCTURE_DEFINITIONS_PATH, DESTROY_BASE_PATH,
-    TERRAFORM_DESTROY_DEFINITION,
+    TERRAFORM_BINARY, INFRASTRUCTURE_DEFINITIONS_PATH,
 )
 from mock import ANY, MagicMock, Mock, patch
 
@@ -268,6 +267,9 @@ class TestDeployCLI(unittest.TestCase):
         )
 
 
+@patch('cdflow_commands.release.os')
+@patch('cdflow_commands.release.ZipFile')
+@patch('cdflow_commands.release.TemporaryDirectory')
 @patch('cdflow_commands.destroy.check_call')
 @patch('cdflow_commands.destroy.time')
 @patch('cdflow_commands.cli.rmtree')
@@ -283,7 +285,7 @@ class TestDestroyCLI(unittest.TestCase):
     def setup_mocks(
         self, atexit, check_call_state, NamedTemporaryFile_state,
         check_output, _open, Session_from_config, Session_from_cli, rmtree,
-        time, check_call_destroy,
+        time, check_call_destroy, TemporaryDirectory, ZipFile, mock_os_release,
     ):
         mock_metadata_file = MagicMock(spec=TextIOWrapper)
         metadata = {
@@ -374,24 +376,43 @@ class TestDestroyCLI(unittest.TestCase):
 
         component_name = 'dummy-component'
 
+        mock_s3_resource = Mock()
+        mock_release_bucket = Mock()
+        mock_s3_objectsummary = Mock()
+        mock_s3_objectsummary.key = f'{component_name}/{component_name}-1.zip'
+        mock_release_bucket.objects.filter.return_value = [
+            mock_s3_objectsummary
+        ]
+        mock_s3_resource.Bucket.return_value = mock_release_bucket
+
+        mock_assumed_session.resource.return_value = mock_s3_resource
+
         check_output.return_value = 'git@github.com:org/{}.git'.format(
             component_name
         ).encode('utf-8')
 
+        TemporaryDirectory.return_value.__enter__.return_value = '/tmp/foo'
+
         return (
             check_call_state, mock_assumed_session, time, aws_access_key_id,
             aws_secret_access_key, aws_session_token, component_name,
-            check_call_destroy, remove_state_mock_s3,
+            check_call_destroy, remove_state_mock_s3, TemporaryDirectory,
         )
 
     def test_uses_terraform_to_destroy(self, *args):
         check_call_state, mock_assumed_session, time, aws_access_key_id, \
             aws_secret_access_key, aws_session_token, component_name, \
-            check_call_destroy, remove_state_mock_s3 = self.setup_mocks(*args)
+            check_call_destroy, remove_state_mock_s3, \
+            TemporaryDirectory = self.setup_mocks(*args)
 
         environment = 'live'
         state_file_key = '{}/{}/terraform.tfstate'.format(
             environment, component_name
+        )
+
+        workdir = '{}/{}-{}'.format(
+            TemporaryDirectory.return_value.__enter__.return_value,
+            component_name, '1',
         )
 
         cli.run(['destroy', environment])
@@ -408,24 +429,24 @@ class TestDestroyCLI(unittest.TestCase):
                 '-backend-config=access_key=dummy-access-key-id',
                 '-backend-config=secret_key=dummy-secret-access-key',
                 '-backend-config=token=dummy-session-token',
-                TERRAFORM_DESTROY_DEFINITION,
+                join(workdir, INFRASTRUCTURE_DEFINITIONS_PATH),
             ],
-            cwd=DESTROY_BASE_PATH,
+            cwd=workdir,
         )
 
         check_call_destroy.assert_any_call(
             [
                 TERRAFORM_BINARY, 'plan', '-destroy',
-                '-out', ANY, TERRAFORM_DESTROY_DEFINITION,
+                '-out', ANY, join(workdir, INFRASTRUCTURE_DEFINITIONS_PATH),
             ],
             env=ANY,
-            cwd=DESTROY_BASE_PATH,
+            cwd=workdir,
         )
 
         check_call_destroy.assert_any_call(
             [TERRAFORM_BINARY, 'apply', ANY],
             env=ANY,
-            cwd=DESTROY_BASE_PATH,
+            cwd=workdir,
         )
 
         remove_state_mock_s3.delete_object.assert_called_once_with(
@@ -435,11 +456,17 @@ class TestDestroyCLI(unittest.TestCase):
     def test_plan_only_does_not_destroy_or_remove_state(self, *args):
         check_call_state, mock_assumed_session, time, aws_access_key_id, \
             aws_secret_access_key, aws_session_token, component_name, \
-            check_call_destroy, remove_state_mock_s3 = self.setup_mocks(*args)
+            check_call_destroy, remove_state_mock_s3, \
+            TemporaryDirectory = self.setup_mocks(*args)
 
         environment = 'live'
         state_file_key = '{}/{}/terraform.tfstate'.format(
             environment, component_name
+        )
+
+        workdir = '{}/{}-{}'.format(
+            TemporaryDirectory.return_value.__enter__.return_value,
+            component_name, '1',
         )
 
         cli.run(['destroy', environment, '--plan-only'])
@@ -456,18 +483,18 @@ class TestDestroyCLI(unittest.TestCase):
                 '-backend-config=access_key={}'.format(aws_access_key_id),
                 '-backend-config=secret_key={}'.format(aws_secret_access_key),
                 '-backend-config=token={}'.format(aws_session_token),
-                TERRAFORM_DESTROY_DEFINITION,
+                join(workdir, INFRASTRUCTURE_DEFINITIONS_PATH),
             ],
-            cwd=DESTROY_BASE_PATH,
+            cwd=workdir,
         )
 
         check_call_destroy.assert_called_once_with(
             [
                 TERRAFORM_BINARY, 'plan', '-destroy',
-                '-out', ANY, TERRAFORM_DESTROY_DEFINITION,
+                '-out', ANY, join(workdir, INFRASTRUCTURE_DEFINITIONS_PATH),
             ],
             env=ANY,
-            cwd=DESTROY_BASE_PATH,
+            cwd=workdir,
         )
 
         remove_state_mock_s3.delete_object.assert_not_called()
