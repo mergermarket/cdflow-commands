@@ -3,15 +3,19 @@ from time import time
 
 from cdflow_commands.config import env_with_aws_credetials
 from cdflow_commands.constants import (
-    TERRAFORM_BINARY, TERRAFORM_DESTROY_DEFINITION, DESTROY_BASE_PATH,
+    TERRAFORM_BINARY, INFRASTRUCTURE_DEFINITIONS_PATH,
 )
 from cdflow_commands.process import check_call
 
 
 class Destroy:
 
-    def __init__(self, boto_session):
+    def __init__(self, boto_session, release_path):
         self._boto_session = boto_session
+        self._release_path = release_path
+        self._infra_path = os.path.join(
+            self._release_path, INFRASTRUCTURE_DEFINITIONS_PATH,
+        )
 
     def run(self, plan_only=False):
         self._plan()
@@ -23,12 +27,12 @@ class Destroy:
             [
                 TERRAFORM_BINARY, 'plan', '-destroy',
                 '-out', self.plan_path,
-                TERRAFORM_DESTROY_DEFINITION,
+                self._infra_path,
             ],
             env=env_with_aws_credetials(
                 os.environ, self._boto_session
             ),
-            cwd=DESTROY_BASE_PATH,
+            cwd=self._release_path,
         )
 
     def _destroy(self):
@@ -37,7 +41,7 @@ class Destroy:
             env=env_with_aws_credetials(
                 os.environ, self._boto_session
             ),
-            cwd=DESTROY_BASE_PATH,
+            cwd=self._release_path,
         )
 
     @property
