@@ -1,16 +1,13 @@
 import unittest
 from collections import namedtuple
 from contextlib import ExitStack
-from os.path import join
 
 from hypothesis import given
 from hypothesis.strategies import fixed_dictionaries, text
 from mock import Mock, patch
 
 from cdflow_commands.destroy import Destroy
-from cdflow_commands.constants import (
-    TERRAFORM_BINARY, INFRASTRUCTURE_DEFINITIONS_PATH,
-)
+from cdflow_commands.constants import TERRAFORM_BINARY
 
 
 BotoCredentials = namedtuple(
@@ -62,7 +59,7 @@ class TestDestroy(unittest.TestCase):
                 TERRAFORM_BINARY, 'plan',
                 '-destroy',
                 '-out', 'plan-{}'.format(time.return_value),
-                join(release_path, INFRASTRUCTURE_DEFINITIONS_PATH),
+                release_path,
             ],
             env={
                 'AWS_ACCESS_KEY_ID': aws_access_key_id,
@@ -163,7 +160,7 @@ class TestDestroy(unittest.TestCase):
                 TERRAFORM_BINARY, 'plan',
                 '-destroy',
                 '-out', 'plan-{}'.format(time.return_value),
-                join(release_path, INFRASTRUCTURE_DEFINITIONS_PATH),
+                release_path,
             ],
             env={
                 'AWS_ACCESS_KEY_ID': aws_access_key_id,
