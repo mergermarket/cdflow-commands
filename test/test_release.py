@@ -1,4 +1,5 @@
 from contextlib import ExitStack
+import datetime
 from io import TextIOWrapper
 import json
 from string import ascii_letters, digits
@@ -6,10 +7,15 @@ import unittest
 from zipfile import ZipInfo
 
 from hypothesis import given
-from hypothesis.strategies import dictionaries, fixed_dictionaries, text
+from hypothesis.strategies import dictionaries, fixed_dictionaries, lists, text
 from mock import MagicMock, Mock, patch, ANY
+from moto import mock_s3
+from freezegun import freeze_time
+import boto3
 
-from cdflow_commands.release import fetch_release, Release
+from cdflow_commands.release import (
+    fetch_release, find_latest_release_version, Release,
+)
 
 
 ALNUM = ascii_letters + digits
@@ -547,3 +553,35 @@ class TestFetchRelease(unittest.TestCase):
                 ZipFile.return_value.extract.return_value,
                 file_perm,
             )
+
+
+class TestFindLatestReleaseVersion(unittest.TestCase):
+
+    @given(fixed_dictionaries({
+        'component_name': text(alphabet=ALNUM, min_size=1),
+        'versions': lists(
+            elements=text(alphabet=ALNUM, min_size=1),
+            min_size=1,
+        ),
+    }))
+    def test_find_latest_release_version(self, fixtures):
+        component_name = fixtures['component_name']
+        versions = fixtures['versions']
+        latest_version = versions[-1]
+        release_bucket = 'bucket'
+
+        with mock_s3():
+            with freeze_time('2021-01-01 01:00:01') as frozen_time:
+                s3 = boto3.resource('s3')
+                bucket = s3.create_bucket(Bucket=release_bucket)
+                for version in versions:
+                    bucket.put_object(
+                        Key=f'{component_name}/{component_name}-{version}.zip',
+                    )
+                    frozen_time.tick(delta=datetime.timedelta(hours=1))
+
+            found_version = find_latest_release_version(
+                boto3, release_bucket, component_name,
+            )
+
+            assert found_version == latest_version
