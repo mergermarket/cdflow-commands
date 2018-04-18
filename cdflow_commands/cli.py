@@ -206,7 +206,7 @@ def run_destroy(
             terraform_session = destroy_account_session
 
         initialise_terraform(
-            path_to_release, INFRASTRUCTURE_DEFINITIONS_PATH,
+            path_to_release, '',
             terraform_session, environment, component_name,
             manifest.tfstate_filename
         )
@@ -222,7 +222,9 @@ def run_destroy(
         destroy.run(plan_only)
 
         if not plan_only:
-            logger.info(f'Destroying {component_name} in {environment}')
+            logger.info(
+                f'Removing state for {component_name} in {environment}'
+            )
             remove_state(
                 destroy_account_session, environment, component_name,
                 manifest.tfstate_filename

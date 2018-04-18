@@ -429,7 +429,7 @@ class TestDestroyCLI(unittest.TestCase):
                 '-backend-config=access_key=dummy-access-key-id',
                 '-backend-config=secret_key=dummy-secret-access-key',
                 '-backend-config=token=dummy-session-token',
-                join(workdir, INFRASTRUCTURE_DEFINITIONS_PATH),
+                f'{workdir}/',
             ],
             cwd=workdir,
         )
@@ -437,7 +437,7 @@ class TestDestroyCLI(unittest.TestCase):
         check_call_destroy.assert_any_call(
             [
                 TERRAFORM_BINARY, 'plan', '-destroy',
-                '-out', ANY, join(workdir, INFRASTRUCTURE_DEFINITIONS_PATH),
+                '-out', ANY, workdir,
             ],
             env=ANY,
             cwd=workdir,
@@ -483,7 +483,7 @@ class TestDestroyCLI(unittest.TestCase):
                 '-backend-config=access_key={}'.format(aws_access_key_id),
                 '-backend-config=secret_key={}'.format(aws_secret_access_key),
                 '-backend-config=token={}'.format(aws_session_token),
-                join(workdir, INFRASTRUCTURE_DEFINITIONS_PATH),
+                f'{workdir}/',
             ],
             cwd=workdir,
         )
@@ -491,7 +491,7 @@ class TestDestroyCLI(unittest.TestCase):
         check_call_destroy.assert_called_once_with(
             [
                 TERRAFORM_BINARY, 'plan', '-destroy',
-                '-out', ANY, join(workdir, INFRASTRUCTURE_DEFINITIONS_PATH),
+                '-out', ANY, workdir,
             ],
             env=ANY,
             cwd=workdir,
