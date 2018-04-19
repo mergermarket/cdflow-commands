@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 from io import BytesIO
 import json
+from operator import attrgetter
 import os
 from os import chmod, getcwd, path, mkdir, makedirs, listdir
 from os.path import isdir, isfile
@@ -35,6 +36,21 @@ def fetch_release(boto_session, release_bucket, component_name, version):
         for zipinfo in release_archive.infolist():
             extract_file(release_archive, zipinfo, path_to_release)
         yield path_to_release
+
+
+def find_latest_release_version(boto_session, release_bucket, component_name):
+    s3 = boto_session.resource('s3')
+    bucket = s3.Bucket(release_bucket)
+    key_prefix = f'{component_name}/{component_name}-'
+    component_releases = bucket.objects.filter(Prefix=key_prefix)
+    ordered_releases = sorted(
+        component_releases,
+        key=attrgetter('last_modified'),
+        reverse=True,
+    )
+    latest_release = ordered_releases[0].key
+    version = latest_release[len(key_prefix):][:-len('.zip')]
+    return version
 
 
 def extract_file(release_archive, zipinfo, extract_path):
@@ -98,7 +114,7 @@ class Release:
         with TemporaryDirectory() as temp_dir:
             base_dir = self._setup_base_dir(temp_dir)
 
-            self._run_terraform_get(
+            self._run_terraform_init(
                 base_dir,
                 '{}/{}'.format(getcwd(), INFRASTRUCTURE_DEFINITIONS_PATH)
             )
@@ -162,12 +178,12 @@ class Release:
             }},
         )
 
-    def _run_terraform_get(self, base_dir, infra_dir):
+    def _run_terraform_init(self, base_dir, infra_dir):
         logger.debug(
             'Getting Terraform modules defined in {}'.format(infra_dir)
         )
         check_call([
-            TERRAFORM_BINARY, 'get', infra_dir
+            TERRAFORM_BINARY, 'init', infra_dir
         ], cwd=base_dir)
 
     def _copy_platform_configs(self, base_dir):

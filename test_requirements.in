@@ -6,3 +6,5 @@ mock
 flake8
 mccabe
 hypothesis
+moto
+freezegun
