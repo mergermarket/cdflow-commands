@@ -7,9 +7,7 @@ from hypothesis.strategies import fixed_dictionaries, text
 from mock import Mock, patch
 
 from cdflow_commands.destroy import Destroy
-from cdflow_commands.constants import (
-    CDFLOW_BASE_PATH, TERRAFORM_BINARY, TERRAFORM_DESTROY_DEFINITION,
-)
+from cdflow_commands.constants import TERRAFORM_BINARY
 
 
 BotoCredentials = namedtuple(
@@ -36,7 +34,9 @@ class TestDestroy(unittest.TestCase):
             aws_access_key_id, aws_secret_access_key, aws_session_token
         )
 
-        destroy = Destroy(session)
+        release_path = '/tmp/foo'
+
+        destroy = Destroy(session, release_path)
 
         with ExitStack() as stack:
             check_call = stack.enter_context(
@@ -59,7 +59,7 @@ class TestDestroy(unittest.TestCase):
                 TERRAFORM_BINARY, 'plan',
                 '-destroy',
                 '-out', 'plan-{}'.format(time.return_value),
-                TERRAFORM_DESTROY_DEFINITION,
+                release_path,
             ],
             env={
                 'AWS_ACCESS_KEY_ID': aws_access_key_id,
@@ -67,7 +67,7 @@ class TestDestroy(unittest.TestCase):
                 'AWS_SESSION_TOKEN': aws_session_token,
                 'AWS_DEFAULT_REGION': fixtures['region'],
             },
-            cwd=CDFLOW_BASE_PATH,
+            cwd=release_path,
         )
 
     @given(fixed_dictionaries({
@@ -87,7 +87,9 @@ class TestDestroy(unittest.TestCase):
             aws_access_key_id, aws_secret_access_key, aws_session_token
         )
 
-        destroy = Destroy(session)
+        release_path = '/tmp/foo'
+
+        destroy = Destroy(session, release_path)
 
         with ExitStack() as stack:
             check_call = stack.enter_context(
@@ -113,7 +115,7 @@ class TestDestroy(unittest.TestCase):
                 'AWS_SESSION_TOKEN': aws_session_token,
                 'AWS_DEFAULT_REGION': fixtures['region'],
             },
-            cwd=CDFLOW_BASE_PATH,
+            cwd=release_path,
         )
 
     @given(fixed_dictionaries({
@@ -133,7 +135,9 @@ class TestDestroy(unittest.TestCase):
             aws_access_key_id, aws_secret_access_key, aws_session_token
         )
 
-        destroy = Destroy(session)
+        release_path = '/tmp/foo'
+
+        destroy = Destroy(session, release_path)
 
         with ExitStack() as stack:
             check_call = stack.enter_context(
@@ -156,7 +160,7 @@ class TestDestroy(unittest.TestCase):
                 TERRAFORM_BINARY, 'plan',
                 '-destroy',
                 '-out', 'plan-{}'.format(time.return_value),
-                TERRAFORM_DESTROY_DEFINITION,
+                release_path,
             ],
             env={
                 'AWS_ACCESS_KEY_ID': aws_access_key_id,
@@ -164,5 +168,5 @@ class TestDestroy(unittest.TestCase):
                 'AWS_SESSION_TOKEN': aws_session_token,
                 'AWS_DEFAULT_REGION': fixtures['region'],
             },
-            cwd=CDFLOW_BASE_PATH,
+            cwd=release_path,
         )

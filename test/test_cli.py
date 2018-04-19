@@ -184,7 +184,7 @@ class TestDeployStateInReleaseAccount(unittest.TestCase):
 
         # Then
         initialise_terraform.assert_called_once_with(
-            ANY, release_account_session, ANY, ANY, ANY
+            ANY, ANY, release_account_session, ANY, ANY, ANY
         )
 
 
@@ -195,12 +195,15 @@ class TestDestroyStateInReleaseAccount(unittest.TestCase):
     @patch('cdflow_commands.cli.Destroy')
     @patch('cdflow_commands.cli.get_component_name')
     @patch('cdflow_commands.cli.fetch_release')
+    @patch('cdflow_commands.cli.find_latest_release_version')
     @patch('cdflow_commands.cli.initialise_terraform')
     def test_role_not_assumed_for_multi_account_deploy(
-        self, initialise_terraform, fetch_release, _1, _2, _3, _4
+        self, initialise_terraform, find_latest_release_version, fetch_release,
+        _1, _2, _3, _4,
     ):
         # Given
         fetch_release.return_value.__enter__.return_value = 'dummy'
+        find_latest_release_version.return_value = '1'
         manifest = Mock()
         manifest.terraform_state_in_release_account = True
         release_account_session = Mock()
@@ -218,5 +221,5 @@ class TestDestroyStateInReleaseAccount(unittest.TestCase):
 
         # Then
         initialise_terraform.assert_called_once_with(
-            ANY, release_account_session, ANY, ANY, ANY
+            ANY, ANY, release_account_session, ANY, ANY, ANY
         )

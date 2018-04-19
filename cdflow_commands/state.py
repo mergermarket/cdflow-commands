@@ -1,8 +1,7 @@
 import atexit
 from hashlib import sha1
-from os import mkdir, unlink
-from os.path import abspath
-from shutil import move
+from os import unlink
+from os.path import join
 from tempfile import NamedTemporaryFile
 from textwrap import dedent
 
@@ -31,17 +30,15 @@ def remove_file(filepath):
 
 
 def initialise_terraform(
-    directory, boto_session, environment_name, component_name, tfstate_filename
+    base_directory, sub_directory, boto_session,
+    environment_name, component_name, tfstate_filename,
 ):
     lock_table_factory = LockTableFactory(boto_session)
 
-    s3_bucket_factory = S3BucketFactory(
-        boto_session,
-        '123456789'  # account_id - need to remove from logic in the factory
-    )
+    s3_bucket_factory = S3BucketFactory(boto_session)
 
     initialise_terraform_backend(
-        directory, boto_session,
+        base_directory, sub_directory, boto_session,
         s3_bucket_factory.get_bucket_name(),
         lock_table_factory.get_table_name(),
         environment_name, component_name, tfstate_filename
@@ -49,12 +46,13 @@ def initialise_terraform(
 
 
 def initialise_terraform_backend(
-    directory, boto_session, bucket_name, lock_table_name,
+    base_directory, sub_directory, boto_session, bucket_name, lock_table_name,
     environment_name, component_name, tfstate_filename
 ):
+    working_directory = join(base_directory, sub_directory)
     with NamedTemporaryFile(
         prefix='cdflow_backend_', suffix='.tf',
-        dir=directory, delete=False, mode='w+'
+        dir=working_directory, delete=False, mode='w+'
     ) as backend_file:
         logger.debug(f'Writing backend config to {backend_file.name}')
         backend_file.write(dedent('''
@@ -68,7 +66,7 @@ def initialise_terraform_backend(
 
     key = state_file_key(environment_name, component_name, tfstate_filename)
     logger.debug(
-        f'Initialising backend in {directory} with {bucket_name}, '
+        f'Initialising backend in {working_directory} with {bucket_name}, '
         f'{boto_session.region_name}, {key}, {lock_table_name}'
     )
 
@@ -76,7 +74,8 @@ def initialise_terraform_backend(
     check_call(
         [
             'terraform', 'init',
-            f'-get-plugins=false',
+            '-get=false',
+            '-get-plugins=false',
             f'-backend-config=bucket={bucket_name}',
             f'-backend-config=region={boto_session.region_name}',
             f'-backend-config=key={key}',
@@ -84,28 +83,10 @@ def initialise_terraform_backend(
             f'-backend-config=access_key={credentials.access_key}',
             f'-backend-config=secret_key={credentials.secret_key}',
             f'-backend-config=token={credentials.token}',
+            working_directory,
         ],
-        cwd=directory,
+        cwd=base_directory,
     )
-
-    from_path_statefile = abspath(
-        f'{directory}/.terraform/terraform.tfstate'
-    )
-    from_path_plugins = abspath(
-        f'{directory}/.terraform/plugins'
-    )
-    to_path = abspath(f'{directory}/../.terraform/')
-
-    try:
-        mkdir(to_path)
-    except OSError:
-        logger.debug(f'{to_path} already exists - not creating')
-
-    logger.debug(f'Moving {from_path_statefile} to {to_path}')
-    move(from_path_statefile, to_path)
-
-    logger.debug(f'Moving {from_path_plugins} to {to_path}')
-    move(from_path_plugins, to_path)
 
 
 def state_file_key(environment_name, component_name, tfstate_filename):
@@ -115,10 +96,7 @@ def state_file_key(environment_name, component_name, tfstate_filename):
 def remove_state(
     boto_session, environment_name, component_name, tfstate_filename
 ):
-    s3_bucket_factory = S3BucketFactory(
-        boto_session,
-        '123456789'  # account_id - need to remove from logic in the factory
-    )
+    s3_bucket_factory = S3BucketFactory(boto_session)
 
     bucket_name = s3_bucket_factory.get_bucket_name()
 
@@ -191,10 +169,9 @@ class LockTableFactory:
 
 class S3BucketFactory:
 
-    def __init__(self, boto_session, account_id):
+    def __init__(self, boto_session):
         self._boto_session = boto_session
         self._aws_region = boto_session.region_name
-        self._account_id = account_id
 
     @property
     def _boto_s3_client(self):
@@ -324,7 +301,7 @@ class S3BucketFactory:
         )
 
     def _generate_bucket_name(self, attempt, bucket_name_prefix):
-        parts = map(str, [self._aws_region, self._account_id, attempt])
+        parts = map(str, [self._aws_region, attempt])
         concatenated = ''.join(parts)
         return '{}-{}'.format(
             bucket_name_prefix,
