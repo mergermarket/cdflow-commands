@@ -9,7 +9,7 @@ ENV TERRAFORM_PLUGIN_DIR=/root/.terraform.d/plugins/
 
 RUN echo http://dl-cdn.alpinelinux.org/alpine/latest-stable/main >> /etc/apk/repositories
 RUN apk update
-RUN apk -U add gcc musl-dev libffi-dev openssl-dev docker curl git zip unzip wget
+RUN apk --no-cache add gcc musl-dev libffi-dev openssl-dev docker curl git zip unzip wget libc6-compat
 
 RUN mkdir -p "${TERRAFORM_PLUGIN_DIR}" && cd /tmp && \
     curl -sSLO "https://releases.hashicorp.com/terraform/$TERRAFORM_VERSION/terraform_${TERRAFORM_VERSION}_linux_amd64.zip" && \
