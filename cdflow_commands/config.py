@@ -37,8 +37,6 @@ Manifest = namedtuple('Manifest', [
         'team',
         'type',
         'tfstate_filename',
-        'terraform_state_in_release_account',
-        'secrets_in_release_account',
     ]
 )
 
@@ -51,8 +49,6 @@ def load_manifest():
             manifest_data['team'],
             manifest_data['type'],
             manifest_data.get('tfstate-filename', 'terraform.tfstate'),
-            manifest_data.get('terraform-state-in-release-account', False),
-            manifest_data.get('secrets-in-release-account', False),
         )
 
 

@@ -143,7 +143,7 @@ def run_deploy(
         path_to_release = os.path.join(
             path_to_release, '{}-{}'.format(component_name, version)
         )
-        if manifest.terraform_state_in_release_account:
+        if False:  # TODO
             terraform_session = release_account_session
         else:
             terraform_session = deploy_account_session
@@ -154,7 +154,7 @@ def run_deploy(
             manifest.tfstate_filename
         )
 
-        if manifest.secrets_in_release_account:
+        if False:  # TODO
             secrets_session = release_account_session
         else:
             secrets_session = deploy_account_session
@@ -197,7 +197,7 @@ def run_destroy(
         path_to_release = os.path.join(
             path_to_release, '{}-{}'.format(component_name, version)
         )
-        if manifest.terraform_state_in_release_account:
+        if False:  # TODO
             terraform_session = release_account_session
         else:
             terraform_session = destroy_account_session
