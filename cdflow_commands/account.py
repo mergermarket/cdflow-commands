@@ -15,7 +15,7 @@ class AccountScheme:
 
     def __init__(
         self, accounts, release_account, release_bucket, lambda_bucket,
-        default_region, environment_mapping, multiple_account_deploys
+        default_region, environment_mapping
     ):
         self.accounts = accounts
         self.release_account = release_account
@@ -23,7 +23,6 @@ class AccountScheme:
         self.lambda_bucket = lambda_bucket
         self.default_region = default_region
         self._environment_mapping = environment_mapping
-        self.multiple_account_deploys = multiple_account_deploys
 
     @classmethod
     def _get_env_mapping(cls, raw_scheme, accounts):
@@ -42,33 +41,6 @@ class AccountScheme:
         return environment_mapping
 
     @classmethod
-    def _get_multiple_account_deploys_env_mapping(cls, raw_scheme, accounts):
-        default_env_aliases = raw_scheme['environments'].get(
-            cls.DEFAULT_ENV_KEY
-        )
-
-        environment_mapping = {
-            env: {
-                prefix: accounts[raw_scheme['environments'][env][prefix]]
-                for prefix in raw_scheme['environments'][env]
-            }
-            for env in raw_scheme['environments']
-        }
-
-        if default_env_aliases:
-            default_env = {
-                prefix: accounts[
-                    raw_scheme['environments'][cls.DEFAULT_ENV_KEY][prefix]
-                ]
-                for prefix
-                in raw_scheme['environments'][cls.DEFAULT_ENV_KEY]
-            }
-            environment_mapping = defaultdict(
-                lambda: default_env, environment_mapping
-            )
-        return environment_mapping
-
-    @classmethod
     def create(cls, raw_scheme):
         accounts = {
             alias: Account(alias, account['id'], account['role'])
@@ -79,20 +51,13 @@ class AccountScheme:
         environment_value_types = (
             type(a) for a in raw_scheme['environments'].values()
         )
-        multiple_account_deploys = False
 
-        if all(t is str for t in environment_value_types):
-            environment_mapping = cls._get_env_mapping(
-                raw_scheme, accounts
-            )
-        elif all(t is dict for t in environment_value_types):
-            multiple_account_deploys = True
-            environment_mapping = \
-                cls._get_multiple_account_deploys_env_mapping(
-                    raw_scheme, accounts
-                )
-        else:
-            raise Exception('mixed environment types in account scheme')
+        assert all(t is str for t in environment_value_types), \
+            'environment mapping values should be strings'
+
+        environment_mapping = cls._get_env_mapping(
+            raw_scheme, accounts
+        )
 
         return AccountScheme(
             set(accounts.values()),
@@ -100,8 +65,7 @@ class AccountScheme:
             raw_scheme['release-bucket'],
             raw_scheme.get('lambda-bucket', ''),
             raw_scheme['default-region'],
-            environment_mapping,
-            multiple_account_deploys
+            environment_mapping
         )
 
     @property
@@ -109,31 +73,4 @@ class AccountScheme:
         return [account.id for account in self.accounts]
 
     def account_for_environment(self, environment):
-        if self.multiple_account_deploys:
-            raise Exception(
-                'account_for_environment not suported for '
-                'multiple account deploys'
-            )
         return self._environment_mapping[environment]
-
-    def accounts_for_environment(self, environment):
-        if not self.multiple_account_deploys:
-            raise Exception(
-                'accounts_for_environment not support when not a '
-                'multiple account deploy'
-            )
-        return self._environment_mapping[environment]
-
-    def account_role_mapping(self, environment):
-        if not self.multiple_account_deploys:
-            raise Exception(
-                'account_role_mapping not support when not a '
-                'multiple account deploy'
-            )
-        return {
-            prefix: "arn:aws:iam::{}:role/{}".format(
-                self._environment_mapping[environment][prefix].id,
-                self._environment_mapping[environment][prefix].role
-            )
-            for prefix in self._environment_mapping[environment]
-        }
