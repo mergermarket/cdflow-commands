@@ -15,7 +15,7 @@ class AccountScheme:
 
     def __init__(
         self, accounts, release_account, release_bucket, lambda_bucket,
-        default_region, environment_mapping
+        default_region, environment_mapping, classic_metadata_handling
     ):
         self.accounts = accounts
         self.release_account = release_account
@@ -23,6 +23,7 @@ class AccountScheme:
         self.lambda_bucket = lambda_bucket
         self.default_region = default_region
         self._environment_mapping = environment_mapping
+        self.classic_metadata_handling = classic_metadata_handling
 
     @classmethod
     def _get_env_mapping(cls, raw_scheme, accounts):
@@ -65,7 +66,8 @@ class AccountScheme:
             raw_scheme['release-bucket'],
             raw_scheme.get('lambda-bucket', ''),
             raw_scheme['default-region'],
-            environment_mapping
+            environment_mapping,
+            raw_scheme.get('classic-metadata-handling', False),
         )
 
     @property
