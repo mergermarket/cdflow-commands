@@ -143,10 +143,10 @@ def run_deploy(
         path_to_release = os.path.join(
             path_to_release, '{}-{}'.format(component_name, version)
         )
-        if False:  # TODO
-            terraform_session = release_account_session
-        else:
+        if account_scheme.classic_metadata_handling:
             terraform_session = deploy_account_session
+        else:
+            terraform_session = release_account_session
 
         initialise_terraform(
             path_to_release, INFRASTRUCTURE_DEFINITIONS_PATH,
@@ -154,10 +154,10 @@ def run_deploy(
             manifest.tfstate_filename
         )
 
-        if False:  # TODO
-            secrets_session = release_account_session
-        else:
+        if account_scheme.classic_metadata_handling:
             secrets_session = deploy_account_session
+        else:
+            secrets_session = release_account_session
 
         secrets = {
             'secrets': get_secrets(
