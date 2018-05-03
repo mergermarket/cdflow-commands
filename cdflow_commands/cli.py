@@ -197,10 +197,10 @@ def run_destroy(
         path_to_release = os.path.join(
             path_to_release, '{}-{}'.format(component_name, version)
         )
-        if False:  # TODO
-            terraform_session = release_account_session
-        else:
+        if account_scheme.classic_metadata_handling:
             terraform_session = destroy_account_session
+        else:
+            terraform_session = release_account_session
 
         initialise_terraform(
             path_to_release, '',
