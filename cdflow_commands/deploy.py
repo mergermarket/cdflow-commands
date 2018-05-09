@@ -106,14 +106,9 @@ class Deploy:
         return self._plan_path
 
     def _platform_config_file_paths(self):
-        if self._account_scheme.multiple_account_deploys:
-            accounts = self._account_scheme.accounts_for_environment(
-                self._environment
-            ).values()
-        else:
-            accounts = [self._account_scheme.account_for_environment(
-                self._environment
-            )]
+        accounts = [self._account_scheme.account_for_environment(
+            self._environment
+        )]
 
         return [
             '{}/{}/{}.json'.format(
@@ -147,8 +142,6 @@ class Deploy:
             '-out', self.plan_path,
         ]
         parameters = self._add_environment_config_parameters(parameters)
-        if self._account_scheme.multiple_account_deploys:
-            parameters = self._add_account_role_mapping_parameter(parameters)
         parameters += [INFRASTRUCTURE_DEFINITIONS_PATH]
         return parameters
 
@@ -164,14 +157,3 @@ class Deploy:
             parameters += ['-var-file', GLOBAL_CONFIG_FILE]
 
         return parameters
-
-    def _add_account_role_mapping_parameter(self, parameters):
-        return parameters + [
-            '-var', 'accounts={{\n{}\n}}'.format("\n".join(
-                '{} = "{}"'.format(prefix, role)
-                for prefix, role
-                in self._account_scheme.account_role_mapping(
-                    self._environment
-                ).items()
-            ))
-        ]

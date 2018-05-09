@@ -130,13 +130,10 @@ def run_deploy(
     component_name = get_component_name(args['--component'])
     version = args['<version>']
 
-    if account_scheme.multiple_account_deploys:
-        deploy_account_session = root_session
-    else:
-        account_id = account_scheme.account_for_environment(environment).id
-        deploy_account_session = assume_role(
-            root_session, account_id, account_scheme.default_region,
-        )
+    account_id = account_scheme.account_for_environment(environment).id
+    deploy_account_session = assume_role(
+        root_session, account_id, account_scheme.default_region,
+    )
 
     with fetch_release(
         release_account_session, account_scheme.release_bucket,
@@ -146,10 +143,10 @@ def run_deploy(
         path_to_release = os.path.join(
             path_to_release, '{}-{}'.format(component_name, version)
         )
-        if manifest.terraform_state_in_release_account:
-            terraform_session = release_account_session
-        else:
+        if account_scheme.classic_metadata_handling:
             terraform_session = deploy_account_session
+        else:
+            terraform_session = release_account_session
 
         initialise_terraform(
             path_to_release, INFRASTRUCTURE_DEFINITIONS_PATH,
@@ -157,10 +154,10 @@ def run_deploy(
             manifest.tfstate_filename
         )
 
-        if manifest.secrets_in_release_account:
-            secrets_session = release_account_session
-        else:
+        if account_scheme.classic_metadata_handling:
             secrets_session = deploy_account_session
+        else:
+            secrets_session = release_account_session
 
         secrets = {
             'secrets': get_secrets(
@@ -200,10 +197,10 @@ def run_destroy(
         path_to_release = os.path.join(
             path_to_release, '{}-{}'.format(component_name, version)
         )
-        if manifest.terraform_state_in_release_account:
-            terraform_session = release_account_session
-        else:
+        if account_scheme.classic_metadata_handling:
             terraform_session = destroy_account_session
+        else:
+            terraform_session = release_account_session
 
         initialise_terraform(
             path_to_release, '',
