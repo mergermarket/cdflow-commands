@@ -186,7 +186,7 @@ def run_non_release_command_on_release(
         )
     elif args['destroy']:
         run_destroy(
-            path_to_release, account_scheme, metadata_account_session,
+            path_to_release, metadata_account_session,
             infrastructure_account_session, manifest, args, environment,
             component_name
         )
@@ -217,8 +217,8 @@ def run_deploy(
 
 
 def run_destroy(
-    path_to_release, account_scheme, metadata_account_session,
-    infrastructure_account_session, manifest, args, environment, component_name
+    path_to_release, metadata_account_session, infrastructure_account_session,
+    manifest, args, environment, component_name
 ):
     initialise_terraform(
         path_to_release, '',
