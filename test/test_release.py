@@ -31,7 +31,7 @@ class TestRelease(unittest.TestCase):
             release_bucket=ANY,
             platform_config_paths=[ANY],
             release_data=["1=1"], commit=ANY, version=version,
-            component_name=ANY, team=ANY
+            component_name=ANY, team=ANY, account_scheme=Mock()
         )
 
         # When/Then
@@ -45,7 +45,8 @@ class TestRelease(unittest.TestCase):
             release_bucket=ANY,
             platform_config_paths=[ANY],
             release_data=["1=1"], commit=ANY, version=ANY,
-            component_name=component_name, team=ANY
+            component_name=component_name, team=ANY,
+            account_scheme=Mock()
         )
 
         # When/Then
@@ -82,6 +83,7 @@ class TestReleaseArchive(unittest.TestCase):
             version='dummy-version',
             component_name='dummy-component',
             team='dummy-team',
+            account_scheme=Mock()
         )
         temp_dir = 'test-tmp-dir'
         TemporaryDirectory.return_value.__enter__.return_value = temp_dir
@@ -129,7 +131,7 @@ class TestReleaseArchive(unittest.TestCase):
             platform_config_paths=platform_config_paths,
             release_data=release_data, commit='dummy',
             version='dummy-version', component_name='dummy-component',
-            team='dummy-team',
+            team='dummy-team', account_scheme=Mock()
         )
         temp_dir = 'test-temp-dir'
         TemporaryDirectory.return_value.__enter__.return_value = temp_dir
@@ -213,7 +215,7 @@ class TestReleaseArchive(unittest.TestCase):
             release_data=release_data,
             commit='dummy',
             version='dummy-version', component_name='dummy-component',
-            team='dummy-team',
+            team='dummy-team', account_scheme=Mock()
         )
         temp_dir = 'test-temp-dir'
         TemporaryDirectory.return_value.__enter__.return_value = temp_dir
@@ -253,7 +255,7 @@ class TestReleaseArchive(unittest.TestCase):
             release_data=release_data,
             commit='dummy',
             version='dummy-version', component_name='dummy-component',
-            team='dummy-team',
+            team='dummy-team', account_scheme=Mock()
         )
         temp_dir = 'test-temp-dir'
         TemporaryDirectory.return_value.__enter__.return_value = temp_dir
@@ -290,7 +292,7 @@ class TestReleaseArchive(unittest.TestCase):
             platform_config_paths=platform_config_paths,
             release_data=release_data, commit='dummy',
             version='dummy-version', component_name='dummy-component',
-            team='dummy-team',
+            team='dummy-team', account_scheme=Mock()
         )
         temp_dir = 'test-temp-dir'
         TemporaryDirectory.return_value.__enter__.return_value = temp_dir
@@ -334,7 +336,8 @@ class TestReleaseArchive(unittest.TestCase):
             commit=commit,
             version=version,
             component_name=component_name,
-            team=team
+            team=team,
+            account_scheme=Mock()
         )
 
         with ExitStack() as stack:
@@ -352,8 +355,19 @@ class TestReleaseArchive(unittest.TestCase):
 
             TemporaryDirectory.return_value.__enter__.return_value = temp_dir
 
-            mock_file = MagicMock(spec=TextIOWrapper)
-            _open.return_value.__enter__.return_value = mock_file
+            mock_release_json_file = MagicMock(spec=TextIOWrapper)
+            mock_release_json_open = MagicMock()
+            mock_release_json_open.__enter__.return_value = \
+                mock_release_json_file
+
+            mock_account_scheme_file = MagicMock(spec=TextIOWrapper)
+            mock_account_scheme_open = MagicMock()
+            mock_account_scheme_open.__enter__.return_value = \
+                mock_account_scheme_file
+
+            _open.side_effect = lambda filename, _: \
+                mock_release_json_open if filename.endswith('/release.json') \
+                else mock_account_scheme_open
 
             base_release_metadata = {
                 'commit': commit,
@@ -368,12 +382,12 @@ class TestReleaseArchive(unittest.TestCase):
 
             # Then
             release_plugin.create.assert_called_once_with()
-            _open.assert_called_once_with(
+            _open.assert_any_call(
                 '{}/{}-{}/release.json'.format(
                     temp_dir, component_name, version
                 ), 'w'
             )
-            mock_file.write.assert_called_once_with(json.dumps({
+            mock_release_json_file.write.assert_called_once_with(json.dumps({
                 'release': dict(**base_release_metadata,
                                 **release_map,
                                 **plugin_data)
@@ -406,6 +420,7 @@ class TestReleaseArchive(unittest.TestCase):
             version=version,
             component_name=component_name,
             team='dummy-team',
+            account_scheme=Mock()
         )
         temp_dir = 'test-temp-dir'
         TemporaryDirectory.return_value.__enter__.return_value = temp_dir
@@ -456,6 +471,7 @@ class TestReleaseArchive(unittest.TestCase):
             version=version,
             component_name=component_name,
             team='dummy-team',
+            account_scheme=Mock()
         )
         temp_dir = 'test-temp-dir'
         TemporaryDirectory.return_value.__enter__.return_value = temp_dir
