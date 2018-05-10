@@ -14,9 +14,11 @@ class AccountScheme:
     DEFAULT_ENV_KEY = '*'
 
     def __init__(
-        self, accounts, release_account, release_bucket, lambda_bucket,
-        default_region, environment_mapping, classic_metadata_handling
+        self, raw_scheme, accounts, release_account, release_bucket,
+        lambda_bucket, default_region, environment_mapping,
+        classic_metadata_handling
     ):
+        self.raw_scheme = raw_scheme
         self.accounts = accounts
         self.release_account = release_account
         self.release_bucket = release_bucket
@@ -61,6 +63,7 @@ class AccountScheme:
         )
 
         return AccountScheme(
+            raw_scheme,
             set(accounts.values()),
             accounts[raw_scheme['release-account']],
             raw_scheme['release-bucket'],

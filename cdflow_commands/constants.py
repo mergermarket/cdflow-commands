@@ -11,3 +11,4 @@ INFRASTRUCTURE_DEFINITIONS_PATH = 'infra'
 CDFLOW_BASE_PATH = '/cdflow'
 
 RELEASE_METADATA_FILE = 'release.json'
+ACCOUNT_SCHEME_FILE = 'account-scheme.json'
