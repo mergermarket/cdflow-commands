@@ -127,6 +127,11 @@ def fetch_account_scheme(s3_resource, bucket, key):
     return json.loads(f.read())
 
 
-def build_account_scheme(s3_resource, s3_url):
+def build_account_scheme_s3(s3_resource, s3_url):
     bucket, key = parse_s3_url(s3_url)
     return AccountScheme.create(fetch_account_scheme(s3_resource, bucket, key))
+
+
+def build_account_scheme_file(filename):
+    with open(filename) as f:
+        return AccountScheme.create(json.loads(f.read()))

@@ -14,7 +14,8 @@ from re import match, search
 
 from cdflow_commands.constants import (
     CONFIG_BASE_PATH, INFRASTRUCTURE_DEFINITIONS_PATH,
-    PLATFORM_CONFIG_BASE_PATH, RELEASE_METADATA_FILE, TERRAFORM_BINARY
+    PLATFORM_CONFIG_BASE_PATH, RELEASE_METADATA_FILE, TERRAFORM_BINARY,
+    ACCOUNT_SCHEME_FILE
 )
 from cdflow_commands.logger import logger
 from cdflow_commands.process import check_call
@@ -98,8 +99,7 @@ class Release:
 
     def __init__(
         self, boto_session, release_bucket, platform_config_paths,
-        release_data, commit,
-        version, component_name, team
+        release_data, commit, version, component_name, team, account_scheme
     ):
         self.boto_session = boto_session
         self._release_bucket = release_bucket
@@ -109,6 +109,7 @@ class Release:
         self._team = team
         self.version = version
         self.component_name = component_name
+        self.account_scheme = account_scheme
 
     def create(self, plugin):
         with TemporaryDirectory() as temp_dir:
@@ -135,12 +136,18 @@ class Release:
                                             self.release_data,
                                             extra_data)
 
+            self._add_account_scheme(base_dir)
+
             release_archive = make_archive(
                 base_dir, 'zip', temp_dir,
                 '{}-{}'.format(self.component_name, self.version),
             )
 
             self._upload_archive(release_archive)
+
+    def _add_account_scheme(self, base_dir):
+        with open(path.join(base_dir, ACCOUNT_SCHEME_FILE), 'w') as f:
+            f.write(self.account_scheme.raw_scheme)
 
     def _generate_release_metadata(self, base_dir, release_data, extra_data):
         base_data = {

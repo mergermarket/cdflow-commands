@@ -9,7 +9,7 @@ import yaml
 
 from cdflow_commands import cli
 from cdflow_commands.constants import (
-    TERRAFORM_BINARY, INFRASTRUCTURE_DEFINITIONS_PATH,
+    TERRAFORM_BINARY, INFRASTRUCTURE_DEFINITIONS_PATH, ACCOUNT_SCHEME_FILE
 )
 from mock import ANY, MagicMock, Mock, patch
 
@@ -50,8 +50,33 @@ class TestDeployCLI(unittest.TestCase):
             'type': 'docker',
         }
         mock_metadata_file.read.return_value = yaml.dump(metadata)
+        mock_metadata_file_open = MagicMock()
+        mock_metadata_file_open.__enter__.return_value = mock_metadata_file
 
-        _open.return_value.__enter__.return_value = mock_metadata_file
+        account_scheme = {
+            'accounts': {
+                'foodev': {
+                    'id': '123456789',
+                    'role': 'admon',
+                }
+            },
+            'release-account': 'foodev',
+            'release-bucket': 'releases',
+            'default-region': 'us-north-4',
+            'environments': {
+                'live': 'foodev',
+            }
+        }
+
+        mock_account_scheme = MagicMock(spec=TextIOWrapper)
+        mock_account_scheme.read.return_value = json.dumps(account_scheme)
+        mock_account_scheme_open = MagicMock()
+        mock_account_scheme_open.__enter__.return_value = mock_account_scheme
+
+        _open.side_effect = lambda filename: \
+            mock_account_scheme_open \
+            if filename.endswith(ACCOUNT_SCHEME_FILE) \
+            else mock_metadata_file_open
 
         mock_sts_client = Mock()
         mock_sts_client.get_caller_identity.return_value = {'UserId': 'foo'}
@@ -68,20 +93,7 @@ class TestDeployCLI(unittest.TestCase):
         mock_root_session.region_name = 'eu-west-12'
 
         mock_s3_body = Mock()
-        mock_s3_body.read.return_value = json.dumps({
-            'accounts': {
-                'foodev': {
-                    'id': '123456789',
-                    'role': 'admon',
-                }
-            },
-            'release-account': 'foodev',
-            'release-bucket': 'releases',
-            'default-region': 'us-north-4',
-            'environments': {
-                'live': 'foodev',
-            }
-        })
+        mock_s3_body.read.return_value = json.dumps(account_scheme)
 
         mock_s3_resource = Mock()
         mock_s3_resource.Object.return_value.get.return_value = {
@@ -294,8 +306,33 @@ class TestDestroyCLI(unittest.TestCase):
             'type': 'docker',
         }
         mock_metadata_file.read.return_value = yaml.dump(metadata)
+        mock_metadata_file_open = MagicMock()
+        mock_metadata_file_open.__enter__.return_value = mock_metadata_file
 
-        _open.return_value.__enter__.return_value = mock_metadata_file
+        account_scheme = {
+            'accounts': {
+                'foodev': {
+                    'id': '123456789',
+                    'role': 'admon',
+                }
+            },
+            'release-account': 'foodev',
+            'release-bucket': 'releases',
+            'default-region': 'us-north-4',
+            'environments': {
+                'live': 'foodev',
+            }
+        }
+
+        mock_account_scheme = MagicMock(spec=TextIOWrapper)
+        mock_account_scheme.read.return_value = json.dumps(account_scheme)
+        mock_account_scheme_open = MagicMock()
+        mock_account_scheme_open.__enter__.return_value = mock_account_scheme
+
+        _open.side_effect = lambda filename: \
+            mock_account_scheme_open \
+            if filename.endswith(ACCOUNT_SCHEME_FILE) \
+            else mock_metadata_file_open
 
         mock_sts_client = Mock()
         mock_sts_client.get_caller_identity.return_value = {'UserId': 'foo'}
@@ -312,20 +349,7 @@ class TestDestroyCLI(unittest.TestCase):
         mock_root_session.region_name = 'eu-west-12'
 
         mock_s3_body = Mock()
-        mock_s3_body.read.return_value = json.dumps({
-            'accounts': {
-                'foodev': {
-                    'id': '123456789',
-                    'role': 'admon',
-                }
-            },
-            'release-account': 'foodev',
-            'release-bucket': 'releases',
-            'default-region': 'us-north-4',
-            'environments': {
-                'live': 'foodev',
-            }
-        })
+        mock_s3_body.read.return_value = json.dumps(account_scheme)
 
         mock_s3_resource = Mock()
         mock_s3_resource.Object.return_value.get.return_value = {

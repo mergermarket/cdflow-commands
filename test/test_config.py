@@ -418,7 +418,7 @@ class TestAccountSchemeHandling(unittest.TestCase):
         's3_bucket_and_key': s3_bucket_and_key(),
         'account_prefix': text(alphabet=ascii_letters+digits, min_size=1),
     }))
-    def test_build_account_scheme(self, fixtures):
+    def test_build_account_scheme_s3(self, fixtures):
         s3_resource = Mock()
 
         account_prefix = fixtures['account_prefix']
@@ -451,7 +451,7 @@ class TestAccountSchemeHandling(unittest.TestCase):
             'Body': mock_s3_body
         }
 
-        account_scheme = config.build_account_scheme(s3_resource, s3_url)
+        account_scheme = config.build_account_scheme_s3(s3_resource, s3_url)
 
         assert account_scheme.release_account.id == '222222222222'
         assert sorted(account_scheme.account_ids) == \
@@ -460,6 +460,52 @@ class TestAccountSchemeHandling(unittest.TestCase):
         s3_resource.Object.assert_called_once_with(
             *fixtures['s3_bucket_and_key']
         )
+
+    @given(fixed_dictionaries({
+        'filename': text(min_size=1),
+        'account_prefix': text(alphabet=ascii_letters+digits, min_size=1),
+    }))
+    def test_build_account_scheme_file(self, fixtures):
+
+        mock_account_scheme_file = MagicMock(spec=TextIOWrapper)
+
+        account_prefix = fixtures['account_prefix']
+        mock_account_scheme_file.read.return_value = '''
+            {{
+              "accounts": {{
+                "{0}dev": {{
+                  "id": "222222222222",
+                  "role": "admin"
+                }},
+                "{0}prod": {{
+                  "id": "111111111111",
+                  "role": "admin"
+                }}
+              }},
+              "release-account": "{0}dev",
+              "release-bucket": "{0}-account-resources",
+              "environments": {{
+                "live": "{0}prod",
+                "*": "{0}dev"
+              }},
+              "default-region": "eu-west-12"
+            }}
+        '''.format(account_prefix)
+
+        with patch(
+            'cdflow_commands.config.open', new_callable=mock_open, create=True
+        ) as mocked_open:
+            mocked_open.return_value.__enter__.return_value = \
+                mock_account_scheme_file
+
+            account_scheme = config.build_account_scheme_file(
+                fixtures['filename']
+            )
+
+            assert account_scheme.release_account.id == '222222222222'
+            assert sorted(account_scheme.account_ids) == \
+                sorted(['111111111111', '222222222222'])
+            mocked_open.assert_called_once_with(fixtures['filename'])
 
 
 class TestEnvWithAWSCredentials(unittest.TestCase):
