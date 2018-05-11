@@ -42,7 +42,7 @@ def build(dockerHubCredentialsId, imageName, registry) {
                 docker.build(imageNameTag).push()
             }
 
-            build job: 'platform/cdflow-test-service', parameters: [string(name: 'CDFLOW_IMAGE_ID', value: imageNameTag) ]
+            build job: 'platform/cdflow-test-service-classic-metadata-handling', parameters: [string(name: 'CDFLOW_IMAGE_ID', value: imageNameTag) ]
         }
     }
 }
