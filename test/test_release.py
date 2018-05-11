@@ -16,6 +16,7 @@ import boto3
 from cdflow_commands.release import (
     fetch_release, find_latest_release_version, Release,
 )
+from cdflow_commands.constants import ACCOUNT_SCHEME_FILE
 
 
 ALNUM = ascii_letters + digits
@@ -26,12 +27,15 @@ class TestRelease(unittest.TestCase):
     @given(text())
     def test_version(self, version):
         # Given
+        account_scheme = Mock()
+        account_scheme.raw_scheme = {}
         release = Release(
             boto_session=Mock(),
             release_bucket=ANY,
             platform_config_paths=[ANY],
             release_data=["1=1"], commit=ANY, version=version,
-            component_name=ANY, team=ANY, account_scheme=Mock()
+            component_name=ANY, team=ANY,
+            account_scheme=account_scheme
         )
 
         # When/Then
@@ -40,13 +44,15 @@ class TestRelease(unittest.TestCase):
     @given(text())
     def test_component_name(self, component_name):
         # Given
+        account_scheme = Mock()
+        account_scheme.raw_scheme = {}
         release = Release(
             boto_session=Mock(),
             release_bucket=ANY,
             platform_config_paths=[ANY],
             release_data=["1=1"], commit=ANY, version=ANY,
             component_name=component_name, team=ANY,
-            account_scheme=Mock()
+            account_scheme=account_scheme
         )
 
         # When/Then
@@ -74,6 +80,8 @@ class TestReleaseArchive(unittest.TestCase):
         # Given
         release_plugin = Mock()
         release_plugin.create.return_value = {}
+        account_scheme = Mock()
+        account_scheme.raw_scheme = {}
         release = Release(
             boto_session=Mock(),
             release_bucket=ANY,
@@ -83,7 +91,7 @@ class TestReleaseArchive(unittest.TestCase):
             version='dummy-version',
             component_name='dummy-component',
             team='dummy-team',
-            account_scheme=Mock()
+            account_scheme=account_scheme
         )
         temp_dir = 'test-tmp-dir'
         TemporaryDirectory.return_value.__enter__.return_value = temp_dir
@@ -125,13 +133,16 @@ class TestReleaseArchive(unittest.TestCase):
             'test-platform-config-path-b',
         ]
         release_data = ["ami_id=ami-a12345", "foo=bar"]
+        account_scheme = Mock()
+        account_scheme.raw_scheme = {}
         release = Release(
             boto_session=Mock(),
             release_bucket=ANY,
             platform_config_paths=platform_config_paths,
             release_data=release_data, commit='dummy',
             version='dummy-version', component_name='dummy-component',
-            team='dummy-team', account_scheme=Mock()
+            team='dummy-team',
+            account_scheme=account_scheme
         )
         temp_dir = 'test-temp-dir'
         TemporaryDirectory.return_value.__enter__.return_value = temp_dir
@@ -193,6 +204,60 @@ class TestReleaseArchive(unittest.TestCase):
 
     @patch('cdflow_commands.release._copy_platform_config')
     @patch('cdflow_commands.release.mkdir')
+    @patch('cdflow_commands.release.check_call')
+    @patch('cdflow_commands.release.make_archive')
+    @patch('cdflow_commands.release.copytree')
+    @patch('cdflow_commands.release.open')
+    @patch('cdflow_commands.release.TemporaryDirectory')
+    def test_account_scheme_added_to_release_bundle(
+        self, TemporaryDirectory, _open, _1, _2, _3, _4, _5
+    ):
+
+        # Given
+        release_plugin = Mock()
+        release_plugin.create.return_value = {}
+        platform_config_paths = ['test-platform-config-path']
+        release_data = ["ami_id=ami-a12345", "foo=bar"]
+        account_scheme = Mock()
+        account_scheme.raw_scheme = {"test": "scheme"}
+        release = Release(
+            boto_session=Mock(),
+            release_bucket=ANY,
+            platform_config_paths=platform_config_paths,
+            release_data=release_data, commit='dummy',
+            version='dummy-version', component_name='dummy-component',
+            team='dummy-team',
+            account_scheme=account_scheme
+        )
+        temp_dir = 'test-temp-dir'
+        TemporaryDirectory.return_value.__enter__.return_value = temp_dir
+
+        mock_account_scheme = MagicMock(spec=TextIOWrapper)
+        mock_account_scheme_open = MagicMock()
+        mock_account_scheme_open.__enter__.return_value = mock_account_scheme
+
+        generic_mock_open = MagicMock()
+        generic_mock_open.__enter__.return_value = \
+            MagicMock(spec=TextIOWrapper)
+
+        _open.side_effect = lambda filename, _: \
+            mock_account_scheme_open \
+            if filename.endswith(ACCOUNT_SCHEME_FILE) \
+            else generic_mock_open
+
+        # When
+        release.create(release_plugin)
+
+        # Then
+        _open.assert_any_call('test-temp-dir/{}-{}/{}'.format(
+            'dummy-component', 'dummy-version', ACCOUNT_SCHEME_FILE
+        ), 'w')
+        mock_account_scheme.write.assert_called_once_with(json.dumps({
+            "test": "scheme"
+        }))
+
+    @patch('cdflow_commands.release._copy_platform_config')
+    @patch('cdflow_commands.release.mkdir')
     @patch('cdflow_commands.release.open')
     @patch('cdflow_commands.release.check_call')
     @patch('cdflow_commands.release.make_archive')
@@ -208,6 +273,8 @@ class TestReleaseArchive(unittest.TestCase):
         release_plugin.create.return_value = {}
         platform_config_paths = ['test-platform-config-path']
         release_data = ["ami_id=ami-a12345", "foo=bar"]
+        account_scheme = Mock()
+        account_scheme.raw_scheme = {}
         release = Release(
             boto_session=Mock(),
             release_bucket=ANY,
@@ -215,7 +282,8 @@ class TestReleaseArchive(unittest.TestCase):
             release_data=release_data,
             commit='dummy',
             version='dummy-version', component_name='dummy-component',
-            team='dummy-team', account_scheme=Mock()
+            team='dummy-team',
+            account_scheme=account_scheme
         )
         temp_dir = 'test-temp-dir'
         TemporaryDirectory.return_value.__enter__.return_value = temp_dir
@@ -248,6 +316,8 @@ class TestReleaseArchive(unittest.TestCase):
         release_plugin.create.return_value = {}
         platform_config_paths = ['test-platform-config-path']
         release_data = ["ami_id=ami-a12345", "foo=bar"]
+        account_scheme = Mock()
+        account_scheme.raw_scheme = {}
         release = Release(
             boto_session=Mock(),
             release_bucket=ANY,
@@ -255,7 +325,8 @@ class TestReleaseArchive(unittest.TestCase):
             release_data=release_data,
             commit='dummy',
             version='dummy-version', component_name='dummy-component',
-            team='dummy-team', account_scheme=Mock()
+            team='dummy-team',
+            account_scheme=account_scheme
         )
         temp_dir = 'test-temp-dir'
         TemporaryDirectory.return_value.__enter__.return_value = temp_dir
@@ -286,13 +357,16 @@ class TestReleaseArchive(unittest.TestCase):
         release_plugin.create.return_value = {}
         platform_config_paths = 'test-platform-config-path'
         release_data = ["ami_id=ami-a12345", "foo=bar"]
+        account_scheme = Mock()
+        account_scheme.raw_scheme = {}
         release = Release(
             boto_session=Mock(),
             release_bucket=ANY,
             platform_config_paths=platform_config_paths,
             release_data=release_data, commit='dummy',
             version='dummy-version', component_name='dummy-component',
-            team='dummy-team', account_scheme=Mock()
+            team='dummy-team',
+            account_scheme=account_scheme
         )
         temp_dir = 'test-temp-dir'
         TemporaryDirectory.return_value.__enter__.return_value = temp_dir
@@ -324,6 +398,8 @@ class TestReleaseArchive(unittest.TestCase):
         plugin_data = fixtures['plugin_data']
         temp_dir = fixtures['temp_dir']
         release_data = ["1234=2345"]
+        account_scheme = Mock()
+        account_scheme.raw_scheme = {}
 
         release_plugin = Mock()
         release_plugin.create.return_value = plugin_data
@@ -337,7 +413,7 @@ class TestReleaseArchive(unittest.TestCase):
             version=version,
             component_name=component_name,
             team=team,
-            account_scheme=Mock()
+            account_scheme=account_scheme
         )
 
         with ExitStack() as stack:
@@ -411,6 +487,8 @@ class TestReleaseArchive(unittest.TestCase):
         commit = 'test-git-commit'
         version = 'test-version'
         component_name = 'test-component'
+        account_scheme = Mock()
+        account_scheme.raw_scheme = {}
         release = Release(
             boto_session=Mock(),
             release_bucket=ANY,
@@ -420,7 +498,7 @@ class TestReleaseArchive(unittest.TestCase):
             version=version,
             component_name=component_name,
             team='dummy-team',
-            account_scheme=Mock()
+            account_scheme=account_scheme
         )
         temp_dir = 'test-temp-dir'
         TemporaryDirectory.return_value.__enter__.return_value = temp_dir
@@ -462,6 +540,8 @@ class TestReleaseArchive(unittest.TestCase):
         component_name = 'test-component'
         release_bucket = 'test-release-bucket'
         mock_session = Mock()
+        account_scheme = Mock()
+        account_scheme.raw_scheme = {}
         release = Release(
             boto_session=mock_session,
             release_bucket=release_bucket,
@@ -471,7 +551,7 @@ class TestReleaseArchive(unittest.TestCase):
             version=version,
             component_name=component_name,
             team='dummy-team',
-            account_scheme=Mock()
+            account_scheme=account_scheme
         )
         temp_dir = 'test-temp-dir'
         TemporaryDirectory.return_value.__enter__.return_value = temp_dir

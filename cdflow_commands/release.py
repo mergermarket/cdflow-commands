@@ -147,7 +147,7 @@ class Release:
 
     def _add_account_scheme(self, base_dir):
         with open(path.join(base_dir, ACCOUNT_SCHEME_FILE), 'w') as f:
-            f.write(self.account_scheme.raw_scheme)
+            f.write(json.dumps(self.account_scheme.raw_scheme))
 
     def _generate_release_metadata(self, base_dir, release_data, extra_data):
         base_data = {
