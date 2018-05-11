@@ -16,6 +16,7 @@ import boto3
 from cdflow_commands.release import (
     fetch_release, find_latest_release_version, Release,
 )
+from cdflow_commands.constants import ACCOUNT_SCHEME_FILE
 
 
 ALNUM = ascii_letters + digits
@@ -200,6 +201,60 @@ class TestReleaseArchive(unittest.TestCase):
             'platform-config/alias3',
             exist_ok=True
         )
+
+    @patch('cdflow_commands.release._copy_platform_config')
+    @patch('cdflow_commands.release.mkdir')
+    @patch('cdflow_commands.release.check_call')
+    @patch('cdflow_commands.release.make_archive')
+    @patch('cdflow_commands.release.copytree')
+    @patch('cdflow_commands.release.open')
+    @patch('cdflow_commands.release.TemporaryDirectory')
+    def test_account_scheme_added_to_release_bundle(
+        self, TemporaryDirectory, _open, _1, _2, _3, _4, _5
+    ):
+
+        # Given
+        release_plugin = Mock()
+        release_plugin.create.return_value = {}
+        platform_config_paths = ['test-platform-config-path']
+        release_data = ["ami_id=ami-a12345", "foo=bar"]
+        account_scheme = Mock()
+        account_scheme.raw_scheme = {"test": "scheme"}
+        release = Release(
+            boto_session=Mock(),
+            release_bucket=ANY,
+            platform_config_paths=platform_config_paths,
+            release_data=release_data, commit='dummy',
+            version='dummy-version', component_name='dummy-component',
+            team='dummy-team',
+            account_scheme=account_scheme
+        )
+        temp_dir = 'test-temp-dir'
+        TemporaryDirectory.return_value.__enter__.return_value = temp_dir
+
+        mock_account_scheme = MagicMock(spec=TextIOWrapper)
+        mock_account_scheme_open = MagicMock()
+        mock_account_scheme_open.__enter__.return_value = mock_account_scheme
+
+        generic_mock_open = MagicMock()
+        generic_mock_open.__enter__.return_value = \
+            MagicMock(spec=TextIOWrapper)
+
+        _open.side_effect = lambda filename, _: \
+            mock_account_scheme_open \
+            if filename.endswith(ACCOUNT_SCHEME_FILE) \
+            else generic_mock_open
+
+        # When
+        release.create(release_plugin)
+
+        # Then
+        _open.assert_any_call('test-temp-dir/{}-{}/{}'.format(
+            'dummy-component', 'dummy-version', ACCOUNT_SCHEME_FILE
+        ), 'w')
+        mock_account_scheme.write.assert_called_once_with(json.dumps({
+            "test": "scheme"
+        }))
 
     @patch('cdflow_commands.release._copy_platform_config')
     @patch('cdflow_commands.release.mkdir')
