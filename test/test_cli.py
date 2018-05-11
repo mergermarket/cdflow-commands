@@ -101,13 +101,13 @@ class TestCliBuildPlugin(unittest.TestCase):
     @patch('cdflow_commands.cli.rmtree')
     @patch('cdflow_commands.cli.sys')
     @patch('cdflow_commands.cli.load_manifest')
-    @patch('cdflow_commands.cli.build_account_scheme')
+    @patch('cdflow_commands.cli.build_account_scheme_s3')
     @patch('cdflow_commands.cli.assume_role')
     @patch('cdflow_commands.cli.Release')
     @patch('cdflow_commands.cli.get_component_name')
     def test_unsupported_project_type(
-        self, get_component_name, Release, assume_role, build_account_scheme,
-        load_manifest, sys, rmtree, check_output, os,
+        self, get_component_name, Release, assume_role,
+        build_account_scheme_s3, load_manifest, sys, rmtree, check_output, os,
     ):
         # Given
         os.environ = {'JOB_NAME': 'dummy-job-name'}
@@ -127,158 +127,158 @@ class TestCliBuildPlugin(unittest.TestCase):
         assert expected_message in str(context.exception)
 
 
-class TestMetadataAccount(unittest.TestCase):
+class TestRoles(unittest.TestCase):
 
+    @patch('cdflow_commands.cli.load_manifest')
+    @patch('cdflow_commands.cli.run_release')
     @patch('cdflow_commands.cli.assume_role')
-    @patch('cdflow_commands.cli.Deploy')
-    @patch('cdflow_commands.cli.get_component_name')
-    @patch('cdflow_commands.cli.fetch_release')
-    @patch('cdflow_commands.cli.get_secrets')
-    @patch('cdflow_commands.cli.initialise_terraform')
-    def test_terraform_state_in_release_account(
-        self, initialise_terraform, get_secrets, fetch_release, _1, _2, _3
+    @patch('cdflow_commands.cli.build_account_scheme_s3')
+    @patch('cdflow_commands.cli.Session')
+    def test_release_assumes_release_account_role(
+        self, Session, build_account_scheme_s3, assume_role, run_release,
+        load_manifest
     ):
+
         # Given
-        fetch_release.return_value.__enter__.return_value = 'dummy'
-        manifest = Mock()
-        account_scheme = Mock()
-        account_scheme.classic_metadata_handling = False
-        release_session = Mock()
-
-        # When
-        args = {
-            '<environment>': ANY,
-            '<version>': ANY,
-            '--plan-only': False,
-            '--component': ANY
-        }
-        cli.run_deploy(
-            Mock(), release_session, account_scheme, manifest, args
-        )
-
-        # Then
-        initialise_terraform.assert_called_once_with(
-            ANY, ANY, release_session, ANY, ANY, ANY
-        )
-        get_secrets.assert_called_once_with(
-            ANY, ANY, ANY, release_session
-        )
-
-    @patch('cdflow_commands.cli.Deploy')
-    @patch('cdflow_commands.cli.get_component_name')
-    @patch('cdflow_commands.cli.fetch_release')
-    @patch('cdflow_commands.cli.initialise_terraform')
-    @patch('cdflow_commands.cli.get_secrets')
-    @patch('cdflow_commands.cli.assume_role')
-    def test_terraform_state_in_deploy_account(
-        self, assume_role, get_secrets, initialise_terraform, fetch_release,
-        _1, _2
-    ):
-        # Given
-        fetch_release.return_value.__enter__.return_value = 'dummy'
-        manifest = Mock()
-        account_scheme = Mock()
-        deploy_account_id = '123456789'
-        account_scheme.account_for_environment.return_value.id = \
-            deploy_account_id
-        account_scheme.default_region = "eu-west-12"
-        account_scheme.classic_metadata_handling = True
-        deploy_session = Mock()
         root_session = Mock()
-        assume_role.return_value = deploy_session
+        Session.return_value = root_session
+        release_account_session = Mock()
+        assume_role.return_value = release_account_session
+        account_scheme = Mock()
+        account_scheme.release_account.id = '1234567890'
+        account_scheme.default_region = 'eu-west-12'
+        build_account_scheme_s3.return_value = account_scheme
 
         # When
-        args = {
-            '<environment>': ANY,
-            '<version>': ANY,
-            '--plan-only': False,
-            '--component': ANY
-        }
-        cli.run_deploy(
-            root_session, Mock(), account_scheme, manifest, args
-        )
+        cli._run([
+            'release', '--platform-config', 'path/to/config', 'version'
+        ])
 
         # Then
         assume_role.assert_called_once_with(
-           root_session, deploy_account_id, account_scheme.default_region
+            root_session, '1234567890', 'eu-west-12'
         )
-        initialise_terraform.assert_called_once_with(
-            ANY, ANY, deploy_session, ANY, ANY, ANY
-        )
-        get_secrets.assert_called_once_with(
-            ANY, ANY, ANY, deploy_session
+        run_release.assert_called_once_with(
+            release_account_session, account_scheme, ANY,
+            ANY
         )
 
-    @patch('cdflow_commands.cli.remove_state')
-    @patch('cdflow_commands.cli.assume_role')
-    @patch('cdflow_commands.cli.Destroy')
-    @patch('cdflow_commands.cli.get_component_name')
-    @patch('cdflow_commands.cli.find_latest_release_version')
     @patch('cdflow_commands.cli.fetch_release')
-    @patch('cdflow_commands.cli.initialise_terraform')
-    def test_terraform_destroy_state_in_release_account(
-        self, initialise_terraform, fetch_release, _1, _2, _3, _4, _5
-    ):
-        # Given
-        fetch_release.return_value.__enter__.return_value = 'dummy'
-        manifest = Mock()
-        account_scheme = Mock()
-        account_scheme.classic_metadata_handling = False
-        release_session = Mock()
-
-        # When
-        args = {
-            '<environment>': ANY,
-            '--plan-only': False,
-            '--component': ANY
-        }
-        cli.run_destroy(
-            Mock(), release_session, account_scheme, manifest, args
-        )
-
-        # Then
-        initialise_terraform.assert_called_once_with(
-            ANY, ANY, release_session, ANY, ANY, ANY
-        )
-
-    @patch('cdflow_commands.cli.remove_state')
-    @patch('cdflow_commands.cli.Destroy')
-    @patch('cdflow_commands.cli.get_component_name')
-    @patch('cdflow_commands.cli.find_latest_release_version')
-    @patch('cdflow_commands.cli.fetch_release')
-    @patch('cdflow_commands.cli.initialise_terraform')
+    @patch('cdflow_commands.cli.run_deploy')
     @patch('cdflow_commands.cli.assume_role')
-    def test_terraform_detroy_state_in_deploy_account(
-        self, assume_role, initialise_terraform, fetch_release, _1, _2, _3, _4
+    @patch('cdflow_commands.cli.build_account_scheme_file')
+    def test_deploy_assumes_infrastructure_account_role(
+        self, build_account_scheme_file, assume_role, run_deploy,
+        fetch_release
     ):
+
         # Given
-        fetch_release.return_value.__enter__.return_value = 'dummy'
-        manifest = Mock()
-        account_scheme = Mock()
-        destroy_account_id = '123456789'
-        account_scheme.account_for_environment.return_value.id = \
-            destroy_account_id
-        account_scheme.default_region = "eu-west-12"
-        account_scheme.classic_metadata_handling = True
-        destroy_session = Mock()
         root_session = Mock()
-        assume_role.return_value = destroy_session
+        release_account_session = Mock()
+        infrastructure_account_session = Mock()
+        assume_role.return_value = infrastructure_account_session
+        account_scheme = Mock()
+        account_scheme.release_account.id = '1234567890'
+        account_scheme.default_region = 'eu-west-12'
+        account_scheme.classic_metadata_handling = False
+        infrastructure_account = Mock()
+        infrastructure_account.id = '0987654321'
+        account_scheme.account_for_environment.return_value = \
+            infrastructure_account
+        build_account_scheme_file.return_value = account_scheme
+        fetch_release.return_value.__enter__.return_value = 'dummy'
 
         # When
-        args = {
-            '<environment>': ANY,
-            '<version>': ANY,
-            '--plan-only': False,
-            '--component': ANY
-        }
-        cli.run_destroy(
-            root_session, Mock(), account_scheme, manifest, args
+        cli.run_non_release_command(
+            root_session, release_account_session, account_scheme, ANY, {
+                'deploy': True, 'destroy': False, '<environment>': 'ci',
+                '<version>': '1', '--component': 'dummy'
+            }
         )
 
         # Then
+        account_scheme.account_for_environment.assert_called_once_with('ci')
         assume_role.assert_called_once_with(
-           root_session, destroy_account_id, account_scheme.default_region
+            root_session, '0987654321', 'eu-west-12'
         )
-        initialise_terraform.assert_called_once_with(
-            ANY, ANY, destroy_session, ANY, ANY, ANY
+        run_deploy.assert_called_once_with(
+            ANY, account_scheme, release_account_session,
+            infrastructure_account_session, ANY, ANY, ANY, ANY
+        )
+
+    @patch('cdflow_commands.cli.fetch_release')
+    @patch('cdflow_commands.cli.run_deploy')
+    @patch('cdflow_commands.cli.assume_role')
+    @patch('cdflow_commands.cli.build_account_scheme_file')
+    def test_deploy_classic_metadata_handling(
+        self, build_account_scheme_file, assume_role, run_deploy,
+        fetch_release
+    ):
+
+        # Given
+        root_session = Mock()
+        release_account_session = Mock()
+        infrastructure_account_session = Mock()
+        assume_role.return_value = infrastructure_account_session
+        account_scheme = Mock()
+        account_scheme.release_account.id = '1234567890'
+        account_scheme.default_region = 'eu-west-12'
+        account_scheme.classic_metadata_handling = True
+        infrastructure_account = Mock()
+        infrastructure_account.id = '0987654321'
+        account_scheme.account_for_environment.return_value = \
+            infrastructure_account
+        build_account_scheme_file.return_value = account_scheme
+        fetch_release.return_value.__enter__.return_value = 'dummy'
+
+        # When
+        cli.run_non_release_command(
+            root_session, release_account_session, account_scheme, ANY, {
+                'deploy': True, 'destroy': False, '<environment>': 'ci',
+                '<version>': '1', '--component': 'dummy'
+            }
+        )
+
+        # Then
+        account_scheme.account_for_environment.assert_called_once_with('ci')
+        assume_role.assert_called_once_with(
+            root_session, '0987654321', 'eu-west-12'
+        )
+        run_deploy.assert_called_once_with(
+            ANY, account_scheme, infrastructure_account_session,
+            infrastructure_account_session, ANY, ANY, ANY, ANY
+        )
+
+
+class TestAccountSchemeHandling(unittest.TestCase):
+
+    @patch('cdflow_commands.cli.assume_role')
+    @patch('cdflow_commands.cli.fetch_release')
+    @patch('cdflow_commands.cli.run_deploy')
+    @patch('cdflow_commands.cli.build_account_scheme_file')
+    def test_deploy_uses_account_scheme_from_release(
+        self, build_account_scheme_file, run_deploy, fetch_release, _1
+    ):
+
+        # Given
+        project_account_scheme = Mock()
+        project_account_scheme.release_account.id = '1234567890'
+        release_account_scheme = Mock()
+        build_account_scheme_file.return_value = release_account_scheme
+        fetch_release.return_value.__enter__.return_value = 'dummy'
+
+        # When
+        cli.run_non_release_command(
+            ANY, ANY, project_account_scheme, ANY, {
+                'deploy': True, 'destroy': False, '<environment>': 'ci',
+                '<version>': '1', '--component': 'dummy'
+            }
+        )
+
+        # Then
+        release_account_scheme.account_for_environment.assert_called_once_with(
+            'ci'
+        )
+        run_deploy.assert_called_once_with(
+            ANY, release_account_scheme, ANY, ANY, ANY, ANY, ANY, ANY
         )

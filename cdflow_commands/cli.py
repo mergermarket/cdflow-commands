@@ -24,9 +24,12 @@ from subprocess import check_output
 from boto3.session import Session
 
 from cdflow_commands.config import (
-    assume_role, get_component_name, load_manifest, build_account_scheme
+    assume_role, get_component_name, load_manifest, build_account_scheme_s3,
+    build_account_scheme_file
 )
-from cdflow_commands.constants import INFRASTRUCTURE_DEFINITIONS_PATH
+from cdflow_commands.constants import (
+    INFRASTRUCTURE_DEFINITIONS_PATH, ACCOUNT_SCHEME_FILE
+)
 from cdflow_commands.deploy import Deploy
 from cdflow_commands.destroy import Destroy
 from cdflow_commands.exceptions import UnknownProjectTypeError, UserFacingError
@@ -70,11 +73,10 @@ def _run(argv):
     manifest = load_manifest()
     root_session = Session()
 
-    account_scheme = build_account_scheme(
+    account_scheme = build_account_scheme_s3(
         root_session.resource('s3'), manifest.account_scheme_url
     )
     root_session = Session(region_name=account_scheme.default_region)
-
     release_account_session = assume_role(
         root_session, account_scheme.release_account.id,
         account_scheme.default_region,
@@ -82,15 +84,10 @@ def _run(argv):
 
     if args['release']:
         run_release(release_account_session, account_scheme, manifest, args)
-    elif args['deploy']:
-        run_deploy(
-            root_session, release_account_session,
-            account_scheme, manifest, args,
-        )
-    elif args['destroy']:
-        run_destroy(
-            root_session, release_account_session,
-            account_scheme, manifest, args
+    else:
+        run_non_release_command(
+            root_session, release_account_session, account_scheme, manifest,
+            args
         )
 
 
@@ -107,6 +104,7 @@ def run_release(release_account_session, account_scheme, manifest, args):
         commit=commit,
         component_name=get_component_name(args['--component']),
         team=manifest.team,
+        account_scheme=account_scheme,
     )
 
     if manifest.type == 'docker':
@@ -123,17 +121,20 @@ def run_release(release_account_session, account_scheme, manifest, args):
     release.create(plugin)
 
 
-def run_deploy(
-    root_session, release_account_session, account_scheme, manifest, args,
+def run_non_release_command(
+    root_session, release_account_session, account_scheme, manifest, args
 ):
-    environment = args['<environment>']
-    component_name = get_component_name(args['--component'])
-    version = args['<version>']
+    assert args['deploy'] or args['destroy']
 
-    account_id = account_scheme.account_for_environment(environment).id
-    deploy_account_session = assume_role(
-        root_session, account_id, account_scheme.default_region,
-    )
+    component_name = get_component_name(args['--component'])
+
+    if args['destroy']:
+        version = find_latest_release_version(
+            release_account_session, account_scheme.release_bucket,
+            component_name,
+        )
+    else:
+        version = args['<version>']
 
     with fetch_release(
         release_account_session, account_scheme.release_bucket,
@@ -143,89 +144,106 @@ def run_deploy(
         path_to_release = os.path.join(
             path_to_release, '{}-{}'.format(component_name, version)
         )
-        if account_scheme.classic_metadata_handling:
-            terraform_session = deploy_account_session
-        else:
-            terraform_session = release_account_session
-
-        initialise_terraform(
-            path_to_release, INFRASTRUCTURE_DEFINITIONS_PATH,
-            terraform_session, environment, component_name,
-            manifest.tfstate_filename
+        run_non_release_command_on_release(
+            args, path_to_release, manifest, component_name,
+            root_session, release_account_session
         )
 
-        if account_scheme.classic_metadata_handling:
-            secrets_session = deploy_account_session
-        else:
-            secrets_session = release_account_session
 
-        secrets = {
-            'secrets': get_secrets(
-                environment, manifest.team,
-                component_name, secrets_session
-            )
-        }
+def assume_infrastructure_account_role(
+    account_scheme, environment, root_session
+):
+    account_id = account_scheme.account_for_environment(environment).id
+    logger.debug('Assuming role in {}'.format(account_id))
 
-        deploy = Deploy(
-            environment, path_to_release, secrets,
-            account_scheme, deploy_account_session
+    return assume_role(
+        root_session, account_id, account_scheme.default_region,
+    )
+
+
+def run_non_release_command_on_release(
+    args, path_to_release, manifest, component_name, root_session,
+    release_account_session
+):
+    account_scheme = build_account_scheme_file(os.path.join(
+        path_to_release, ACCOUNT_SCHEME_FILE
+    ))
+    environment = args['<environment>']
+
+    infrastructure_account_session = assume_infrastructure_account_role(
+        account_scheme, environment, root_session
+    )
+    if account_scheme.classic_metadata_handling:
+        metadata_account_session = infrastructure_account_session
+    else:
+        metadata_account_session = release_account_session
+
+    if args['deploy']:
+        run_deploy(
+            path_to_release, account_scheme, metadata_account_session,
+            infrastructure_account_session, manifest, args, environment,
+            component_name
         )
-        deploy.run(args['--plan-only'])
+    elif args['destroy']:
+        run_destroy(
+            path_to_release, metadata_account_session,
+            infrastructure_account_session, manifest, args, environment,
+            component_name
+        )
+
+
+def run_deploy(
+    path_to_release, account_scheme, metadata_account_session,
+    infrastructure_account_session, manifest, args, environment, component_name
+):
+    initialise_terraform(
+        path_to_release, INFRASTRUCTURE_DEFINITIONS_PATH,
+        metadata_account_session, environment, component_name,
+        manifest.tfstate_filename
+    )
+
+    secrets = {
+        'secrets': get_secrets(
+            environment, manifest.team,
+            component_name, metadata_account_session
+        )
+    }
+
+    deploy = Deploy(
+        environment, path_to_release, secrets,
+        account_scheme, infrastructure_account_session
+    )
+    deploy.run(args['--plan-only'])
 
 
 def run_destroy(
-    root_session, release_account_session, account_scheme, manifest, args
+    path_to_release, metadata_account_session, infrastructure_account_session,
+    manifest, args, environment, component_name
 ):
-    environment = args['<environment>']
-    component_name = get_component_name(args['--component'])
-    account_id = account_scheme.account_for_environment(environment).id
-
-    logger.debug('Assuming role in {}'.format(account_id))
-    destroy_account_session = assume_role(
-        root_session, account_id, account_scheme.default_region,
+    initialise_terraform(
+        path_to_release, '',
+        metadata_account_session, environment, component_name,
+        manifest.tfstate_filename
     )
 
-    version = find_latest_release_version(
-        release_account_session, account_scheme.release_bucket, component_name,
+    destroy = Destroy(infrastructure_account_session, path_to_release)
+
+    plan_only = args['--plan-only']
+
+    logger.info(
+        f'Planning destruction of {component_name} in {environment}'
     )
 
-    with fetch_release(
-        release_account_session, account_scheme.release_bucket,
-        component_name, version,
-    ) as path_to_release:
-        logger.debug('Unpacked release: {}'.format(path_to_release))
-        path_to_release = os.path.join(
-            path_to_release, '{}-{}'.format(component_name, version)
+    destroy.run(plan_only)
+
+    if not plan_only:
+        logger.info(
+            f'Removing state for {component_name} in {environment}'
         )
-        if account_scheme.classic_metadata_handling:
-            terraform_session = destroy_account_session
-        else:
-            terraform_session = release_account_session
-
-        initialise_terraform(
-            path_to_release, '',
-            terraform_session, environment, component_name,
+        remove_state(
+            metadata_account_session, environment, component_name,
             manifest.tfstate_filename
         )
-
-        destroy = Destroy(destroy_account_session, path_to_release)
-
-        plan_only = args['--plan-only']
-
-        logger.info(
-            f'Planning destruction of {component_name} in {environment}'
-        )
-
-        destroy.run(plan_only)
-
-        if not plan_only:
-            logger.info(
-                f'Removing state for {component_name} in {environment}'
-            )
-            remove_state(
-                destroy_account_session, environment, component_name,
-                manifest.tfstate_filename
-            )
 
 
 def conditionally_set_debug(verbose):
