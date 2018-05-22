@@ -39,7 +39,7 @@ pytest-cov==2.5.1
 pytest-forked==0.2
 pytest-randomly==1.2.3
 pytest-xdist==1.22.2
-pytest==3.5.0
+pytest==3.5.1
 python-dateutil==2.6.1
 pytz==2018.4
 pyyaml==3.12
