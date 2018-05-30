@@ -199,7 +199,8 @@ def run_deploy(
     initialise_terraform(
         path_to_release, INFRASTRUCTURE_DEFINITIONS_PATH,
         metadata_account_session, environment, component_name,
-        manifest.tfstate_filename, account_scheme
+        manifest.tfstate_filename, account_scheme.backend_s3_bucket,
+        account_scheme.backend_s3_dynamodb_table
     )
 
     secrets = {
@@ -223,7 +224,8 @@ def run_destroy(
     initialise_terraform(
         path_to_release, '',
         metadata_account_session, environment, component_name,
-        manifest.tfstate_filename, account_scheme
+        manifest.tfstate_filename, account_scheme.backend_s3_bucket,
+        account_scheme.backend_s3_dynamodb_table
     )
 
     destroy = Destroy(infrastructure_account_session, path_to_release)
