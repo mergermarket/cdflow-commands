@@ -1,4 +1,5 @@
 from collections import defaultdict
+import re
 
 
 class Account:
@@ -7,6 +8,20 @@ class Account:
         self.alias = alias
         self.id = id
         self.role = role
+
+
+def replace_team(scheme, team):
+    if type(scheme) is str:
+        return re.sub(r'{team}', team, scheme)
+    elif type(scheme) is dict:
+        return {
+            replace_team(k, team): replace_team(v, team)
+            for k, v in scheme.items()
+        }
+    elif type(scheme) is list:
+        return [replace_team(v, team) for v in scheme]
+    else:
+        return scheme
 
 
 class AccountScheme:
@@ -50,35 +65,36 @@ class AccountScheme:
         return environment_mapping
 
     @classmethod
-    def create(cls, raw_scheme):
+    def create(cls, raw_scheme, team):
+        scheme = replace_team(raw_scheme, team)
         accounts = {
             alias: Account(alias, account['id'], account['role'])
             for alias, account
-            in raw_scheme['accounts'].items()
+            in scheme['accounts'].items()
         }
 
         environment_value_types = (
-            type(a) for a in raw_scheme['environments'].values()
+            type(a) for a in scheme['environments'].values()
         )
 
         assert all(t is str for t in environment_value_types), \
             'environment mapping values should be strings'
 
         environment_mapping = cls._get_env_mapping(
-            raw_scheme, accounts
+            scheme, accounts
         )
 
         return AccountScheme(
             raw_scheme,
             set(accounts.values()),
-            accounts[raw_scheme['release-account']],
-            raw_scheme['release-bucket'],
-            raw_scheme.get('lambda-bucket', ''),
-            raw_scheme['default-region'],
+            accounts[scheme['release-account']],
+            scheme['release-bucket'],
+            scheme.get('lambda-bucket', ''),
+            scheme['default-region'],
             environment_mapping,
-            raw_scheme.get('classic-metadata-handling', False),
-            raw_scheme.get('terraform-backend-s3-bucket', None),
-            raw_scheme.get('terraform-backend-s3-dynamodb-table', None),
+            scheme.get('classic-metadata-handling', False),
+            scheme.get('terraform-backend-s3-bucket', None),
+            scheme.get('terraform-backend-s3-dynamodb-table', None),
         )
 
     @property

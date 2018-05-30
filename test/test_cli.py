@@ -190,7 +190,7 @@ class TestRoles(unittest.TestCase):
 
         # When
         cli.run_non_release_command(
-            root_session, release_account_session, account_scheme, ANY, {
+            root_session, release_account_session, account_scheme, Mock(), {
                 'deploy': True, 'destroy': False, '<environment>': 'ci',
                 '<version>': '1', '--component': 'dummy'
             }
@@ -233,7 +233,7 @@ class TestRoles(unittest.TestCase):
 
         # When
         cli.run_non_release_command(
-            root_session, release_account_session, account_scheme, ANY, {
+            root_session, release_account_session, account_scheme, Mock(), {
                 'deploy': True, 'destroy': False, '<environment>': 'ci',
                 '<version>': '1', '--component': 'dummy'
             }
@@ -269,7 +269,7 @@ class TestAccountSchemeHandling(unittest.TestCase):
 
         # When
         cli.run_non_release_command(
-            ANY, ANY, project_account_scheme, ANY, {
+            ANY, ANY, project_account_scheme, Mock(), {
                 'deploy': True, 'destroy': False, '<environment>': 'ci',
                 '<version>': '1', '--component': 'dummy'
             }
