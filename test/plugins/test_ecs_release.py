@@ -64,7 +64,9 @@ class TestRelease(unittest.TestCase):
             'release-bucket': 'dummy',
             'environments': {
                 'live': 'dummy'
-            }
+            },
+            'terraform-backend-s3-bucket': 'tfstate-bucket',
+            'terraform-backend-s3-dynamodb-table': 'tflocks-table'
         })
 
         self._plugin = ReleasePlugin(self._release, account_scheme)
@@ -99,7 +101,9 @@ class TestRelease(unittest.TestCase):
             'environments': {
                 'live': 'dummy',
             },
-        })
+            'terraform-backend-s3-bucket': 'tfstate-bucket',
+            'terraform-backend-s3-dynamodb-table': 'tflocks-table',
+         })
 
         image_name = '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
             account_id, region, component_name, 'dev'
@@ -338,6 +342,8 @@ class TestRelease(unittest.TestCase):
             'environments': {
                 'live': accounts[0]['alias'],
             },
+            'terraform-backend-s3-bucket': 'tfstate-bucket',
+            'terraform-backend-s3-dynamodb-table': 'tflocks-table',
         })
         plugin = ReleasePlugin(self._release, account_scheme)
         self._ecr_client.set_repository_policy = Mock()
@@ -399,6 +405,8 @@ class TestRelease(unittest.TestCase):
             'environments': {
                 'live': accounts[0]['alias'],
             },
+            'terraform-backend-s3-bucket': 'tfstate-bucket',
+            'terraform-backend-s3-dynamodb-table': 'tflocks-table',
         })
         plugin = ReleasePlugin(self._release, account_scheme)
         self._ecr_client.get_lifecycle_policy = Mock()

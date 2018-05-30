@@ -393,7 +393,9 @@ class TestAccountSchemeHandling(unittest.TestCase):
                 "live": "{0}prod",
                 "*": "{0}dev"
               }},
-              "default-region": "eu-west-12"
+              "default-region": "eu-west-12",
+              "terraform-backend-s3-bucket": "tfstate-bucket",
+              "terraform-backend-s3-dynamodb-table": "tflocks-table"
             }}
         '''.format(account_prefix)
 
@@ -407,7 +409,8 @@ class TestAccountSchemeHandling(unittest.TestCase):
 
         expected_keys = sorted([
             'accounts', 'release-account', 'release-bucket',
-            'environments', 'default-region'
+            'environments', 'default-region', 'terraform-backend-s3-bucket',
+            'terraform-backend-s3-dynamodb-table'
         ])
 
         assert sorted(account_scheme.keys()) == expected_keys
@@ -443,7 +446,9 @@ class TestAccountSchemeHandling(unittest.TestCase):
                 "live": "{0}prod",
                 "*": "{0}dev"
               }},
-              "default-region": "eu-west-12"
+              "default-region": "eu-west-12",
+              "terraform-backend-s3-bucket": "tfstate-bucket",
+              "terraform-backend-s3-dynamodb-table": "tflocks-table"
             }}
         '''.format(account_prefix)
 
@@ -488,7 +493,9 @@ class TestAccountSchemeHandling(unittest.TestCase):
                 "live": "{0}prod",
                 "*": "{0}dev"
               }},
-              "default-region": "eu-west-12"
+              "default-region": "eu-west-12",
+              "terraform-backend-s3-bucket": "tfstate-bucket",
+              "terraform-backend-s3-dynamodb-table": "tflocks-table"
             }}
         '''.format(account_prefix)
 

@@ -56,7 +56,9 @@ class TestReleaseCLI(unittest.TestCase):
             'default-region': 'us-north-4',
             'environments': {
                 'live': 'foodev',
-            }
+            },
+            'terraform-backend-s3-bucket': 'tfstate-bucket',
+            'terraform-backend-s3-dynamodb-table': 'tflocks-table',
         })
 
         mock_s3_resource = Mock()
@@ -187,7 +189,9 @@ class TestReleaseCLI(unittest.TestCase):
             'default-region': 'us-north-4',
             'environments': {
                 'live': 'foodev',
-            }
+            },
+            'terraform-backend-s3-bucket': 'tfstate-bucket',
+            'terraform-backend-s3-dynamodb-table': 'tflocks-table',
         })
 
         mock_s3_resource = Mock()
