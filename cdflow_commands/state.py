@@ -30,13 +30,19 @@ def remove_file(filepath):
 
 
 def get_bucket(boto_session, account_scheme):
-    s3_bucket_factory = S3BucketFactory(boto_session)
-    return s3_bucket_factory.get_bucket_name()
+    if account_scheme.classic_metadata_handling:
+        s3_bucket_factory = S3BucketFactory(boto_session)
+        return s3_bucket_factory.get_bucket_name()
+    else:
+        return account_scheme.backend_s3_bucket
 
 
 def get_dynamodb_table(boto_session, account_scheme):
-    lock_table_factory = LockTableFactory(boto_session)
-    return lock_table_factory.get_table_name()
+    if account_scheme.classic_metadata_handling:
+        lock_table_factory = LockTableFactory(boto_session)
+        return lock_table_factory.get_table_name()
+    else:
+        return account_scheme.backend_s3_dynamodb_table
 
 
 def initialise_terraform(
