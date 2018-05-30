@@ -26,11 +26,7 @@ class AccountScheme:
         self.default_region = default_region
         self._environment_mapping = environment_mapping
         self.classic_metadata_handling = classic_metadata_handling
-        if not classic_metadata_handling and backend_s3_bucket is None:
-            raise Exception('terraform-backend-s3-bucket is required')
         self.backend_s3_bucket = backend_s3_bucket
-        if not classic_metadata_handling and backend_s3_dynamodb_table is None:
-            raise Exception('terraform-backend-s3-dynamodb_table is required')
         self.backend_s3_dynamodb_table = backend_s3_dynamodb_table
 
     @classmethod
@@ -77,8 +73,8 @@ class AccountScheme:
             raw_scheme['default-region'],
             environment_mapping,
             raw_scheme.get('classic-metadata-handling', False),
-            raw_scheme.get('terraform-backend-s3-bucket', None),
-            raw_scheme.get('terraform-backend-s3-dynamodb-table', None),
+            raw_scheme['terraform-backend-s3-bucket'],
+            raw_scheme['terraform-backend-s3-dynamodb-table'],
         )
 
     @property
