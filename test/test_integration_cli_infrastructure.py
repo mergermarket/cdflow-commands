@@ -59,6 +59,8 @@ class TestReleaseCLI(unittest.TestCase):
             'environments': {
                 'live': 'foodev',
             },
+            'terraform-backend-s3-bucket': 'tfstate-bucket',
+            'terraform-backend-s3-dynamodb-table': 'tflocks-table',
         })
 
         mock_s3_resource = Mock()

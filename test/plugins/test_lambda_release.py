@@ -39,6 +39,8 @@ class TestLambdaReleasePlugin(unittest.TestCase):
             'environments': {
                 'live': 'dummy',
             },
+            'terraform-backend-s3-bucket': 'tfstate-bucket',
+            'terraform-backend-s3-dynamodb-table': 'tflocks-table'
         })
 
         self._plugin = ReleasePlugin(self._release, account_scheme)
