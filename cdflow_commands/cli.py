@@ -188,7 +188,7 @@ def run_non_release_command_on_release(
         run_destroy(
             path_to_release, metadata_account_session,
             infrastructure_account_session, manifest, args, environment,
-            component_name
+            component_name, account_scheme
         )
 
 
@@ -199,7 +199,7 @@ def run_deploy(
     initialise_terraform(
         path_to_release, INFRASTRUCTURE_DEFINITIONS_PATH,
         metadata_account_session, environment, component_name,
-        manifest.tfstate_filename
+        manifest.tfstate_filename, account_scheme
     )
 
     secrets = {
@@ -218,12 +218,12 @@ def run_deploy(
 
 def run_destroy(
     path_to_release, metadata_account_session, infrastructure_account_session,
-    manifest, args, environment, component_name
+    manifest, args, environment, component_name, account_scheme
 ):
     initialise_terraform(
         path_to_release, '',
         metadata_account_session, environment, component_name,
-        manifest.tfstate_filename
+        manifest.tfstate_filename, account_scheme
     )
 
     destroy = Destroy(infrastructure_account_session, path_to_release)
@@ -242,7 +242,7 @@ def run_destroy(
         )
         remove_state(
             metadata_account_session, environment, component_name,
-            manifest.tfstate_filename
+            manifest.tfstate_filename, account_scheme
         )
 
 

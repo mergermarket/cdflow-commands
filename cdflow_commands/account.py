@@ -16,7 +16,7 @@ class AccountScheme:
     def __init__(
         self, raw_scheme, accounts, release_account, release_bucket,
         lambda_bucket, default_region, environment_mapping,
-        classic_metadata_handling
+        classic_metadata_handling, backend_s3_bucket, backend_s3_dynamodb_table
     ):
         self.raw_scheme = raw_scheme
         self.accounts = accounts
@@ -26,6 +26,12 @@ class AccountScheme:
         self.default_region = default_region
         self._environment_mapping = environment_mapping
         self.classic_metadata_handling = classic_metadata_handling
+        if not classic_metadata_handling and backend_s3_bucket is None:
+            raise Exception('terraform-backend-s3-bucket is required')
+        self.backend_s3_bucket = backend_s3_bucket
+        if not classic_metadata_handling and backend_s3_dynamodb_table is None:
+            raise Exception('terraform-backend-s3-dynamodb_table is required')
+        self.backend_s3_dynamodb_table = backend_s3_dynamodb_table
 
     @classmethod
     def _get_env_mapping(cls, raw_scheme, accounts):
@@ -71,6 +77,8 @@ class AccountScheme:
             raw_scheme['default-region'],
             environment_mapping,
             raw_scheme.get('classic-metadata-handling', False),
+            raw_scheme.get('terraform-backend-s3-bucket', None),
+            raw_scheme.get('terraform-backend-s3-dynamodb-table', None),
         )
 
     @property

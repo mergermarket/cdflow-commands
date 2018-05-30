@@ -64,6 +64,8 @@ class TestAccountScheme(unittest.TestCase):
         'release-bucket': text(),
         'lambda-bucket': text(),
         'classic-metadata-handling': booleans(),
+        'backend-s3-bucket': text(),
+        'backend-s3-dynamodb-table': text(),
     }))
     def test_create_account_scheme_from_json(self, fixtures):
         raw_scheme = {
@@ -79,6 +81,9 @@ class TestAccountScheme(unittest.TestCase):
             'release-account': fixtures['account']['alias'],
             'default-region': fixtures['region'],
             'environments': {},
+            'terraform-backend-s3-bucket': fixtures['backend-s3-bucket'],
+            'terraform-backend-s3-dynamodb-table':
+            fixtures['backend-s3-dynamodb-table'],
         }
 
         account_scheme = AccountScheme.create(raw_scheme)
@@ -91,6 +96,10 @@ class TestAccountScheme(unittest.TestCase):
         assert account_scheme.lambda_bucket == fixtures['lambda-bucket']
         assert account_scheme.classic_metadata_handling == \
             fixtures['classic-metadata-handling']
+        assert account_scheme.backend_s3_bucket == \
+            fixtures['backend-s3-bucket']
+        assert account_scheme.backend_s3_dynamodb_table == \
+            fixtures['backend-s3-dynamodb-table']
 
     @given(lists(
             elements=account(),
@@ -107,6 +116,8 @@ class TestAccountScheme(unittest.TestCase):
             'release-bucket': 'releases',
             'default-region': 'eu-west-69',
             'environments': {},
+            'terraform-backend-s3-bucket': 'tfstate-bucket',
+            'terraform-backend-s3-dynamodb-table': 'tflocks-table',
         }
 
         account_scheme = AccountScheme.create(raw_scheme)
@@ -148,6 +159,8 @@ class TestAccountScheme(unittest.TestCase):
             'release-bucket': 'releases',
             'default-region': 'eu-west-69',
             'environments': environments,
+            'terraform-backend-s3-bucket': 'tfstate-bucket',
+            'terraform-backend-s3-dynamodb-table': 'tflocks-table',
         }
 
         account_scheme = AccountScheme.create(raw_scheme)
@@ -188,6 +201,8 @@ class TestAccountScheme(unittest.TestCase):
             'release-bucket': 'releases',
             'default-region': 'eu-west-69',
             'environments': environments,
+            'terraform-backend-s3-bucket': 'tfstate-bucket',
+            'terraform-backend-s3-dynamodb-table': 'tflocks-table',
         }
 
         account_scheme = AccountScheme.create(raw_scheme)
