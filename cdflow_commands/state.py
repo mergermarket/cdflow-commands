@@ -66,10 +66,10 @@ def state_file_key(environment_name, component_name, tfstate_filename):
 
 def remove_state(
     boto_session, environment_name, component_name, tfstate_filename,
-    account_scheme
+    backend_s3_bucket
 ):
 
     key = state_file_key(environment_name, component_name, tfstate_filename)
 
     s3_client = boto_session.client('s3')
-    s3_client.delete_object(Bucket=account_scheme.backend_s3_bucket, Key=key)
+    s3_client.delete_object(Bucket=backend_s3_bucket, Key=key)

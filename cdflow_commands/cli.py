@@ -244,7 +244,7 @@ def run_destroy(
         )
         remove_state(
             metadata_account_session, environment, component_name,
-            manifest.tfstate_filename, account_scheme
+            manifest.tfstate_filename, account_scheme.backend_s3_bucket
         )
 
 
