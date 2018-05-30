@@ -29,18 +29,23 @@ def remove_file(filepath):
         logger.debug(f'Error removing {filepath}: {e}')
 
 
+def get_bucket(boto_session):
+    s3_bucket_factory = S3BucketFactory(boto_session)
+    return s3_bucket_factory.get_bucket_name()
+
+
+def get_dynamodb_table(boto_session):
+    lock_table_factory = LockTableFactory(boto_session)
+    return lock_table_factory.get_table_name()
+
+
 def initialise_terraform(
     base_directory, sub_directory, boto_session,
     environment_name, component_name, tfstate_filename,
 ):
-    lock_table_factory = LockTableFactory(boto_session)
-
-    s3_bucket_factory = S3BucketFactory(boto_session)
-
     initialise_terraform_backend(
         base_directory, sub_directory, boto_session,
-        s3_bucket_factory.get_bucket_name(),
-        lock_table_factory.get_table_name(),
+        get_bucket(boto_session), get_dynamodb_table(boto_session),
         environment_name, component_name, tfstate_filename
     )
 
@@ -96,10 +101,8 @@ def state_file_key(environment_name, component_name, tfstate_filename):
 def remove_state(
     boto_session, environment_name, component_name, tfstate_filename
 ):
-    s3_bucket_factory = S3BucketFactory(boto_session)
 
-    bucket_name = s3_bucket_factory.get_bucket_name()
-
+    bucket_name = get_bucket(boto_session)
     key = state_file_key(environment_name, component_name, tfstate_filename)
 
     s3_client = boto_session.client('s3')
