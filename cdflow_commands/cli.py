@@ -74,7 +74,7 @@ def _run(argv):
     root_session = Session()
 
     account_scheme = build_account_scheme_s3(
-        root_session.resource('s3'), manifest.account_scheme_url
+        root_session.resource('s3'), manifest.account_scheme_url, manifest.team
     )
     root_session = Session(region_name=account_scheme.default_region)
     release_account_session = assume_role(
@@ -167,7 +167,7 @@ def run_non_release_command_on_release(
 ):
     account_scheme = build_account_scheme_file(os.path.join(
         path_to_release, ACCOUNT_SCHEME_FILE
-    ))
+    ), manifest.team)
     environment = args['<environment>']
 
     infrastructure_account_session = assume_infrastructure_account_role(
