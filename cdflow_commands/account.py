@@ -1,5 +1,4 @@
 from collections import defaultdict
-import re
 
 
 class Account:
@@ -12,7 +11,7 @@ class Account:
 
 def replace_team(scheme, team):
     if type(scheme) is str:
-        return re.sub(r'{team}', team, scheme)
+        return scheme.replace('{team}', team)
     elif type(scheme) is dict:
         return {
             replace_team(k, team): replace_team(v, team)
