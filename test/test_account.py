@@ -86,7 +86,7 @@ class TestAccountScheme(unittest.TestCase):
             fixtures['backend-s3-dynamodb-table'],
         }
 
-        account_scheme = AccountScheme.create(raw_scheme)
+        account_scheme = AccountScheme.create(raw_scheme, 'a-team')
         assert account_scheme.release_account.id == fixtures['account']['id']
         assert account_scheme.release_account.role == \
             fixtures['account']['role']
@@ -120,7 +120,7 @@ class TestAccountScheme(unittest.TestCase):
             'terraform-backend-s3-dynamodb-table': 'tflocks-table',
         }
 
-        account_scheme = AccountScheme.create(raw_scheme)
+        account_scheme = AccountScheme.create(raw_scheme, 'a-team')
 
         expected_account_ids = list(sorted(
             account['id'] for account in accounts
@@ -163,7 +163,7 @@ class TestAccountScheme(unittest.TestCase):
             'terraform-backend-s3-dynamodb-table': 'tflocks-table',
         }
 
-        account_scheme = AccountScheme.create(raw_scheme)
+        account_scheme = AccountScheme.create(raw_scheme, 'a-team')
 
         assert account_scheme.account_for_environment(live_environment).alias \
             == live_account
@@ -205,10 +205,45 @@ class TestAccountScheme(unittest.TestCase):
             'terraform-backend-s3-dynamodb-table': 'tflocks-table',
         }
 
-        account_scheme = AccountScheme.create(raw_scheme)
+        account_scheme = AccountScheme.create(raw_scheme, 'a-team')
 
         assert account_scheme.account_for_environment(live_environment).alias \
             == live_account
         for environment in fixtures['environments'][1:]:
             assert account_scheme.account_for_environment(environment).alias \
                 == dev_account
+
+    @given(text(min_size=1))
+    def test_substitute_team(self, team):
+        raw_scheme = {
+            'accounts': {
+                '{team}-release-account-{team}': {
+                    'id': '123456789',
+                    'role': '{team}-role-{team}',
+                }
+            },
+            'release-bucket': '{team}-release-bucket-{team}',
+            'lambda-bucket': '{team}-lambda-bucket-{team}',
+            'release-account': '{team}-release-account-{team}',
+            'default-region': '{team}-region-{team}',
+            'environments': {},
+            'terraform-backend-s3-bucket': '{team}-backend-bucket-{team}',
+            'terraform-backend-s3-dynamodb-table':
+            '{team}-backend-dynamo-{team}',
+        }
+
+        account_scheme = AccountScheme.create(raw_scheme, team)
+        assert account_scheme.release_account.id == '123456789'
+        assert account_scheme.release_account.role == \
+            '{team}-role-{team}'.format(team=team)
+        assert account_scheme.default_region == \
+            '{team}-region-{team}'.format(team=team)
+        assert account_scheme.accounts == {account_scheme.release_account}
+        assert account_scheme.release_bucket == \
+            '{team}-release-bucket-{team}'.format(team=team)
+        assert account_scheme.lambda_bucket == \
+            '{team}-lambda-bucket-{team}'.format(team=team)
+        assert account_scheme.backend_s3_bucket == \
+            '{team}-backend-bucket-{team}'.format(team=team)
+        assert account_scheme.backend_s3_dynamodb_table == \
+            '{team}-backend-dynamo-{team}'.format(team=team)

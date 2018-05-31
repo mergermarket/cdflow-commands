@@ -456,7 +456,9 @@ class TestAccountSchemeHandling(unittest.TestCase):
             'Body': mock_s3_body
         }
 
-        account_scheme = config.build_account_scheme_s3(s3_resource, s3_url)
+        account_scheme = config.build_account_scheme_s3(
+            s3_resource, s3_url, 'a-team'
+        )
 
         assert account_scheme.release_account.id == '222222222222'
         assert sorted(account_scheme.account_ids) == \
@@ -506,7 +508,7 @@ class TestAccountSchemeHandling(unittest.TestCase):
                 mock_account_scheme_file
 
             account_scheme = config.build_account_scheme_file(
-                fixtures['filename']
+                fixtures['filename'], 'a-team'
             )
 
             assert account_scheme.release_account.id == '222222222222'
