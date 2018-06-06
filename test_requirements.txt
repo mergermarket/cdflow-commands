@@ -1,5 +1,6 @@
 apipkg==1.4
 asn1crypto==0.24.0
+atomicwrites==1.1.5
 attrs==17.4.0
 aws-xray-sdk==0.95
 boto3==1.7.4
@@ -39,7 +40,7 @@ pytest-cov==2.5.1
 pytest-forked==0.2
 pytest-randomly==1.2.3
 pytest-xdist==1.22.2
-pytest==3.5.1
+pytest==3.6.1
 python-dateutil==2.6.1
 pytz==2018.4
 pyyaml==3.12
