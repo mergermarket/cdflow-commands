@@ -18,7 +18,7 @@ docutils==0.14
 execnet==1.5.0
 flake8==3.5.0
 freezegun==0.3.10
-hypothesis==3.57.0
+hypothesis==3.65.1
 idna==2.6
 jinja2==2.10
 jmespath==0.9.3
