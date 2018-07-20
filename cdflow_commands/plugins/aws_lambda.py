@@ -12,6 +12,7 @@ class ReleasePlugin:
         self._component_name = release.component_name
         self._version = release.version
         self._account_scheme = account_scheme
+        self._multi_region = release.multi_region
 
     @property
     def _lambda_s3_key(self):
@@ -25,15 +26,16 @@ class ReleasePlugin:
 
     def create(self):
         zipped_folder = self._zip_up_component()
-        self._upload_zip_to_bucket(
-            self._account_scheme.lambda_bucket, zipped_folder.filename
-        )
+        if self._multi_region:
+            metadata = self._upload_zip_to_buckets(
+                self._account_scheme.lambda_buckets, zipped_folder.filename
+            )
+        else:
+            metadata = self._upload_zip_to_bucket(
+                self._account_scheme.lambda_bucket, zipped_folder.filename
+            )
         self._remove_zipped_folder(zipped_folder.filename)
-
-        return {
-            's3_bucket': self._account_scheme.lambda_bucket,
-            's3_key': self._lambda_s3_key,
-        }
+        return metadata
 
     @contextmanager
     def _change_dir(self, path):
@@ -60,6 +62,32 @@ class ReleasePlugin:
             bucket_name,
             self._lambda_s3_key
         )
+        return {
+            's3_bucket': bucket_name,
+            's3_key': self._lambda_s3_key,
+        }
+
+    def _upload_zip_to_buckets(self, buckets, filename):
+        metadata = {
+            's3_key': self._lambda_s3_key,
+            # this is a map tfvar that currently only allows scalar values
+            # in the future we might have a list without the _csv postfix
+            # (the same applies to the "s3_bucket." psuedo-map below)
+            's3_bucket_regions_csv': ','.join(sorted(buckets.keys()))
+        }
+        for region, bucket_name in buckets.items():
+            logger.info(
+                'Uploading {} to s3 bucket ({} in {}) with key: {}'.format(
+                    filename, bucket_name, region, self._lambda_s3_key
+                )
+            )
+            self._boto_session.client('s3', region_name=region).upload_file(
+                filename,
+                bucket_name,
+                self._lambda_s3_key
+            )
+            metadata[f's3_bucket.{region}'] = bucket_name
+        return metadata
 
     def _remove_zipped_folder(self, filename):
         logger.info('Removing local zipped package: {}'.format(filename))
