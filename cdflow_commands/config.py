@@ -37,6 +37,7 @@ Manifest = namedtuple('Manifest', [
         'team',
         'type',
         'tfstate_filename',
+        'multi_region',
     ]
 )
 
@@ -49,6 +50,7 @@ def load_manifest():
             manifest_data['team'],
             manifest_data['type'],
             manifest_data.get('tfstate-filename', 'terraform.tfstate'),
+            manifest_data.get('multi-region', False),
         )
 
 
