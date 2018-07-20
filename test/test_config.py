@@ -79,6 +79,7 @@ class TestLoadManifest(unittest.TestCase):
         assert manifest.team == fixtures['team']
         assert manifest.type == fixtures['type']
         assert manifest.tfstate_filename == 'terraform.tfstate'
+        assert not manifest.multi_region
 
     def test_tfstate_filename(self):
         # Given
@@ -100,6 +101,27 @@ class TestLoadManifest(unittest.TestCase):
 
         # Then
         assert manifest.tfstate_filename == 'test-tfstate-filename'
+
+    def test_multi_region(self):
+        # Given
+        mock_file = MagicMock(spec=TextIOWrapper)
+        mock_file.read.return_value = yaml.dump({
+            'account-scheme-url': 'dummy',
+            'team': 'dummy',
+            'type': 'dummy',
+            'multi-region': True
+        })
+
+        with patch(
+            'cdflow_commands.config.open', new_callable=mock_open, create=True
+        ) as open_:
+            open_.return_value.__enter__.return_value = mock_file
+
+            # When
+            manifest = config.load_manifest()
+
+        # Then
+        assert manifest.multi_region
 
 
 class TestAssumeRole(unittest.TestCase):

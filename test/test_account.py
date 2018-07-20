@@ -247,3 +247,20 @@ class TestAccountScheme(unittest.TestCase):
             '{team}-backend-bucket-{team}'.format(team=team)
         assert account_scheme.backend_s3_dynamodb_table == \
             '{team}-backend-dynamo-{team}'.format(team=team)
+
+    def test_multi_region_lambdas(self):
+        raw_scheme = {
+            'accounts': {'release': {'id': '1234567890', 'role': 'test-role'}},
+            'environments': {},
+            'release-account': 'release',
+            'release-bucket': 'release-bucket',
+            'default-region': 'test-region-1',
+            'terraform-backend-s3-bucket': 'backend-bucket',
+            'terraform-backend-s3-dynamodb-table': 'backend-table',
+            'lambda-buckets': {
+                'test-region-1': 'test-bucket-1',
+                'test-region-2': 'test-bucket-2'
+            }
+        }
+        account_scheme = AccountScheme.create(raw_scheme, 'test-team')
+        assert account_scheme.lambda_buckets == raw_scheme['lambda-buckets']
