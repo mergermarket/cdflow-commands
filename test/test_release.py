@@ -35,7 +35,8 @@ class TestRelease(unittest.TestCase):
             platform_config_paths=[ANY],
             release_data=["1=1"], commit=ANY, version=version,
             component_name=ANY, team=ANY,
-            account_scheme=account_scheme
+            account_scheme=account_scheme,
+            multi_region=False,
         )
 
         # When/Then
@@ -52,7 +53,8 @@ class TestRelease(unittest.TestCase):
             platform_config_paths=[ANY],
             release_data=["1=1"], commit=ANY, version=ANY,
             component_name=component_name, team=ANY,
-            account_scheme=account_scheme
+            account_scheme=account_scheme,
+            multi_region=False,
         )
 
         # When/Then
@@ -91,7 +93,8 @@ class TestReleaseArchive(unittest.TestCase):
             version='dummy-version',
             component_name='dummy-component',
             team='dummy-team',
-            account_scheme=account_scheme
+            account_scheme=account_scheme,
+            multi_region=False,
         )
         temp_dir = 'test-tmp-dir'
         TemporaryDirectory.return_value.__enter__.return_value = temp_dir
@@ -142,7 +145,8 @@ class TestReleaseArchive(unittest.TestCase):
             release_data=release_data, commit='dummy',
             version='dummy-version', component_name='dummy-component',
             team='dummy-team',
-            account_scheme=account_scheme
+            account_scheme=account_scheme,
+            multi_region=False,
         )
         temp_dir = 'test-temp-dir'
         TemporaryDirectory.return_value.__enter__.return_value = temp_dir
@@ -227,7 +231,8 @@ class TestReleaseArchive(unittest.TestCase):
             release_data=release_data, commit='dummy',
             version='dummy-version', component_name='dummy-component',
             team='dummy-team',
-            account_scheme=account_scheme
+            account_scheme=account_scheme,
+            multi_region=False,
         )
         temp_dir = 'test-temp-dir'
         TemporaryDirectory.return_value.__enter__.return_value = temp_dir
@@ -283,7 +288,8 @@ class TestReleaseArchive(unittest.TestCase):
             commit='dummy',
             version='dummy-version', component_name='dummy-component',
             team='dummy-team',
-            account_scheme=account_scheme
+            account_scheme=account_scheme,
+            multi_region=False,
         )
         temp_dir = 'test-temp-dir'
         TemporaryDirectory.return_value.__enter__.return_value = temp_dir
@@ -326,7 +332,8 @@ class TestReleaseArchive(unittest.TestCase):
             commit='dummy',
             version='dummy-version', component_name='dummy-component',
             team='dummy-team',
-            account_scheme=account_scheme
+            account_scheme=account_scheme,
+            multi_region=False,
         )
         temp_dir = 'test-temp-dir'
         TemporaryDirectory.return_value.__enter__.return_value = temp_dir
@@ -366,7 +373,8 @@ class TestReleaseArchive(unittest.TestCase):
             release_data=release_data, commit='dummy',
             version='dummy-version', component_name='dummy-component',
             team='dummy-team',
-            account_scheme=account_scheme
+            account_scheme=account_scheme,
+            multi_region=False,
         )
         temp_dir = 'test-temp-dir'
         TemporaryDirectory.return_value.__enter__.return_value = temp_dir
@@ -413,7 +421,8 @@ class TestReleaseArchive(unittest.TestCase):
             version=version,
             component_name=component_name,
             team=team,
-            account_scheme=account_scheme
+            account_scheme=account_scheme,
+            multi_region=False,
         )
 
         with ExitStack() as stack:
@@ -498,7 +507,8 @@ class TestReleaseArchive(unittest.TestCase):
             version=version,
             component_name=component_name,
             team='dummy-team',
-            account_scheme=account_scheme
+            account_scheme=account_scheme,
+            multi_region=False,
         )
         temp_dir = 'test-temp-dir'
         TemporaryDirectory.return_value.__enter__.return_value = temp_dir
@@ -551,7 +561,8 @@ class TestReleaseArchive(unittest.TestCase):
             version=version,
             component_name=component_name,
             team='dummy-team',
-            account_scheme=account_scheme
+            account_scheme=account_scheme,
+            multi_region=False,
         )
         temp_dir = 'test-temp-dir'
         TemporaryDirectory.return_value.__enter__.return_value = temp_dir
