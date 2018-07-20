@@ -105,6 +105,7 @@ def run_release(release_account_session, account_scheme, manifest, args):
         component_name=get_component_name(args['--component']),
         team=manifest.team,
         account_scheme=account_scheme,
+        multi_region=manifest.multi_region,
     )
 
     if manifest.type == 'docker':
