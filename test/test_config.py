@@ -154,13 +154,14 @@ class TestAssumeRole(unittest.TestCase):
         mock_root_session.client.return_value = mock_sts
 
         account_id = 123456789
-        session = config.assume_role(mock_root_session, account_id)
+        role_name = 'test-role-name'
+        session = config.assume_role(mock_root_session, account_id, role_name)
 
         assert session is mock_session
 
         mock_root_session.client.assert_called_once_with('sts')
         mock_sts.assume_role.assert_called_once_with(
-            RoleArn='arn:aws:iam::{}:role/admin'.format(account_id),
+            RoleArn='arn:aws:iam::{}:role/{}'.format(account_id, role_name),
             RoleSessionName=user_id,
         )
         MockSession.assert_called_once_with(
@@ -198,14 +199,15 @@ class TestAssumeRole(unittest.TestCase):
         mock_root_session.client.return_value = mock_sts
 
         account_id = 123456789
+        role_name = 'test-role-name'
         session = config.assume_role(
-            mock_root_session, account_id, region='us-west-4',
+            mock_root_session, account_id, role_name, region='us-west-4',
         )
         assert session is mock_session
 
         mock_root_session.client.assert_called_once_with('sts')
         mock_sts.assume_role.assert_called_once_with(
-            RoleArn='arn:aws:iam::{}:role/admin'.format(account_id),
+            RoleArn='arn:aws:iam::{}:role/{}'.format(account_id, role_name),
             RoleSessionName=user_id,
         )
         MockSession.assert_called_once_with(
