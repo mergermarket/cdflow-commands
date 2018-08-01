@@ -57,7 +57,7 @@ class TestDeployCLI(unittest.TestCase):
             'accounts': {
                 'foodev': {
                     'id': '123456789',
-                    'role': 'admon',
+                    'role': 'admin',
                 }
             },
             'release-account': 'foodev',
@@ -315,7 +315,7 @@ class TestDestroyCLI(unittest.TestCase):
             'accounts': {
                 'foodev': {
                     'id': '123456789',
-                    'role': 'admon',
+                    'role': 'admin',
                 }
             },
             'release-account': 'foodev',
@@ -547,7 +547,7 @@ class TestDestroyCLIClassicMetadataHandling(unittest.TestCase):
             'accounts': {
                 'foodev': {
                     'id': '123456789',
-                    'role': 'admon',
+                    'role': 'admin',
                 }
             },
             'release-account': 'foodev',
