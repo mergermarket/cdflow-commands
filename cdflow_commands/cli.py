@@ -79,7 +79,7 @@ def _run(argv):
     root_session = Session(region_name=account_scheme.default_region)
     release_account_session = assume_role(
         root_session, account_scheme.release_account.id,
-        account_scheme.default_region,
+        account_scheme.release_account.role, account_scheme.default_region,
     )
 
     if args['release']:
@@ -154,11 +154,11 @@ def run_non_release_command(
 def assume_infrastructure_account_role(
     account_scheme, environment, root_session
 ):
-    account_id = account_scheme.account_for_environment(environment).id
-    logger.debug('Assuming role in {}'.format(account_id))
+    account = account_scheme.account_for_environment(environment)
+    logger.debug(f'Assuming role {account.role} in {account.id}')
 
     return assume_role(
-        root_session, account_id, account_scheme.default_region,
+        root_session, account.id, account.role, account_scheme.default_region,
     )
 
 
