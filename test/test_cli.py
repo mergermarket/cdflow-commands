@@ -285,3 +285,28 @@ class TestAccountSchemeHandling(unittest.TestCase):
         run_deploy.assert_called_once_with(
             ANY, release_account_scheme, ANY, ANY, ANY, ANY, ANY, ANY
         )
+
+
+class TestSecretsFromInfraAccount(unittest.TestCase):
+
+    @patch('cdflow_commands.cli.Deploy')
+    @patch('cdflow_commands.cli.initialise_terraform')
+    @patch('cdflow_commands.cli.get_secrets')
+    def test_secrets_in_deploy_account(self, get_secrets, _, _1):
+        # Given
+        deploy_session = Mock()
+        env = 'test-env'
+        manifest = Mock()
+        manifest.team = 'test-team'
+        component_name = 'test-component'
+        args = {'--plan-only': False}
+
+        # When
+        cli.run_deploy(
+            ANY, ANY, ANY, deploy_session, manifest, args, env, component_name
+        )
+
+        # Then
+        get_secrets.assert_called_once_with(
+            env, manifest.team, component_name, deploy_session
+        )
