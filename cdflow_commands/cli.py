@@ -206,7 +206,7 @@ def run_deploy(
     secrets = {
         'secrets': get_secrets(
             environment, manifest.team,
-            component_name, metadata_account_session
+            component_name, infrastructure_account_session
         )
     }
 
