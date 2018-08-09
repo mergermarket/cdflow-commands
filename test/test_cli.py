@@ -290,7 +290,7 @@ class TestAccountSchemeHandling(unittest.TestCase):
 class TestSecretsFromInfraAccount(unittest.TestCase):
 
     @patch('cdflow_commands.cli.Deploy')
-    @patch('cdflow_commands.cli.initialise_terraform')
+    @patch('cdflow_commands.cli.terraform_state')
     @patch('cdflow_commands.cli.get_secrets')
     def test_secrets_in_deploy_account(self, get_secrets, _, _1):
         # Given
