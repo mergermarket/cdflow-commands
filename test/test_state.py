@@ -8,9 +8,10 @@ from textwrap import dedent
 
 from boto3.session import Session
 from botocore.exceptions import ClientError
+from cdflow_commands.account import AccountScheme
 from cdflow_commands.state import (
     TFSTATE_TAG_NAME, TAG_VALUE, IncorrectSchemaError, LockTableFactory,
-    S3BucketFactory, initialise_terraform_backend, remove_file
+    S3BucketFactory, terraform_state, remove_file
 )
 from hypothesis import given
 from hypothesis.strategies import fixed_dictionaries, text
@@ -568,6 +569,8 @@ class TestLockTableFactory(unittest.TestCase):
         self.assertRaises(ClientError, table_factory.get_table_name)
 
 
+SIMPLE_ALPHABET = ascii_lowercase + digits + '-'
+
 terraform_backend_input = fixed_dictionaries({
     'base_directory': text(min_size=1).filter(
         lambda t: '/' not in t and '.' not in t
@@ -577,14 +580,14 @@ terraform_backend_input = fixed_dictionaries({
     ),
     'aws_region': text(min_size=1),
     'bucket_name': text(
-        alphabet=ascii_letters + digits + '-_.', min_size=3, max_size=63
+        alphabet=SIMPLE_ALPHABET+'_.', min_size=3, max_size=63
     ),
     'lock_table_name': text(
-        alphabet=ascii_lowercase + digits + '-', min_size=3, max_size=63
+        alphabet=SIMPLE_ALPHABET, min_size=3, max_size=63
     ),
-    'environment_name': text(min_size=1),
-    'component_name': text(min_size=1),
-    'tfstate_filename': text(min_size=1),
+    'environment_name': text(alphabet=SIMPLE_ALPHABET, min_size=1),
+    'component_name': text(alphabet=SIMPLE_ALPHABET, min_size=1),
+    'tfstate_filename': text(alphabet=SIMPLE_ALPHABET, min_size=1),
 })
 
 
@@ -602,6 +605,8 @@ class TestTerraformBackendConfig(unittest.TestCase):
         component_name = terraform_backend_input['component_name']
         tfstate_filename = terraform_backend_input['tfstate_filename']
         boto_session = MagicMock(spec=Session)
+        account_scheme = MagicMock(spec=AccountScheme)
+        account_scheme.classic_metadata_handling = True
 
         with ExitStack() as stack:
             stack.enter_context(patch('cdflow_commands.state.check_call'))
@@ -612,12 +617,23 @@ class TestTerraformBackendConfig(unittest.TestCase):
 
             mock_file = MagicMock(spec=BufferedRandom)
             NamedTemporaryFile.return_value.__enter__.return_value = mock_file
-
-            initialise_terraform_backend(
-                base_directory, sub_directory, boto_session,
-                bucket_name, lock_table_name,
-                environment_name, component_name, tfstate_filename
+            LockTableFactory = stack.enter_context(
+                patch('cdflow_commands.state.LockTableFactory')
             )
+            LockTableFactory.return_value.get_table_name.return_value = \
+                lock_table_name
+            S3BucketFactory = stack.enter_context(
+                patch('cdflow_commands.state.S3BucketFactory')
+            )
+            S3BucketFactory.return_value.get_bucket_name.return_value = \
+                bucket_name
+
+            state = terraform_state(
+                base_directory, sub_directory, boto_session,
+                environment_name, component_name, tfstate_filename,
+                account_scheme,
+            )
+            state.init()
 
         NamedTemporaryFile.assert_called_once_with(
             prefix='cdflow_backend_', suffix='.tf',
@@ -641,6 +657,8 @@ class TestTerraformBackendConfig(unittest.TestCase):
         component_name = terraform_backend_input['component_name']
         tfstate_filename = terraform_backend_input['tfstate_filename']
         boto_session = MagicMock(spec=Session)
+        account_scheme = MagicMock(spec=AccountScheme)
+        account_scheme.classic_metadata_handling = True
 
         state_file_key = (
             f'{environment_name}/{component_name}/{tfstate_filename}'
@@ -654,12 +672,23 @@ class TestTerraformBackendConfig(unittest.TestCase):
             check_call = stack.enter_context(
                 patch('cdflow_commands.state.check_call')
             )
-
-            initialise_terraform_backend(
-                base_directory, sub_directory, boto_session,
-                bucket_name, lock_table_name,
-                environment_name, component_name, tfstate_filename
+            LockTableFactory = stack.enter_context(
+                patch('cdflow_commands.state.LockTableFactory')
             )
+            LockTableFactory.return_value.get_table_name.return_value = \
+                lock_table_name
+            S3BucketFactory = stack.enter_context(
+                patch('cdflow_commands.state.S3BucketFactory')
+            )
+            S3BucketFactory.return_value.get_bucket_name.return_value = \
+                bucket_name
+
+            state = terraform_state(
+                base_directory, sub_directory, boto_session,
+                environment_name, component_name, tfstate_filename,
+                account_scheme,
+            )
+            state.init()
 
         check_call.assert_called_once_with(
             [
@@ -690,6 +719,9 @@ class TestTerraformBackendConfig(unittest.TestCase):
         sub_directory = terraform_backend_input['sub_directory']
         bucket_name = test_fixtures['terraform_backend_input']['bucket_name']
         boto_session = MagicMock(spec=Session)
+        account_scheme = MagicMock(spec=AccountScheme)
+        account_scheme.classic_metadata_handling = True
+
         lock_table_name = (
             test_fixtures['terraform_backend_input']['lock_table_name']
         )
@@ -716,12 +748,23 @@ class TestTerraformBackendConfig(unittest.TestCase):
 
             NamedTemporaryFile.return_value.__enter__.return_value.name = \
                 backend_config_file_name
-
-            initialise_terraform_backend(
-                base_directory, sub_directory, boto_session,
-                bucket_name, lock_table_name,
-                environment_name, component_name, tfstate_filename
+            LockTableFactory = stack.enter_context(
+                patch('cdflow_commands.state.LockTableFactory')
             )
+            LockTableFactory.return_value.get_table_name.return_value = \
+                lock_table_name
+            S3BucketFactory = stack.enter_context(
+                patch('cdflow_commands.state.S3BucketFactory')
+            )
+            S3BucketFactory.return_value.get_bucket_name.return_value = \
+                bucket_name
+
+            state = terraform_state(
+                base_directory, sub_directory, boto_session,
+                environment_name, component_name, tfstate_filename,
+                account_scheme,
+            )
+            state.init()
 
         atexit.register.assert_called_once_with(
             remove_file, backend_config_file_name
