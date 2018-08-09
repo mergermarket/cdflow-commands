@@ -42,7 +42,7 @@ from cdflow_commands.release import (
     Release, fetch_release, find_latest_release_version,
 )
 from cdflow_commands.secrets import get_secrets
-from cdflow_commands.state import initialise_terraform, remove_state
+from cdflow_commands.state import terraform_state
 from docopt import docopt
 
 
@@ -197,11 +197,12 @@ def run_deploy(
     path_to_release, account_scheme, metadata_account_session,
     infrastructure_account_session, manifest, args, environment, component_name
 ):
-    initialise_terraform(
+    state = terraform_state(
         path_to_release, INFRASTRUCTURE_DEFINITIONS_PATH,
         metadata_account_session, environment, component_name,
         manifest.tfstate_filename, account_scheme
     )
+    state.init()
 
     secrets = {
         'secrets': get_secrets(
@@ -221,11 +222,12 @@ def run_destroy(
     path_to_release, metadata_account_session, infrastructure_account_session,
     manifest, args, environment, component_name, account_scheme
 ):
-    initialise_terraform(
+    state = terraform_state(
         path_to_release, '',
         metadata_account_session, environment, component_name,
         manifest.tfstate_filename, account_scheme
     )
+    state.init()
 
     destroy = Destroy(infrastructure_account_session, path_to_release)
 
@@ -241,10 +243,7 @@ def run_destroy(
         logger.info(
             f'Removing state for {component_name} in {environment}'
         )
-        remove_state(
-            metadata_account_session, environment, component_name,
-            manifest.tfstate_filename, account_scheme
-        )
+        state.delete()
 
 
 def conditionally_set_debug(verbose):
