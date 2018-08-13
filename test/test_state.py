@@ -3,7 +3,7 @@ from contextlib import ExitStack
 from io import BufferedRandom
 from os.path import join
 from re import match
-from string import ascii_letters, ascii_lowercase, digits
+from string import ascii_lowercase, digits
 from textwrap import dedent
 
 from boto3.session import Session
