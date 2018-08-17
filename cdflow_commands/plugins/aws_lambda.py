@@ -18,7 +18,6 @@ class ReleasePlugin:
         else:
             self._source_dir = release.component_name
 
-
     @property
     def _lambda_s3_key(self):
         return '{}/{}-{}.zip'.format(
