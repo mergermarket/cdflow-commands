@@ -13,10 +13,10 @@ class ReleasePlugin:
         self._version = release.version
         self._account_scheme = account_scheme
         self._multi_region = release.multi_region
-        if os.path.isdir("source"):
-            self._source_dir = 'source'
-        else:
+        if os.path.isdir(release.component_name):
             self._source_dir = release.component_name
+        else:
+            self._source_dir = 'src'
 
     @property
     def _lambda_s3_key(self):
