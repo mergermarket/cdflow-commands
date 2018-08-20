@@ -19,6 +19,7 @@ class TestLambdaReleasePlugin(unittest.TestCase):
         self._release.boto_session = boto_session
 
         self._component_name = 'dummy-component'
+        self._source_dir = 'src'
         self._release.component_name = self._component_name
 
         self._version = '1.2.3'
@@ -70,7 +71,7 @@ class TestLambdaReleasePlugin(unittest.TestCase):
     def test_release_creates_zip_from_directory(self, zip_file, mock_os):
         self._plugin.create()
         zip_file.assert_called_once_with(
-            '{}.zip'.format(self._component_name), 'w'
+            '{}.zip'.format(self._source_dir), 'w'
         )
 
     @patch('cdflow_commands.plugins.aws_lambda.os')
