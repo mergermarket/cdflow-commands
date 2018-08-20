@@ -7,6 +7,7 @@ from textwrap import dedent
 
 from botocore.exceptions import ClientError
 
+from cdflow_commands.constants import TERRAFORM_BINARY
 from cdflow_commands.exceptions import CDFlowError
 from cdflow_commands.logger import logger
 from cdflow_commands.process import check_call
@@ -97,7 +98,7 @@ class TerraformStateClassic:
         credentials = self.boto_session.get_credentials()
         check_call(
             [
-                'terraform', 'init',
+                TERRAFORM_BINARY, 'init',
                 '-get=false',
                 '-get-plugins=false',
                 f'-backend-config=bucket={self.bucket}',
@@ -172,25 +173,29 @@ class TerraformState:
             )
             atexit.register(remove_file, backend_file.name)
 
-        logger.debug(
-            f'Initialising backend in {self.working_directory} '
-            f'with {self.bucket}, {self.boto_session.region_name}, '
-            f'{self.state_file_key}, {self.dynamodb_table}'
-        )
-
         credentials = self.boto_session.get_credentials()
         check_call(
             [
-                'terraform', 'init',
+                TERRAFORM_BINARY, 'init',
                 '-get=false',
                 '-get-plugins=false',
                 f'-backend-config=bucket={self.bucket}',
                 f'-backend-config=region={self.boto_session.region_name}',
-                f'-backend-config=key={self.state_file_key}',
+                f'-backend-config=key={self.tfstate_filename}',
+                f'-backend-config=workspace_key_prefix={self.component_name}',
                 f'-backend-config=dynamodb_table={self.dynamodb_table}',
                 f'-backend-config=access_key={credentials.access_key}',
                 f'-backend-config=secret_key={credentials.secret_key}',
                 f'-backend-config=token={credentials.token}',
+                self.working_directory,
+            ],
+            cwd=self.base_directory,
+        )
+
+        check_call(
+            [
+                TERRAFORM_BINARY, 'workspace',
+                'new', self.environment_name,
                 self.working_directory,
             ],
             cwd=self.base_directory,
