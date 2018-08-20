@@ -194,7 +194,7 @@ class TestDeployCLI(unittest.TestCase):
         check_call_state.assert_any_call(
             [
                 'terraform', 'init',
-                ANY, ANY, ANY, ANY, ANY, ANY, ANY, ANY, ANY,
+                ANY, ANY, ANY, ANY, ANY, ANY, ANY, ANY, ANY, ANY,
                 join(workdir, INFRASTRUCTURE_DEFINITIONS_PATH),
             ],
             cwd=workdir,
@@ -421,14 +421,16 @@ class TestDestroyCLI(unittest.TestCase):
 
         cli.run(['destroy', environment])
 
-        check_call_state.assert_called_once_with(
+        check_call_state.assert_any_call(
             [
                 TERRAFORM_BINARY, 'init',
                 '-get=false',
                 '-get-plugins=false',
                 '-backend-config=bucket=tfstate-bucket',
                 '-backend-config=region=us-north-4',
-                '-backend-config=key={}'.format(state_file_key),
+                '-backend-config=key=terraform.tfstate',
+                '-backend-config=workspace_key_prefix={}'
+                .format(component_name),
                 '-backend-config=dynamodb_table=tflocks-table',
                 '-backend-config=access_key=dummy-access-key-id',
                 '-backend-config=secret_key=dummy-secret-access-key',
@@ -464,7 +466,6 @@ class TestDestroyCLI(unittest.TestCase):
             TemporaryDirectory = self.setup_mocks(*args)
 
         environment = 'live'
-        state_file_key = join(component_name, environment, 'terraform.tfstate')
 
         workdir = '{}/{}-{}'.format(
             TemporaryDirectory.return_value.__enter__.return_value,
@@ -473,14 +474,16 @@ class TestDestroyCLI(unittest.TestCase):
 
         cli.run(['destroy', environment, '--plan-only'])
 
-        check_call_state.assert_called_once_with(
+        check_call_state.assert_any_call(
             [
                 TERRAFORM_BINARY, 'init',
                 '-get=false',
                 '-get-plugins=false',
                 '-backend-config=bucket=tfstate-bucket',
                 '-backend-config=region=us-north-4',
-                '-backend-config=key={}'.format(state_file_key),
+                '-backend-config=key=terraform.tfstate',
+                '-backend-config=workspace_key_prefix={}'
+                .format(component_name),
                 '-backend-config=dynamodb_table=tflocks-table',
                 '-backend-config=access_key={}'.format(aws_access_key_id),
                 '-backend-config=secret_key={}'.format(aws_secret_access_key),
