@@ -2,7 +2,7 @@
 
 set -e
 
-docker build -t cdflow-commands.test -f Dockerfile.test .
+docker build -t cdflow-commands.test --target test .
 
 docker run \
     --name cdflow-commands.test \
