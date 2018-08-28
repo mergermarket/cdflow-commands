@@ -99,7 +99,8 @@ class Release:
 
     def __init__(
         self, boto_session, release_bucket, platform_config_paths,
-        release_data, commit, version, component_name, team, account_scheme
+        release_data, commit, version, component_name, team, account_scheme,
+        multi_region
     ):
         self.boto_session = boto_session
         self._release_bucket = release_bucket
@@ -110,6 +111,7 @@ class Release:
         self.version = version
         self.component_name = component_name
         self.account_scheme = account_scheme
+        self.multi_region = multi_region
 
     def create(self, plugin):
         with TemporaryDirectory() as temp_dir:

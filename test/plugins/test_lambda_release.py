@@ -14,10 +14,12 @@ class TestLambdaReleasePlugin(unittest.TestCase):
         self._ecr_client = Mock()
         boto_session.client.return_value = self._ecr_client
         self._release = MagicMock(spec=Release)
+        self._release.multi_region = False
 
         self._release.boto_session = boto_session
 
         self._component_name = 'dummy-component'
+        self._source_dir = 'src'
         self._release.component_name = self._component_name
 
         self._version = '1.2.3'
@@ -25,7 +27,7 @@ class TestLambdaReleasePlugin(unittest.TestCase):
 
         self._region = 'dummy-region'
         self._account_id = 'dummy-account-id'
-        account_scheme = AccountScheme.create({
+        self._account_scheme = AccountScheme.create({
             'accounts': {
                 'dummy': {
                     'id': self._account_id,
@@ -36,6 +38,10 @@ class TestLambdaReleasePlugin(unittest.TestCase):
             'default-region': self._region,
             'release-bucket': 'dummy',
             'lambda-bucket': 'dummy-lambda-bucket',
+            'lambda-buckets': {
+                'test-region1': 'dummy-lambda-bucket',
+                'test-region2': 'dummy-lambda-bucket2',
+            },
             'environments': {
                 'live': 'dummy',
             },
@@ -43,7 +49,7 @@ class TestLambdaReleasePlugin(unittest.TestCase):
             'terraform-backend-s3-dynamodb-table': 'tflocks-table'
         }, 'a-team')
 
-        self._plugin = ReleasePlugin(self._release, account_scheme)
+        self._plugin = ReleasePlugin(self._release, self._account_scheme)
 
     @patch('cdflow_commands.plugins.aws_lambda.os')
     @patch('cdflow_commands.plugins.aws_lambda.ZipFile')
@@ -65,7 +71,7 @@ class TestLambdaReleasePlugin(unittest.TestCase):
     def test_release_creates_zip_from_directory(self, zip_file, mock_os):
         self._plugin.create()
         zip_file.assert_called_once_with(
-            '{}.zip'.format(self._component_name), 'w'
+            '{}.zip'.format(self._source_dir), 'w'
         )
 
     @patch('cdflow_commands.plugins.aws_lambda.os')
@@ -79,6 +85,54 @@ class TestLambdaReleasePlugin(unittest.TestCase):
         boto_s3_client.upload_file.assert_called_once_with(
             zip_file().__enter__().filename,
             'dummy-lambda-bucket',
+            '{}/{}-{}.zip'.format(
+                self._component_name, self._component_name, self._version
+            )
+        )
+
+    @patch('cdflow_commands.plugins.aws_lambda.os')
+    @patch('cdflow_commands.plugins.aws_lambda.ZipFile')
+    def test_release_pushes_to_multiple_s3_regions(
+        self, zip_file, mock_os
+    ):
+        # Given
+        boto_s3_client_region1 = Mock()
+        boto_s3_client_region2 = Mock()
+        self._release.boto_session.client.side_effect = \
+            lambda service, region_name: boto_s3_client_region1 \
+            if region_name == 'test-region1' else boto_s3_client_region2
+        self._release.multi_region = True
+
+        # When
+        plugin_data = ReleasePlugin(
+            self._release, self._account_scheme
+        ).create()
+
+        # Then
+        self.assertEqual(plugin_data, {
+            's3_bucket.test-region1': 'dummy-lambda-bucket',
+            's3_bucket.test-region2': 'dummy-lambda-bucket2',
+            's3_bucket_regions_csv': 'test-region1,test-region2',
+            's3_key': '{}/{}-{}.zip'.format(
+                self._component_name, self._component_name, self._version
+            ),
+        })
+        self._release.boto_session.client.assert_any_call(
+            's3', region_name='test-region1'
+        )
+        self._release.boto_session.client.assert_any_call(
+            's3', region_name='test-region2'
+        )
+        boto_s3_client_region1.upload_file.assert_any_call(
+            zip_file().__enter__().filename,
+            'dummy-lambda-bucket',
+            '{}/{}-{}.zip'.format(
+                self._component_name, self._component_name, self._version
+            )
+        )
+        boto_s3_client_region2.upload_file.assert_any_call(
+            zip_file().__enter__().filename,
+            'dummy-lambda-bucket2',
             '{}/{}-{}.zip'.format(
                 self._component_name, self._component_name, self._version
             )

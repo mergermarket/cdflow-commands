@@ -42,7 +42,7 @@ from cdflow_commands.release import (
     Release, fetch_release, find_latest_release_version,
 )
 from cdflow_commands.secrets import get_secrets
-from cdflow_commands.state import initialise_terraform, remove_state
+from cdflow_commands.state import terraform_state
 from docopt import docopt
 
 
@@ -79,7 +79,7 @@ def _run(argv):
     root_session = Session(region_name=account_scheme.default_region)
     release_account_session = assume_role(
         root_session, account_scheme.release_account.id,
-        account_scheme.default_region,
+        account_scheme.release_account.role, account_scheme.default_region,
     )
 
     if args['release']:
@@ -105,6 +105,7 @@ def run_release(release_account_session, account_scheme, manifest, args):
         component_name=get_component_name(args['--component']),
         team=manifest.team,
         account_scheme=account_scheme,
+        multi_region=manifest.multi_region,
     )
 
     if manifest.type == 'docker':
@@ -153,11 +154,11 @@ def run_non_release_command(
 def assume_infrastructure_account_role(
     account_scheme, environment, root_session
 ):
-    account_id = account_scheme.account_for_environment(environment).id
-    logger.debug('Assuming role in {}'.format(account_id))
+    account = account_scheme.account_for_environment(environment)
+    logger.debug(f'Assuming role {account.role} in {account.id}')
 
     return assume_role(
-        root_session, account_id, account_scheme.default_region,
+        root_session, account.id, account.role, account_scheme.default_region,
     )
 
 
@@ -196,16 +197,17 @@ def run_deploy(
     path_to_release, account_scheme, metadata_account_session,
     infrastructure_account_session, manifest, args, environment, component_name
 ):
-    initialise_terraform(
+    state = terraform_state(
         path_to_release, INFRASTRUCTURE_DEFINITIONS_PATH,
         metadata_account_session, environment, component_name,
         manifest.tfstate_filename, account_scheme
     )
+    state.init()
 
     secrets = {
         'secrets': get_secrets(
             environment, manifest.team,
-            component_name, metadata_account_session
+            component_name, infrastructure_account_session
         )
     }
 
@@ -220,11 +222,12 @@ def run_destroy(
     path_to_release, metadata_account_session, infrastructure_account_session,
     manifest, args, environment, component_name, account_scheme
 ):
-    initialise_terraform(
+    state = terraform_state(
         path_to_release, '',
         metadata_account_session, environment, component_name,
         manifest.tfstate_filename, account_scheme
     )
+    state.init()
 
     destroy = Destroy(infrastructure_account_session, path_to_release)
 
@@ -240,10 +243,7 @@ def run_destroy(
         logger.info(
             f'Removing state for {component_name} in {environment}'
         )
-        remove_state(
-            metadata_account_session, environment, component_name,
-            manifest.tfstate_filename, account_scheme
-        )
+        state.delete()
 
 
 def conditionally_set_debug(verbose):

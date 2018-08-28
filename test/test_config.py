@@ -79,6 +79,7 @@ class TestLoadManifest(unittest.TestCase):
         assert manifest.team == fixtures['team']
         assert manifest.type == fixtures['type']
         assert manifest.tfstate_filename == 'terraform.tfstate'
+        assert not manifest.multi_region
 
     def test_tfstate_filename(self):
         # Given
@@ -100,6 +101,27 @@ class TestLoadManifest(unittest.TestCase):
 
         # Then
         assert manifest.tfstate_filename == 'test-tfstate-filename'
+
+    def test_multi_region(self):
+        # Given
+        mock_file = MagicMock(spec=TextIOWrapper)
+        mock_file.read.return_value = yaml.dump({
+            'account-scheme-url': 'dummy',
+            'team': 'dummy',
+            'type': 'dummy',
+            'multi-region': True
+        })
+
+        with patch(
+            'cdflow_commands.config.open', new_callable=mock_open, create=True
+        ) as open_:
+            open_.return_value.__enter__.return_value = mock_file
+
+            # When
+            manifest = config.load_manifest()
+
+        # Then
+        assert manifest.multi_region
 
 
 class TestAssumeRole(unittest.TestCase):
@@ -132,13 +154,14 @@ class TestAssumeRole(unittest.TestCase):
         mock_root_session.client.return_value = mock_sts
 
         account_id = 123456789
-        session = config.assume_role(mock_root_session, account_id)
+        role_name = 'test-role-name'
+        session = config.assume_role(mock_root_session, account_id, role_name)
 
         assert session is mock_session
 
         mock_root_session.client.assert_called_once_with('sts')
         mock_sts.assume_role.assert_called_once_with(
-            RoleArn='arn:aws:iam::{}:role/admin'.format(account_id),
+            RoleArn='arn:aws:iam::{}:role/{}'.format(account_id, role_name),
             RoleSessionName=user_id,
         )
         MockSession.assert_called_once_with(
@@ -176,14 +199,15 @@ class TestAssumeRole(unittest.TestCase):
         mock_root_session.client.return_value = mock_sts
 
         account_id = 123456789
+        role_name = 'test-role-name'
         session = config.assume_role(
-            mock_root_session, account_id, region='us-west-4',
+            mock_root_session, account_id, role_name, region='us-west-4',
         )
         assert session is mock_session
 
         mock_root_session.client.assert_called_once_with('sts')
         mock_sts.assume_role.assert_called_once_with(
-            RoleArn='arn:aws:iam::{}:role/admin'.format(account_id),
+            RoleArn='arn:aws:iam::{}:role/{}'.format(account_id, role_name),
             RoleSessionName=user_id,
         )
         MockSession.assert_called_once_with(

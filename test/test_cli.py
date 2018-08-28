@@ -146,6 +146,7 @@ class TestRoles(unittest.TestCase):
         assume_role.return_value = release_account_session
         account_scheme = Mock()
         account_scheme.release_account.id = '1234567890'
+        account_scheme.release_account.role = 'test-role'
         account_scheme.default_region = 'eu-west-12'
         build_account_scheme_s3.return_value = account_scheme
 
@@ -156,7 +157,7 @@ class TestRoles(unittest.TestCase):
 
         # Then
         assume_role.assert_called_once_with(
-            root_session, '1234567890', 'eu-west-12'
+            root_session, '1234567890', 'test-role', 'eu-west-12'
         )
         run_release.assert_called_once_with(
             release_account_session, account_scheme, ANY,
@@ -183,6 +184,7 @@ class TestRoles(unittest.TestCase):
         account_scheme.classic_metadata_handling = False
         infrastructure_account = Mock()
         infrastructure_account.id = '0987654321'
+        infrastructure_account.role = 'test-role'
         account_scheme.account_for_environment.return_value = \
             infrastructure_account
         build_account_scheme_file.return_value = account_scheme
@@ -199,7 +201,7 @@ class TestRoles(unittest.TestCase):
         # Then
         account_scheme.account_for_environment.assert_called_once_with('ci')
         assume_role.assert_called_once_with(
-            root_session, '0987654321', 'eu-west-12'
+            root_session, '0987654321', 'test-role', 'eu-west-12'
         )
         run_deploy.assert_called_once_with(
             ANY, account_scheme, release_account_session,
@@ -226,6 +228,7 @@ class TestRoles(unittest.TestCase):
         account_scheme.classic_metadata_handling = True
         infrastructure_account = Mock()
         infrastructure_account.id = '0987654321'
+        infrastructure_account.role = 'test-role'
         account_scheme.account_for_environment.return_value = \
             infrastructure_account
         build_account_scheme_file.return_value = account_scheme
@@ -242,7 +245,7 @@ class TestRoles(unittest.TestCase):
         # Then
         account_scheme.account_for_environment.assert_called_once_with('ci')
         assume_role.assert_called_once_with(
-            root_session, '0987654321', 'eu-west-12'
+            root_session, '0987654321', 'test-role', 'eu-west-12'
         )
         run_deploy.assert_called_once_with(
             ANY, account_scheme, infrastructure_account_session,
@@ -281,4 +284,29 @@ class TestAccountSchemeHandling(unittest.TestCase):
         )
         run_deploy.assert_called_once_with(
             ANY, release_account_scheme, ANY, ANY, ANY, ANY, ANY, ANY
+        )
+
+
+class TestSecretsFromInfraAccount(unittest.TestCase):
+
+    @patch('cdflow_commands.cli.Deploy')
+    @patch('cdflow_commands.cli.terraform_state')
+    @patch('cdflow_commands.cli.get_secrets')
+    def test_secrets_in_deploy_account(self, get_secrets, _, _1):
+        # Given
+        deploy_session = Mock()
+        env = 'test-env'
+        manifest = Mock()
+        manifest.team = 'test-team'
+        component_name = 'test-component'
+        args = {'--plan-only': False}
+
+        # When
+        cli.run_deploy(
+            ANY, ANY, ANY, deploy_session, manifest, args, env, component_name
+        )
+
+        # Then
+        get_secrets.assert_called_once_with(
+            env, manifest.team, component_name, deploy_session
         )

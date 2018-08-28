@@ -29,92 +29,193 @@ def remove_file(filepath):
         logger.debug(f'Error removing {filepath}: {e}')
 
 
-def get_bucket(boto_session, account_scheme):
-    if account_scheme.classic_metadata_handling:
-        s3_bucket_factory = S3BucketFactory(boto_session)
-        return s3_bucket_factory.get_bucket_name()
-    else:
-        return account_scheme.backend_s3_bucket
+class TerraformStateClassic:
 
+    def __init__(
+        self,
+        boto_session,
+        base_directory,
+        sub_directory,
+        tfstate_filename,
+        environment_name,
+        component_name,
+    ):
+        self.boto_session = boto_session
+        self.base_directory = base_directory
+        self.sub_directory = sub_directory
+        self.tfstate_filename = tfstate_filename
+        self.environment_name = environment_name
+        self.component_name = component_name
 
-def get_dynamodb_table(boto_session, account_scheme):
-    if account_scheme.classic_metadata_handling:
-        lock_table_factory = LockTableFactory(boto_session)
-        return lock_table_factory.get_table_name()
-    else:
-        return account_scheme.backend_s3_dynamodb_table
+    @property
+    def bucket(self):
+        if not hasattr(self, '_bucket'):
+            s3_bucket_factory = S3BucketFactory(self.boto_session)
+            self._bucket = s3_bucket_factory.get_bucket_name()
+        return self._bucket
 
+    @property
+    def dynamodb_table(self):
+        if not hasattr(self, '_dynamodb_table'):
+            lock_table_factory = LockTableFactory(self.boto_session)
+            self._dynamodb_table = lock_table_factory.get_table_name()
+        return self._dynamodb_table
 
-def initialise_terraform(
-    base_directory, sub_directory, boto_session,
-    environment_name, component_name, tfstate_filename, account_scheme
-):
-    initialise_terraform_backend(
-        base_directory, sub_directory, boto_session,
-        get_bucket(boto_session, account_scheme),
-        get_dynamodb_table(boto_session, account_scheme),
-        environment_name, component_name, tfstate_filename
-    )
+    @property
+    def working_directory(self):
+        return join(self.base_directory, self.sub_directory)
 
+    @property
+    def state_file_key(self):
+        return join(
+            self.environment_name, self.component_name, self.tfstate_filename,
+        )
 
-def initialise_terraform_backend(
-    base_directory, sub_directory, boto_session, bucket_name, lock_table_name,
-    environment_name, component_name, tfstate_filename
-):
-    working_directory = join(base_directory, sub_directory)
-    with NamedTemporaryFile(
-        prefix='cdflow_backend_', suffix='.tf',
-        dir=working_directory, delete=False, mode='w+'
-    ) as backend_file:
-        logger.debug(f'Writing backend config to {backend_file.name}')
-        backend_file.write(dedent('''
-            terraform {
-                backend "s3" {
+    def init(self):
+        with NamedTemporaryFile(
+            prefix='cdflow_backend_', suffix='.tf',
+            dir=self.working_directory, delete=False, mode='w+'
+        ) as backend_file:
+            logger.debug(f'Writing backend config to {backend_file.name}')
+            backend_file.write(dedent('''
+                terraform {
+                    backend "s3" {
+                    }
                 }
-            }
-        ''').strip())
-        logger.debug(f'Registering {backend_file.name} to be removed at exit')
-        atexit.register(remove_file, backend_file.name)
+            ''').strip())
+            logger.debug(
+                f'Registering {backend_file.name} to be removed at exit'
+            )
+            atexit.register(remove_file, backend_file.name)
 
-    key = state_file_key(environment_name, component_name, tfstate_filename)
-    logger.debug(
-        f'Initialising backend in {working_directory} with {bucket_name}, '
-        f'{boto_session.region_name}, {key}, {lock_table_name}'
-    )
+        logger.debug(
+            f'Initialising backend in {self.working_directory} '
+            f'with {self.bucket}, {self.boto_session.region_name}, '
+            f'{self.state_file_key}, {self.dynamodb_table}'
+        )
 
-    credentials = boto_session.get_credentials()
-    check_call(
-        [
-            'terraform', 'init',
-            '-get=false',
-            '-get-plugins=false',
-            f'-backend-config=bucket={bucket_name}',
-            f'-backend-config=region={boto_session.region_name}',
-            f'-backend-config=key={key}',
-            f'-backend-config=dynamodb_table={lock_table_name}',
-            f'-backend-config=access_key={credentials.access_key}',
-            f'-backend-config=secret_key={credentials.secret_key}',
-            f'-backend-config=token={credentials.token}',
-            working_directory,
-        ],
-        cwd=base_directory,
-    )
+        credentials = self.boto_session.get_credentials()
+        check_call(
+            [
+                'terraform', 'init',
+                '-get=false',
+                '-get-plugins=false',
+                f'-backend-config=bucket={self.bucket}',
+                f'-backend-config=region={self.boto_session.region_name}',
+                f'-backend-config=key={self.state_file_key}',
+                f'-backend-config=dynamodb_table={self.dynamodb_table}',
+                f'-backend-config=access_key={credentials.access_key}',
+                f'-backend-config=secret_key={credentials.secret_key}',
+                f'-backend-config=token={credentials.token}',
+                self.working_directory,
+            ],
+            cwd=self.base_directory,
+        )
+
+    def delete(self):
+        s3_client = self.boto_session.client('s3')
+        s3_client.delete_object(Bucket=self.bucket, Key=self.state_file_key)
 
 
-def state_file_key(environment_name, component_name, tfstate_filename):
-    return f'{environment_name}/{component_name}/{tfstate_filename}'
+class TerraformState:
+
+    def __init__(
+        self,
+        boto_session,
+        base_directory,
+        sub_directory,
+        tfstate_filename,
+        environment_name,
+        component_name,
+        account_scheme,
+    ):
+        self.boto_session = boto_session
+        self.base_directory = base_directory
+        self.sub_directory = sub_directory
+        self.tfstate_filename = tfstate_filename
+        self.environment_name = environment_name
+        self.component_name = component_name
+        self.account_scheme = account_scheme
+
+    @property
+    def bucket(self):
+        return self.account_scheme.backend_s3_bucket
+
+    @property
+    def dynamodb_table(self):
+        return self.account_scheme.backend_s3_dynamodb_table
+
+    @property
+    def working_directory(self):
+        return join(self.base_directory, self.sub_directory)
+
+    @property
+    def state_file_key(self):
+        return join(
+            self.component_name, self.environment_name, self.tfstate_filename,
+        )
+
+    def init(self):
+        with NamedTemporaryFile(
+            prefix='cdflow_backend_', suffix='.tf',
+            dir=self.working_directory, delete=False, mode='w+'
+        ) as backend_file:
+            logger.debug(f'Writing backend config to {backend_file.name}')
+            backend_file.write(dedent('''
+                terraform {
+                    backend "s3" {
+                    }
+                }
+            ''').strip())
+            logger.debug(
+                f'Registering {backend_file.name} to be removed at exit'
+            )
+            atexit.register(remove_file, backend_file.name)
+
+        logger.debug(
+            f'Initialising backend in {self.working_directory} '
+            f'with {self.bucket}, {self.boto_session.region_name}, '
+            f'{self.state_file_key}, {self.dynamodb_table}'
+        )
+
+        credentials = self.boto_session.get_credentials()
+        check_call(
+            [
+                'terraform', 'init',
+                '-get=false',
+                '-get-plugins=false',
+                f'-backend-config=bucket={self.bucket}',
+                f'-backend-config=region={self.boto_session.region_name}',
+                f'-backend-config=key={self.state_file_key}',
+                f'-backend-config=dynamodb_table={self.dynamodb_table}',
+                f'-backend-config=access_key={credentials.access_key}',
+                f'-backend-config=secret_key={credentials.secret_key}',
+                f'-backend-config=token={credentials.token}',
+                self.working_directory,
+            ],
+            cwd=self.base_directory,
+        )
+
+    def delete(self):
+        s3_client = self.boto_session.client('s3')
+        s3_client.delete_object(Bucket=self.bucket, Key=self.state_file_key)
 
 
-def remove_state(
-    boto_session, environment_name, component_name, tfstate_filename,
-    account_scheme
+def terraform_state(
+    base_directory, sub_directory, boto_session,
+    environment_name, component_name, tfstate_filename, account_scheme,
 ):
-
-    bucket_name = get_bucket(boto_session, account_scheme)
-    key = state_file_key(environment_name, component_name, tfstate_filename)
-
-    s3_client = boto_session.client('s3')
-    s3_client.delete_object(Bucket=bucket_name, Key=key)
+    if account_scheme.classic_metadata_handling:
+        terraform_state = TerraformStateClassic(
+            boto_session, base_directory, sub_directory, tfstate_filename,
+            environment_name, component_name,
+        )
+    else:
+        terraform_state = TerraformState(
+            boto_session, base_directory, sub_directory, tfstate_filename,
+            environment_name, component_name, account_scheme,
+        )
+    return terraform_state
 
 
 class LockTableFactory:

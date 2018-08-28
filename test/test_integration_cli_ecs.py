@@ -48,7 +48,7 @@ class TestReleaseCLI(unittest.TestCase):
             'accounts': {
                 'foodev': {
                     'id': '123456789',
-                    'role': 'admon',
+                    'role': 'admin',
                 }
             },
             'release-account': 'foodev',
@@ -181,7 +181,7 @@ class TestReleaseCLI(unittest.TestCase):
             'accounts': {
                 'foodev': {
                     'id': '123456789',
-                    'role': 'admon',
+                    'role': 'admin',
                 }
             },
             'release-account': 'foodev',

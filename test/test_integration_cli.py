@@ -57,7 +57,7 @@ class TestDeployCLI(unittest.TestCase):
             'accounts': {
                 'foodev': {
                     'id': '123456789',
-                    'role': 'admon',
+                    'role': 'admin',
                 }
             },
             'release-account': 'foodev',
@@ -315,7 +315,7 @@ class TestDestroyCLI(unittest.TestCase):
             'accounts': {
                 'foodev': {
                     'id': '123456789',
-                    'role': 'admon',
+                    'role': 'admin',
                 }
             },
             'release-account': 'foodev',
@@ -412,9 +412,7 @@ class TestDestroyCLI(unittest.TestCase):
             TemporaryDirectory = self.setup_mocks(*args)
 
         environment = 'live'
-        state_file_key = '{}/{}/terraform.tfstate'.format(
-            environment, component_name
-        )
+        state_file_key = join(component_name, environment, 'terraform.tfstate')
 
         workdir = '{}/{}-{}'.format(
             TemporaryDirectory.return_value.__enter__.return_value,
@@ -466,9 +464,7 @@ class TestDestroyCLI(unittest.TestCase):
             TemporaryDirectory = self.setup_mocks(*args)
 
         environment = 'live'
-        state_file_key = '{}/{}/terraform.tfstate'.format(
-            environment, component_name
-        )
+        state_file_key = join(component_name, environment, 'terraform.tfstate')
 
         workdir = '{}/{}-{}'.format(
             TemporaryDirectory.return_value.__enter__.return_value,
@@ -547,7 +543,7 @@ class TestDestroyCLIClassicMetadataHandling(unittest.TestCase):
             'accounts': {
                 'foodev': {
                     'id': '123456789',
-                    'role': 'admon',
+                    'role': 'admin',
                 }
             },
             'release-account': 'foodev',
@@ -627,8 +623,7 @@ class TestDestroyCLIClassicMetadataHandling(unittest.TestCase):
         remove_state_mock_s3 = Mock()
 
         mock_assumed_session.client.side_effect = (
-            mock_s3_client, mock_db_client, mock_s3_client,
-            remove_state_mock_s3,
+            mock_s3_client, mock_db_client, remove_state_mock_s3,
         )
 
         Session_from_config.return_value = mock_assumed_session

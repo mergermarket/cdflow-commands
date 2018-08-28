@@ -37,6 +37,7 @@ Manifest = namedtuple('Manifest', [
         'team',
         'type',
         'tfstate_filename',
+        'multi_region',
     ]
 )
 
@@ -49,19 +50,20 @@ def load_manifest():
             manifest_data['team'],
             manifest_data['type'],
             manifest_data.get('tfstate-filename', 'terraform.tfstate'),
+            manifest_data.get('multi-region', False),
         )
 
 
-def assume_role(root_session, acccount_id, region=None):
+def assume_role(root_session, account_id, role_name, region=None):
     sts = root_session.client('sts')
     session_name = get_role_session_name(sts)
     logger.debug(
         "Assuming role arn:aws:iam::{}:role/admin with session {}".format(
-            acccount_id, session_name
+            account_id, session_name
         )
     )
     response = sts.assume_role(
-        RoleArn='arn:aws:iam::{}:role/admin'.format(acccount_id),
+        RoleArn=f'arn:aws:iam::{account_id}:role/{role_name}',
         RoleSessionName=session_name,
     )
     return Session(
