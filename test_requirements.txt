@@ -43,7 +43,7 @@ pytest-cov==2.5.1
 pytest-forked==0.2
 pytest-randomly==1.2.3
 pytest-xdist==1.22.5
-pytest==3.7.2
+pytest==3.7.4
 python-dateutil==2.6.1
 python-jose==2.0.2
 pytz==2018.5
