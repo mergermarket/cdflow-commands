@@ -10,7 +10,7 @@ from botocore.exceptions import ClientError
 from cdflow_commands.constants import TERRAFORM_BINARY
 from cdflow_commands.exceptions import CDFlowError
 from cdflow_commands.logger import logger
-from cdflow_commands.process import check_call
+from cdflow_commands.process import check_call, check_output
 
 TFSTATE_NAME_PREFIX = 'cdflow-tfstate'
 TFSTATE_TAG_NAME = 'is-cdflow-tfstate-bucket'
@@ -192,14 +192,29 @@ class TerraformState:
             cwd=self.base_directory,
         )
 
-        check_call(
-            [
-                TERRAFORM_BINARY, 'workspace',
-                'new', self.environment_name,
-                self.working_directory,
-            ],
-            cwd=self.base_directory,
-        )
+        workspace_data = check_output([TERRAFORM_BINARY, 'workspace', 'list'])
+        existing_workspaces = {
+            w.strip() for w in workspace_data.decode('utf-8').split('\n')
+        }
+
+        if self.environment_name in existing_workspaces:
+            check_call(
+                [
+                    TERRAFORM_BINARY, 'workspace',
+                    'select', self.environment_name,
+                    self.working_directory,
+                ],
+                cwd=self.base_directory,
+            )
+        else:
+            check_call(
+                [
+                    TERRAFORM_BINARY, 'workspace',
+                    'new', self.environment_name,
+                    self.working_directory,
+                ],
+                cwd=self.base_directory,
+            )
 
     def delete(self):
         s3_client = self.boto_session.client('s3')

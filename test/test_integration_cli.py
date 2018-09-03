@@ -32,16 +32,17 @@ BotoCreds = namedtuple('BotoCreds', ['access_key', 'secret_key', 'token'])
 @patch('cdflow_commands.config.open')
 @patch('cdflow_commands.config.check_output')
 @patch('cdflow_commands.state.NamedTemporaryFile')
+@patch('cdflow_commands.state.check_output')
 @patch('cdflow_commands.state.check_call')
 @patch('cdflow_commands.state.atexit')
 class TestDeployCLI(unittest.TestCase):
 
     def setup_mocks(
-        self, atexit, check_call_state, NamedTemporaryFile_state,
-        check_output, _open, Session_from_config, Session_from_cli, rmtree,
-        NamedTemporaryFile_deploy, time, check_call_deploy, popen_call,
-        mock_os_deploy, TemporaryDirectory, ZipFile, mock_os_release,
-        credstash,
+        self, atexit, check_call_state, check_output_state,
+        NamedTemporaryFile_state, check_output, _open, Session_from_config,
+        Session_from_cli, rmtree, NamedTemporaryFile_deploy, time,
+        check_call_deploy, popen_call, mock_os_deploy, TemporaryDirectory,
+        ZipFile, mock_os_release, credstash,
     ):
         mock_metadata_file = MagicMock(spec=TextIOWrapper)
         metadata = {
@@ -165,6 +166,8 @@ class TestDeployCLI(unittest.TestCase):
         }
         process_mock.configure_mock(**attrs)
         popen_call.return_value = process_mock
+
+        check_output_state.return_value = '* default'.encode('utf-8')
 
         return (
             check_call_state, check_call_deploy, popen_call,
@@ -292,14 +295,16 @@ class TestDeployCLI(unittest.TestCase):
 @patch('cdflow_commands.config.open')
 @patch('cdflow_commands.config.check_output')
 @patch('cdflow_commands.state.NamedTemporaryFile')
+@patch('cdflow_commands.state.check_output')
 @patch('cdflow_commands.state.check_call')
 @patch('cdflow_commands.state.atexit')
 class TestDestroyCLI(unittest.TestCase):
 
     def setup_mocks(
-        self, atexit, check_call_state, NamedTemporaryFile_state,
-        check_output, _open, Session_from_config, Session_from_cli, rmtree,
-        time, check_call_destroy, TemporaryDirectory, ZipFile, mock_os_release,
+        self, atexit, check_call_state, check_output_state,
+        NamedTemporaryFile_state, check_output, _open, Session_from_config,
+        Session_from_cli, rmtree, time, check_call_destroy, TemporaryDirectory,
+        ZipFile, mock_os_release,
     ):
         mock_metadata_file = MagicMock(spec=TextIOWrapper)
         metadata = {
@@ -398,6 +403,8 @@ class TestDestroyCLI(unittest.TestCase):
         ).encode('utf-8')
 
         TemporaryDirectory.return_value.__enter__.return_value = '/tmp/foo'
+
+        check_output_state.return_value = '* default'.encode('utf-8')
 
         return (
             check_call_state, mock_assumed_session, time, aws_access_key_id,

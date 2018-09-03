@@ -818,6 +818,10 @@ class TestTerraformBackendConfig(unittest.TestCase):
 
             mock_file = MagicMock(spec=BufferedRandom)
             NamedTemporaryFile.return_value.__enter__.return_value = mock_file
+            check_output = stack.enter_context(
+                patch('cdflow_commands.state.check_output')
+            )
+            check_output.return_value = '* default'.encode('utf-8')
 
             state = terraform_state(
                 base_directory, sub_directory, boto_session,
@@ -861,6 +865,10 @@ class TestTerraformBackendConfig(unittest.TestCase):
             check_call = stack.enter_context(
                 patch('cdflow_commands.state.check_call')
             )
+            check_output = stack.enter_context(
+                patch('cdflow_commands.state.check_output')
+            )
+            check_output.return_value = '* default'.encode('utf-8')
 
             state = terraform_state(
                 base_directory, sub_directory, boto_session,
@@ -910,6 +918,10 @@ class TestTerraformBackendConfig(unittest.TestCase):
             check_call = stack.enter_context(
                 patch('cdflow_commands.state.check_call')
             )
+            check_output = stack.enter_context(
+                patch('cdflow_commands.state.check_output')
+            )
+            check_output.return_value = '* default'.encode('utf-8')
 
             state = terraform_state(
                 base_directory, sub_directory, boto_session,
@@ -922,6 +934,53 @@ class TestTerraformBackendConfig(unittest.TestCase):
             [
                 'terraform', 'workspace',
                 'new', environment_name,
+                join(base_directory, sub_directory),
+            ],
+            cwd=base_directory,
+        )
+
+    @given(terraform_backend_input)
+    def test_exiting_workspace_is_selected(self, terraform_backend_input):
+        base_directory = terraform_backend_input['base_directory']
+        sub_directory = terraform_backend_input['sub_directory']
+        bucket_name = terraform_backend_input['bucket_name']
+        lock_table_name = terraform_backend_input['lock_table_name']
+        environment_name = terraform_backend_input['environment_name']
+        component_name = terraform_backend_input['component_name']
+        tfstate_filename = terraform_backend_input['tfstate_filename']
+        boto_session = MagicMock(spec=Session)
+        account_scheme = MagicMock(spec=AccountScheme)
+        account_scheme.classic_metadata_handling = False
+        account_scheme.backend_s3_bucket = bucket_name
+        account_scheme.backend_s3_dynamodb_table = lock_table_name
+
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch('cdflow_commands.state.NamedTemporaryFile')
+            )
+            stack.enter_context(patch('cdflow_commands.state.atexit'))
+            check_call = stack.enter_context(
+                patch('cdflow_commands.state.check_call')
+            )
+            check_output = stack.enter_context(
+                patch('cdflow_commands.state.check_output')
+            )
+
+            check_output.return_value = (
+                f'* default\n  {environment_name}\n\n'.encode('utf-8')
+            )
+
+            state = terraform_state(
+                base_directory, sub_directory, boto_session,
+                environment_name, component_name, tfstate_filename,
+                account_scheme,
+            )
+            state.init()
+
+        check_call.assert_any_call(
+            [
+                'terraform', 'workspace',
+                'select', environment_name,
                 join(base_directory, sub_directory),
             ],
             cwd=base_directory,
