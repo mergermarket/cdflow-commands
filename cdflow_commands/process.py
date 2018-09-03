@@ -13,6 +13,6 @@ def check_call(*args, **kwargs):
 
 def check_output(*args, **kwargs):
     try:
-        _check_output(*args, **kwargs)
+        return _check_output(*args, **kwargs)
     except CalledProcessError as e:
         raise UserFacingError(e)
