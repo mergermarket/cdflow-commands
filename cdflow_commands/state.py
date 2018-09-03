@@ -156,23 +156,20 @@ class TerraformState:
             self.component_name, self.environment_name, self.tfstate_filename,
         )
 
-    def init(self):
-        with NamedTemporaryFile(
-            prefix='cdflow_backend_', suffix='.tf',
-            dir=self.working_directory, delete=False, mode='w+'
-        ) as backend_file:
-            logger.debug(f'Writing backend config to {backend_file.name}')
-            backend_file.write(dedent('''
-                terraform {
-                    backend "s3" {
-                    }
+    def write_backend_config(self, backend_file):
+        logger.debug(f'Writing backend config to {backend_file.name}')
+        backend_file.write(dedent('''
+            terraform {
+                backend "s3" {
                 }
-            ''').strip())
-            logger.debug(
-                f'Registering {backend_file.name} to be removed at exit'
-            )
-            atexit.register(remove_file, backend_file.name)
+            }
+        ''').strip())
+        logger.debug(
+            f'Registering {backend_file.name} to be removed at exit'
+        )
+        atexit.register(remove_file, backend_file.name)
 
+    def terraform_init(self):
         credentials = self.boto_session.get_credentials()
         check_call(
             [
@@ -192,29 +189,47 @@ class TerraformState:
             cwd=self.base_directory,
         )
 
+    def workspace_exists(self):
         workspace_data = check_output([TERRAFORM_BINARY, 'workspace', 'list'])
         existing_workspaces = {
             w.strip() for w in workspace_data.decode('utf-8').split('\n')
         }
 
-        if self.environment_name in existing_workspaces:
-            check_call(
-                [
-                    TERRAFORM_BINARY, 'workspace',
-                    'select', self.environment_name,
-                    self.working_directory,
-                ],
-                cwd=self.base_directory,
-            )
+        return self.environment_name in existing_workspaces
+
+    def terraform_new_workspace(self):
+        check_call(
+            [
+                TERRAFORM_BINARY, 'workspace',
+                'new', self.environment_name,
+                self.working_directory,
+            ],
+            cwd=self.base_directory,
+        )
+
+    def terraform_select_workspace(self):
+        check_call(
+            [
+                TERRAFORM_BINARY, 'workspace',
+                'select', self.environment_name,
+                self.working_directory,
+            ],
+            cwd=self.base_directory,
+        )
+
+    def init(self):
+        with NamedTemporaryFile(
+            prefix='cdflow_backend_', suffix='.tf',
+            dir=self.working_directory, delete=False, mode='w+'
+        ) as backend_file:
+            self.write_backend_config(backend_file)
+
+        self.terraform_init()
+
+        if self.workspace_exists():
+            self.terraform_select_workspace()
         else:
-            check_call(
-                [
-                    TERRAFORM_BINARY, 'workspace',
-                    'new', self.environment_name,
-                    self.working_directory,
-                ],
-                cwd=self.base_directory,
-            )
+            self.terraform_new_workspace()
 
     def delete(self):
         s3_client = self.boto_session.client('s3')
