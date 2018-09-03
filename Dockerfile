@@ -24,20 +24,21 @@ RUN mkdir -p "${TERRAFORM_PLUGIN_DIR}" && cd /tmp && \
 RUN mkdir -p /opt/cdflow-commands/cdflow_commands
 WORKDIR /opt/cdflow-commands/
 
+ENV PYTHONPATH=/opt/cdflow-commands
+
 COPY ./requirements.txt ./requirements.txt
 RUN pip install -r ./requirements.txt
-
-COPY ./cdflow_commands /opt/cdflow-commands/cdflow_commands/
-
-ENV PYTHONPATH=/opt/cdflow-commands
 
 FROM base AS test
 
 COPY test_requirements.txt .
 RUN pip install --no-cache-dir -r test_requirements.txt
 
+COPY ./cdflow_commands /opt/cdflow-commands/cdflow_commands/
 COPY ./test /opt/cdflow-commands/test/
 
 FROM base
+
+COPY ./cdflow_commands /opt/cdflow-commands/cdflow_commands/
 
 ENTRYPOINT ["python", "-m", "cdflow_commands"]
