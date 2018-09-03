@@ -171,6 +171,11 @@ class TerraformState:
 
     def terraform_init(self):
         credentials = self.boto_session.get_credentials()
+        logger.debug(
+            f'Initialising in {self.boto_session.region_name} '
+            f'with {self.bucket}, {self.tfstate_filename}, '
+            f'{self.component_name}, {self.dynamodb_table}'
+        )
         check_call(
             [
                 TERRAFORM_BINARY, 'init',
@@ -190,7 +195,12 @@ class TerraformState:
         )
 
     def workspace_exists(self):
-        workspace_data = check_output([TERRAFORM_BINARY, 'workspace', 'list'])
+        workspace_data = check_output(
+            [
+                TERRAFORM_BINARY, 'workspace', 'list', self.working_directory,
+            ],
+            cwd=self.base_directory,
+        )
         existing_workspaces = {
             w.strip() for w in workspace_data.decode('utf-8').split('\n')
         }
@@ -227,8 +237,14 @@ class TerraformState:
         self.terraform_init()
 
         if self.workspace_exists():
+            logger.debug(
+                f'Workspace exists, selecting {self.environment_name}'
+            )
             self.terraform_select_workspace()
         else:
+            logger.debug(
+                f'Creating new workspace {self.environment_name}'
+            )
             self.terraform_new_workspace()
 
     def delete(self):
