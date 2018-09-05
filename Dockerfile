@@ -1,4 +1,4 @@
-FROM python:3.7.0-alpine3.8
+FROM python:3.7.0-alpine3.8 AS base
 
 ENV TERRAFORM_VERSION=0.11.7
 
@@ -18,11 +18,24 @@ RUN mkdir -p "${TERRAFORM_PLUGIN_DIR}" && cd /tmp && \
     rm -rf /tmp/* && \
     rm -rf /var/tmp/*
 
-COPY ./requirements.txt /cdflow/requirements.txt
-RUN pip install -r /cdflow/requirements.txt
+RUN mkdir -p /opt/cdflow-commands/cdflow_commands
+WORKDIR /opt/cdflow-commands/
 
-COPY . /cdflow
+ENV PYTHONPATH=/opt/cdflow-commands
 
-ENV PYTHONPATH=/cdflow
+COPY ./requirements.txt ./requirements.txt
+RUN pip install -r ./requirements.txt
+
+FROM base AS test
+
+COPY test_requirements.txt .
+RUN pip install --no-cache-dir -r test_requirements.txt
+
+COPY ./cdflow_commands /opt/cdflow-commands/cdflow_commands/
+COPY ./test /opt/cdflow-commands/test/
+
+FROM base
+
+COPY ./cdflow_commands /opt/cdflow-commands/cdflow_commands/
 
 ENTRYPOINT ["python", "-m", "cdflow_commands"]
