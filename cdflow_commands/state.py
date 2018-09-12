@@ -113,10 +113,6 @@ class TerraformStateClassic:
             cwd=self.base_directory,
         )
 
-    def delete(self):
-        s3_client = self.boto_session.client('s3')
-        s3_client.delete_object(Bucket=self.bucket, Key=self.state_file_key)
-
 
 class TerraformState:
 
@@ -246,10 +242,6 @@ class TerraformState:
                 f'Creating new workspace {self.environment_name}'
             )
             self.terraform_new_workspace()
-
-    def delete(self):
-        s3_client = self.boto_session.client('s3')
-        s3_client.delete_object(Bucket=self.bucket, Key=self.state_file_key)
 
 
 def terraform_state(
