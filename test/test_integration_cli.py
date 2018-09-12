@@ -419,7 +419,6 @@ class TestDestroyCLI(unittest.TestCase):
             TemporaryDirectory = self.setup_mocks(*args)
 
         environment = 'live'
-        state_file_key = join(component_name, environment, 'terraform.tfstate')
 
         workdir = '{}/{}-{}'.format(
             TemporaryDirectory.return_value.__enter__.return_value,
@@ -462,9 +461,7 @@ class TestDestroyCLI(unittest.TestCase):
             cwd=workdir,
         )
 
-        remove_state_mock_s3.delete_object.assert_called_once_with(
-            Bucket='tfstate-bucket', Key=state_file_key
-        )
+        remove_state_mock_s3.delete_object.assert_not_called()
 
     def test_plan_only_does_not_destroy_or_remove_state(self, *args):
         check_call_state, mock_assumed_session, time, aws_access_key_id, \
@@ -713,9 +710,7 @@ class TestDestroyCLIClassicMetadataHandling(unittest.TestCase):
             cwd=workdir,
         )
 
-        remove_state_mock_s3.delete_object.assert_called_once_with(
-            Bucket='tfstate', Key=state_file_key
-        )
+        remove_state_mock_s3.delete_object.assert_not_called()
 
     def test_plan_only_does_not_destroy_or_remove_state(self, *args):
         check_call_state, mock_assumed_session, time, aws_access_key_id, \
