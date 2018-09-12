@@ -239,12 +239,6 @@ def run_destroy(
 
     destroy.run(plan_only)
 
-    if not plan_only:
-        logger.info(
-            f'Removing state for {component_name} in {environment}'
-        )
-        state.delete()
-
 
 def conditionally_set_debug(verbose):
     if verbose:
