@@ -43,7 +43,14 @@ def build(dockerHubCredentialsId, imageName, registry) {
                 docker.image(imageNameTag).push()
             }
 
-            build job: 'platform/cdflow-test-service-classic-metadata-handling', parameters: [string(name: 'CDFLOW_IMAGE_ID', value: imageNameTag) ]
+            parallel(
+              a: {
+                build job: 'platform/cdflow-test-service-classic-metadata-handling', parameters: [string(name: 'CDFLOW_IMAGE_ID', value: imageNameTag) ]
+              },
+              b: {
+                build job: 'platform/cdflow-test-infrastructure', parameters: [string(name: 'CDFLOW_IMAGE_ID', value: imageNameTag) ]
+              }
+            )
         }
     }
 }
