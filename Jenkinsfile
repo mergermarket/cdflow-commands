@@ -40,7 +40,7 @@ def build(dockerHubCredentialsId, imageName, registry) {
             def imageNameTag = "${imageName}:snapshot"
             docker.withRegistry("https://${registry}", dockerHubCredentialsId) {
                 sh "docker image build -t ${imageNameTag} ."
-                docker.push(imageNameTag)
+                docker.image(imageNameTag).push()
             }
 
             build job: 'platform/cdflow-test-service-classic-metadata-handling', parameters: [string(name: 'CDFLOW_IMAGE_ID', value: imageNameTag) ]
