@@ -1,6 +1,6 @@
 asn1crypto==0.24.0
-boto3==1.8.4
-botocore==1.11.4
+boto3==1.9.22
+botocore==1.12.22
 cffi==1.11.5
 credstash==1.15.0
 cryptography==2.3
