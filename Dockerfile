@@ -22,8 +22,6 @@ RUN cd /tmp && \
     chmod +x ./aws-iam-authenticator && \
     mv ./aws-iam-authenticator /usr/local/bin/aws-iam-authenticator
 
-RUN aws-iam-authenticator help
-
 RUN mkdir -p "${TERRAFORM_PLUGIN_DIR}" && cd /tmp && \
     curl -sSLO "https://releases.hashicorp.com/terraform/$TERRAFORM_VERSION/terraform_${TERRAFORM_VERSION}_linux_amd64.zip" && \
         unzip "terraform_${TERRAFORM_VERSION}_linux_amd64.zip" -d /usr/bin/ && \
