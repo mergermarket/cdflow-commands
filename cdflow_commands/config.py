@@ -13,7 +13,7 @@ from cdflow_commands.exceptions import (
 from cdflow_commands.logger import logger
 
 
-ILLEGAL_CHARACTERS = '[^\w+=,.@-]+'
+ILLEGAL_CHARACTERS = r'[^\w+=,.@-]+'
 
 
 class JobNameTooShortError(UserFacingError):
