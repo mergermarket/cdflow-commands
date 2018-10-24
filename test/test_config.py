@@ -12,7 +12,7 @@ from hypothesis.strategies import composite, fixed_dictionaries, lists, text
 from mock import MagicMock, Mock, mock_open, patch
 
 ROLE_SAFE_ALPHABET = ascii_letters + digits + '+=,.@-'
-ROLE_UNSAFE_CHARACTERS = '\/!$%^&*()#'
+ROLE_UNSAFE_CHARACTERS = r'\/!$%^&*()#'
 ROLE_UNSAFE_ALPHABET = ROLE_SAFE_ALPHABET + ROLE_UNSAFE_CHARACTERS
 
 
