@@ -30,18 +30,22 @@ RUN mkdir -p "${TERRAFORM_PLUGIN_DIR}" && cd /tmp && \
     rm -rf /tmp/* && \
     rm -rf /var/tmp/*
 
-RUN mkdir -p /opt/cdflow-commands/cdflow_commands
+RUN mkdir -p /opt/cdflow-commands/cdflow_commands && \
+    pip install pipenv
 WORKDIR /opt/cdflow-commands/
 
 ENV PYTHONPATH=/opt/cdflow-commands
 
-COPY ./requirements.txt ./requirements.txt
-RUN pip install -r ./requirements.txt
+COPY Pipfile Pipfile.lock ./
+RUN pipenv install --deploy --system
 
 FROM base AS test
 
-COPY test_requirements.txt .
-RUN pip install --no-cache-dir -r test_requirements.txt
+ENV AWS_ACCESS_KEY_ID dummy
+ENV AWS_SECRET_ACCESS_KEY dummy
+
+COPY Pipfile Pipfile.lock ./
+RUN pipenv install --deploy --system --dev
 
 COPY ./cdflow_commands /opt/cdflow-commands/cdflow_commands/
 COPY ./test /opt/cdflow-commands/test/
