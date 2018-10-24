@@ -125,7 +125,7 @@ class Release:
             if os.path.exists(CONFIG_BASE_PATH):
                 self._copy_app_config_files(base_dir)
             else:
-                logger.warn("""
+                logger.warning("""
                     {} not found - Add if you want to include environment \
                     configuration
                     """.format(CONFIG_BASE_PATH))

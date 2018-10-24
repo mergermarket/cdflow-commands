@@ -1,0 +1,25 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+"boto3" = ">=1.7.84,<1.8"
+credstash = "*"
+docopt = "*"
+pyyaml = "*"
+
+[dev-packages]
+pytest = "*"
+pytest-cov = "*"
+pytest-xdist = "*"
+pytest-randomly = "*"
+mock = "*"
+"flake8" = "*"
+mccabe = "*"
+hypothesis = "*"
+moto = ">=1.3.4"
+freezegun = "*"
+
+[requires]
+python_version = "3.7"
