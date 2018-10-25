@@ -1,4 +1,4 @@
-FROM python:3.7.0-alpine3.8 AS base
+FROM python:3.7.1-alpine3.8 AS base
 
 ENV TERRAFORM_VERSION=0.11.10
 
