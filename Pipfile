@@ -4,7 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-"boto3" = ">=1.7.84,<1.8"
+"boto3" = ">=1.7.84,<1.10"
 credstash = "*"
 docopt = "*"
 pyyaml = "*"
