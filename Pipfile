@@ -4,7 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-"boto3" = ">=1.7.84,<1.8"
+"boto3" = "*"
 credstash = "*"
 docopt = "*"
 pyyaml = "*"
@@ -18,7 +18,7 @@ mock = "*"
 "flake8" = "*"
 mccabe = "*"
 hypothesis = "*"
-moto = ">=1.3.4"
+moto = "*"
 freezegun = "*"
 
 [requires]
