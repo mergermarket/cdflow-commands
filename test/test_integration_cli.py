@@ -435,8 +435,10 @@ class TestDestroyCLI(unittest.TestCase):
                 '-backend-config=bucket=tfstate-bucket',
                 '-backend-config=region=us-north-4',
                 '-backend-config=key=terraform.tfstate',
-                '-backend-config=workspace_key_prefix={}'
-                .format(component_name),
+                (
+                    '-backend-config=workspace_key_prefix='
+                    f'your-team/{component_name}'
+                ),
                 '-backend-config=dynamodb_table=tflocks-table',
                 '-backend-config=access_key=dummy-access-key-id',
                 '-backend-config=secret_key=dummy-secret-access-key',
@@ -486,8 +488,10 @@ class TestDestroyCLI(unittest.TestCase):
                 '-backend-config=bucket=tfstate-bucket',
                 '-backend-config=region=us-north-4',
                 '-backend-config=key=terraform.tfstate',
-                '-backend-config=workspace_key_prefix={}'
-                .format(component_name),
+                (
+                    '-backend-config=workspace_key_prefix='
+                    f'your-team/{component_name}'
+                ),
                 '-backend-config=dynamodb_table=tflocks-table',
                 '-backend-config=access_key={}'.format(aws_access_key_id),
                 '-backend-config=secret_key={}'.format(aws_secret_access_key),
