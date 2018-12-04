@@ -125,6 +125,7 @@ class TerraformState:
         environment_name,
         component_name,
         account_scheme,
+        team_name,
     ):
         self.boto_session = boto_session
         self.base_directory = base_directory
@@ -133,6 +134,7 @@ class TerraformState:
         self.environment_name = environment_name
         self.component_name = component_name
         self.account_scheme = account_scheme
+        self.team_name = team_name
 
     @property
     def bucket(self):
@@ -151,6 +153,10 @@ class TerraformState:
         return join(
             self.component_name, self.environment_name, self.tfstate_filename,
         )
+
+    @property
+    def workspace_key_prefix(self):
+        return join(self.team_name, self.component_name)
 
     def write_backend_config(self, backend_file):
         logger.debug(f'Writing backend config to {backend_file.name}')
@@ -180,7 +186,10 @@ class TerraformState:
                 f'-backend-config=bucket={self.bucket}',
                 f'-backend-config=region={self.boto_session.region_name}',
                 f'-backend-config=key={self.tfstate_filename}',
-                f'-backend-config=workspace_key_prefix={self.component_name}',
+                (
+                    '-backend-config=workspace_key_prefix='
+                    f'{self.workspace_key_prefix}'
+                ),
                 f'-backend-config=dynamodb_table={self.dynamodb_table}',
                 f'-backend-config=access_key={credentials.access_key}',
                 f'-backend-config=secret_key={credentials.secret_key}',
@@ -245,8 +254,8 @@ class TerraformState:
 
 
 def terraform_state(
-    base_directory, sub_directory, boto_session,
-    environment_name, component_name, tfstate_filename, account_scheme,
+    base_directory, sub_directory, boto_session, environment_name,
+    component_name, tfstate_filename, account_scheme, team_name,
 ):
     if account_scheme.classic_metadata_handling:
         terraform_state = TerraformStateClassic(
@@ -256,7 +265,7 @@ def terraform_state(
     else:
         terraform_state = TerraformState(
             boto_session, base_directory, sub_directory, tfstate_filename,
-            environment_name, component_name, account_scheme,
+            environment_name, component_name, account_scheme, team_name,
         )
     return terraform_state
 

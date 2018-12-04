@@ -200,7 +200,7 @@ def run_deploy(
     state = terraform_state(
         path_to_release, INFRASTRUCTURE_DEFINITIONS_PATH,
         metadata_account_session, environment, component_name,
-        manifest.tfstate_filename, account_scheme
+        manifest.tfstate_filename, account_scheme, manifest.team,
     )
     state.init()
 
@@ -225,7 +225,7 @@ def run_destroy(
     state = terraform_state(
         path_to_release, '',
         metadata_account_session, environment, component_name,
-        manifest.tfstate_filename, account_scheme
+        manifest.tfstate_filename, account_scheme, manifest.team,
     )
     state.init()
 
