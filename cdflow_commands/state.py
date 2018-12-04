@@ -175,8 +175,10 @@ class TerraformState:
         credentials = self.boto_session.get_credentials()
         logger.debug(
             f'Initialising in {self.boto_session.region_name} '
-            f'with {self.bucket}, {self.tfstate_filename}, '
-            f'{self.component_name}, {self.dynamodb_table}'
+            f'with bucket: {self.bucket}, '
+            f'key prefix: {self.workspace_key_prefix}, '
+            f'tfstate file: {self.tfstate_filename}, '
+            f'dynamodb table: {self.dynamodb_table}'
         )
         check_call(
             [
