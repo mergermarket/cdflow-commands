@@ -588,6 +588,7 @@ terraform_backend_input = fixed_dictionaries({
     'environment_name': text(alphabet=SIMPLE_ALPHABET, min_size=1),
     'component_name': text(alphabet=SIMPLE_ALPHABET, min_size=1),
     'tfstate_filename': text(alphabet=SIMPLE_ALPHABET, min_size=1),
+    'team_name': text(alphabet=SIMPLE_ALPHABET, min_size=1),
 })
 
 
@@ -604,6 +605,7 @@ class TestTerraformBackendConfigClassic(unittest.TestCase):
         environment_name = terraform_backend_input['environment_name']
         component_name = terraform_backend_input['component_name']
         tfstate_filename = terraform_backend_input['tfstate_filename']
+        team_name = terraform_backend_input['team_name']
         boto_session = MagicMock(spec=Session)
         account_scheme = MagicMock(spec=AccountScheme)
         account_scheme.classic_metadata_handling = True
@@ -631,7 +633,7 @@ class TestTerraformBackendConfigClassic(unittest.TestCase):
             state = terraform_state(
                 base_directory, sub_directory, boto_session,
                 environment_name, component_name, tfstate_filename,
-                account_scheme,
+                account_scheme, team_name,
             )
             state.init()
 
@@ -656,6 +658,7 @@ class TestTerraformBackendConfigClassic(unittest.TestCase):
         environment_name = terraform_backend_input['environment_name']
         component_name = terraform_backend_input['component_name']
         tfstate_filename = terraform_backend_input['tfstate_filename']
+        team_name = terraform_backend_input['team_name']
         boto_session = MagicMock(spec=Session)
         account_scheme = MagicMock(spec=AccountScheme)
         account_scheme.classic_metadata_handling = True
@@ -686,7 +689,7 @@ class TestTerraformBackendConfigClassic(unittest.TestCase):
             state = terraform_state(
                 base_directory, sub_directory, boto_session,
                 environment_name, component_name, tfstate_filename,
-                account_scheme,
+                account_scheme, team_name,
             )
             state.init()
 
@@ -762,7 +765,7 @@ class TestTerraformBackendConfigClassic(unittest.TestCase):
             state = terraform_state(
                 base_directory, sub_directory, boto_session,
                 environment_name, component_name, tfstate_filename,
-                account_scheme,
+                account_scheme, 'team-name',
             )
             state.init()
 
@@ -803,6 +806,7 @@ class TestTerraformBackendConfig(unittest.TestCase):
         environment_name = terraform_backend_input['environment_name']
         component_name = terraform_backend_input['component_name']
         tfstate_filename = terraform_backend_input['tfstate_filename']
+        team_name = terraform_backend_input['team_name']
         boto_session = MagicMock(spec=Session)
         account_scheme = MagicMock(spec=AccountScheme)
         account_scheme.classic_metadata_handling = False
@@ -826,7 +830,7 @@ class TestTerraformBackendConfig(unittest.TestCase):
             state = terraform_state(
                 base_directory, sub_directory, boto_session,
                 environment_name, component_name, tfstate_filename,
-                account_scheme,
+                account_scheme, team_name,
             )
             state.init()
 
@@ -851,6 +855,7 @@ class TestTerraformBackendConfig(unittest.TestCase):
         environment_name = terraform_backend_input['environment_name']
         component_name = terraform_backend_input['component_name']
         tfstate_filename = terraform_backend_input['tfstate_filename']
+        team_name = terraform_backend_input['team_name']
         boto_session = MagicMock(spec=Session)
         account_scheme = MagicMock(spec=AccountScheme)
         account_scheme.classic_metadata_handling = False
@@ -873,7 +878,7 @@ class TestTerraformBackendConfig(unittest.TestCase):
             state = terraform_state(
                 base_directory, sub_directory, boto_session,
                 environment_name, component_name, tfstate_filename,
-                account_scheme,
+                account_scheme, team_name,
             )
             state.init()
 
@@ -885,7 +890,10 @@ class TestTerraformBackendConfig(unittest.TestCase):
                 f'-backend-config=bucket={bucket_name}',
                 f'-backend-config=region={boto_session.region_name}',
                 f'-backend-config=key={tfstate_filename}',
-                f'-backend-config=workspace_key_prefix={component_name}',
+                (
+                    '-backend-config=workspace_key_prefix'
+                    f'={team_name}/{component_name}'
+                ),
                 f'-backend-config=dynamodb_table={lock_table_name}',
                 ANY,
                 ANY,
@@ -904,6 +912,7 @@ class TestTerraformBackendConfig(unittest.TestCase):
         environment_name = terraform_backend_input['environment_name']
         component_name = terraform_backend_input['component_name']
         tfstate_filename = terraform_backend_input['tfstate_filename']
+        team_name = terraform_backend_input['team_name']
         boto_session = MagicMock(spec=Session)
         account_scheme = MagicMock(spec=AccountScheme)
         account_scheme.classic_metadata_handling = False
@@ -926,7 +935,7 @@ class TestTerraformBackendConfig(unittest.TestCase):
             state = terraform_state(
                 base_directory, sub_directory, boto_session,
                 environment_name, component_name, tfstate_filename,
-                account_scheme,
+                account_scheme, team_name,
             )
             state.init()
 
@@ -948,6 +957,7 @@ class TestTerraformBackendConfig(unittest.TestCase):
         environment_name = terraform_backend_input['environment_name']
         component_name = terraform_backend_input['component_name']
         tfstate_filename = terraform_backend_input['tfstate_filename']
+        team_name = terraform_backend_input['team_name']
         boto_session = MagicMock(spec=Session)
         account_scheme = MagicMock(spec=AccountScheme)
         account_scheme.classic_metadata_handling = False
@@ -973,7 +983,7 @@ class TestTerraformBackendConfig(unittest.TestCase):
             state = terraform_state(
                 base_directory, sub_directory, boto_session,
                 environment_name, component_name, tfstate_filename,
-                account_scheme,
+                account_scheme, team_name,
             )
             state.init()
 
