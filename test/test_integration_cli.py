@@ -306,10 +306,11 @@ class TestDestroyCLI(unittest.TestCase):
         Session_from_cli, rmtree, time, check_call_destroy, TemporaryDirectory,
         ZipFile, mock_os_release,
     ):
+        team_name = 'your-team'
         mock_metadata_file = MagicMock(spec=TextIOWrapper)
         metadata = {
             'account-scheme-url': 's3://bucket/key',
-            'team': 'your-team',
+            'team': team_name,
             'type': 'docker',
         }
         mock_metadata_file.read.return_value = yaml.dump(metadata)
@@ -390,7 +391,9 @@ class TestDestroyCLI(unittest.TestCase):
         mock_s3_resource = Mock()
         mock_release_bucket = Mock()
         mock_s3_objectsummary = Mock()
-        mock_s3_objectsummary.key = f'{component_name}/{component_name}-1.zip'
+        mock_s3_objectsummary.key = (
+            f'{team_name}/{component_name}/{component_name}-1.zip'
+        )
         mock_release_bucket.objects.filter.return_value = [
             mock_s3_objectsummary
         ]
@@ -409,14 +412,14 @@ class TestDestroyCLI(unittest.TestCase):
         return (
             check_call_state, mock_assumed_session, time, aws_access_key_id,
             aws_secret_access_key, aws_session_token, component_name,
-            check_call_destroy, mock_s3, TemporaryDirectory,
+            check_call_destroy, mock_s3, TemporaryDirectory, team_name,
         )
 
     def test_uses_terraform_to_destroy(self, *args):
         check_call_state, mock_assumed_session, time, aws_access_key_id, \
             aws_secret_access_key, aws_session_token, component_name, \
             check_call_destroy, remove_state_mock_s3, \
-            TemporaryDirectory = self.setup_mocks(*args)
+            TemporaryDirectory, team_name = self.setup_mocks(*args)
 
         environment = 'live'
 
@@ -437,7 +440,7 @@ class TestDestroyCLI(unittest.TestCase):
                 '-backend-config=key=terraform.tfstate',
                 (
                     '-backend-config=workspace_key_prefix='
-                    f'your-team/{component_name}'
+                    f'{team_name}/{component_name}'
                 ),
                 '-backend-config=dynamodb_table=tflocks-table',
                 '-backend-config=access_key=dummy-access-key-id',
@@ -469,7 +472,7 @@ class TestDestroyCLI(unittest.TestCase):
         check_call_state, mock_assumed_session, time, aws_access_key_id, \
             aws_secret_access_key, aws_session_token, component_name, \
             check_call_destroy, remove_state_mock_s3, \
-            TemporaryDirectory = self.setup_mocks(*args)
+            TemporaryDirectory, team_name = self.setup_mocks(*args)
 
         environment = 'live'
 
@@ -490,7 +493,7 @@ class TestDestroyCLI(unittest.TestCase):
                 '-backend-config=key=terraform.tfstate',
                 (
                     '-backend-config=workspace_key_prefix='
-                    f'your-team/{component_name}'
+                    f'{team_name}/{component_name}'
                 ),
                 '-backend-config=dynamodb_table=tflocks-table',
                 '-backend-config=access_key={}'.format(aws_access_key_id),
