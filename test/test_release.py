@@ -552,6 +552,8 @@ class TestReleaseArchive(unittest.TestCase):
         mock_session = Mock()
         account_scheme = Mock()
         account_scheme.raw_scheme = {}
+        account_scheme.classic_metadata_handling = True
+        team_name = 'dummy-team'
         release = Release(
             boto_session=mock_session,
             release_bucket=release_bucket,
@@ -560,7 +562,7 @@ class TestReleaseArchive(unittest.TestCase):
             commit=commit,
             version=version,
             component_name=component_name,
-            team='dummy-team',
+            team=team_name,
             account_scheme=account_scheme,
             multi_region=False,
         )
@@ -585,9 +587,68 @@ class TestReleaseArchive(unittest.TestCase):
             }},
         )
         Object.assert_called_once_with(
-            release_bucket, '{}/{}-{}.zip'.format(
-                component_name, component_name, version
-            )
+            release_bucket, f'{component_name}/{component_name}-{version}.zip',
+        )
+
+    @patch('cdflow_commands.release._copy_platform_config')
+    @patch('cdflow_commands.release.mkdir')
+    @patch('cdflow_commands.release.check_call')
+    @patch('cdflow_commands.release.copytree')
+    @patch('cdflow_commands.release.make_archive')
+    @patch('cdflow_commands.release.TemporaryDirectory')
+    @patch('cdflow_commands.release.open')
+    def test_create_uploads_archive_to_release_account(
+        self, mock_open, TemporaryDirectory, make_archive, copytree,
+        check_call, mkdir, _
+    ):
+        # Given
+        release_plugin = Mock()
+        release_plugin.create.return_value = {}
+
+        commit = 'test-git-commit'
+        version = 'test-version'
+        component_name = 'test-component'
+        release_bucket = 'test-release-bucket'
+        mock_session = Mock()
+        account_scheme = Mock()
+        account_scheme.raw_scheme = {}
+        account_scheme.classic_metadata_handling = False
+        team_name = 'dummy-team'
+        release = Release(
+            boto_session=mock_session,
+            release_bucket=release_bucket,
+            platform_config_paths='test-platform-config-path',
+            release_data=["1234=5678"],
+            commit=commit,
+            version=version,
+            component_name=component_name,
+            team=team_name,
+            account_scheme=account_scheme,
+            multi_region=False,
+        )
+        temp_dir = 'test-temp-dir'
+        TemporaryDirectory.return_value.__enter__.return_value = temp_dir
+
+        mock_file = MagicMock(spec=TextIOWrapper)
+        mock_open.return_value.__enter__.return_value = mock_file
+
+        make_archive_result = '/path/to/dummy.zip'
+        make_archive.return_value = make_archive_result
+
+        # When
+        release.create(release_plugin)
+
+        # Then
+        Object = mock_session.resource.return_value.Object
+        Object.return_value.upload_file.assert_called_once_with(
+            make_archive_result,
+            ExtraArgs={'Metadata': {
+                'cdflow_image_digest': 'hash',
+            }},
+        )
+        Object.assert_called_once_with(
+            release_bucket,
+            f'{team_name}/{component_name}/{component_name}-{version}.zip',
         )
 
 
@@ -597,9 +658,15 @@ class TestFetchRelease(unittest.TestCase):
         'release_bucket': text(alphabet=ALNUM),
         'version': text(alphabet=ALNUM),
         'component_name': text(alphabet=ALNUM),
+        'team_name': text(alphabet=ALNUM),
     }))
     def test_release_is_fetched_from_s3(self, fixtures):
         release_bucket = fixtures['release_bucket']
+        account_scheme = Mock()
+        account_scheme.raw_scheme = {}
+        account_scheme.classic_metadata_handling = True
+        account_scheme.release_bucket = release_bucket
+        team_name = fixtures['team_name']
         component_name = fixtures['component_name']
         version = fixtures['version']
         boto_session = Mock()
@@ -631,7 +698,8 @@ class TestFetchRelease(unittest.TestCase):
             ZipFile.return_value.infolist.return_value = [mock_zipinfo]
 
             with fetch_release(
-                boto_session, release_bucket, component_name, version
+                boto_session, account_scheme, team_name,
+                component_name, version,
             ) as path_to_release:
 
                 assert path_to_release.startswith('{}/release-{}'.format(
@@ -640,7 +708,82 @@ class TestFetchRelease(unittest.TestCase):
 
             boto_session.resource.return_value.Object.assert_called_once_with(
                 release_bucket,
-                '{}/{}-{}.zip'.format(component_name, component_name, version),
+                f'{component_name}/{component_name}-{version}.zip',
+            )
+
+            mock_object.download_fileobj.assert_called_once_with(
+                BytesIO.return_value
+            )
+
+            ZipFile.assert_called_once_with(BytesIO.return_value)
+
+            ZipFile.return_value.infolist.assert_called_once_with()
+
+            ZipFile.return_value.extract.assert_called_once_with(
+                mock_zipinfo.filename,
+                TemporaryDirectory.return_value.__enter__.return_value,
+            )
+
+            chmod.assert_called_once_with(
+                ZipFile.return_value.extract.return_value,
+                file_perm,
+            )
+
+    @given(fixed_dictionaries({
+        'release_bucket': text(alphabet=ALNUM),
+        'version': text(alphabet=ALNUM),
+        'component_name': text(alphabet=ALNUM),
+        'team_name': text(alphabet=ALNUM),
+    }))
+    def test_release_is_fetched_from_s3_in_release_account(self, fixtures):
+        release_bucket = fixtures['release_bucket']
+        account_scheme = Mock()
+        account_scheme.raw_scheme = {}
+        account_scheme.classic_metadata_handling = False
+        account_scheme.release_bucket = release_bucket
+        team_name = fixtures['team_name']
+        component_name = fixtures['component_name']
+        version = fixtures['version']
+        boto_session = Mock()
+
+        mock_object = Mock()
+        boto_session.resource.return_value.Object.return_value = mock_object
+
+        with ExitStack() as stack:
+            ZipFile = stack.enter_context(
+                patch('cdflow_commands.release.ZipFile')
+            )
+            BytesIO = stack.enter_context(
+                patch('cdflow_commands.release.BytesIO')
+            )
+            getcwd = stack.enter_context(
+                patch('cdflow_commands.release.getcwd')
+            )
+            chmod = stack.enter_context(
+                patch('cdflow_commands.release.chmod')
+            )
+            TemporaryDirectory = stack.enter_context(
+                patch('cdflow_commands.release.TemporaryDirectory')
+            )
+            time = stack.enter_context(patch('cdflow_commands.release.time'))
+
+            mock_zipinfo = MagicMock(spec=ZipInfo)
+            file_perm = 1000
+            mock_zipinfo.external_attr = file_perm << 16
+            ZipFile.return_value.infolist.return_value = [mock_zipinfo]
+
+            with fetch_release(
+                boto_session, account_scheme, team_name,
+                component_name, version,
+            ) as path_to_release:
+
+                assert path_to_release.startswith('{}/release-{}'.format(
+                    getcwd.return_value, time.return_value,
+                ))
+
+            boto_session.resource.return_value.Object.assert_called_once_with(
+                release_bucket,
+                f'{team_name}/{component_name}/{component_name}-{version}.zip',
             )
 
             mock_object.download_fileobj.assert_called_once_with(
@@ -665,6 +808,7 @@ class TestFetchRelease(unittest.TestCase):
 class TestFindLatestReleaseVersion(unittest.TestCase):
 
     @given(fixed_dictionaries({
+        'team_name': text(alphabet=ALNUM, min_size=1),
         'component_name': text(alphabet=ALNUM, min_size=1),
         'versions': lists(
             elements=text(alphabet=ALNUM, min_size=1),
@@ -672,10 +816,15 @@ class TestFindLatestReleaseVersion(unittest.TestCase):
         ),
     }))
     def test_find_latest_release_version(self, fixtures):
+        team_name = fixtures['team_name']
         component_name = fixtures['component_name']
         versions = fixtures['versions']
         latest_version = versions[-1]
         release_bucket = 'bucket'
+        account_scheme = Mock()
+        account_scheme.raw_scheme = {}
+        account_scheme.classic_metadata_handling = True
+        account_scheme.release_bucket = release_bucket
 
         with mock_s3():
             with freeze_time('2021-01-01 01:00:01') as frozen_time:
@@ -683,12 +832,53 @@ class TestFindLatestReleaseVersion(unittest.TestCase):
                 bucket = s3.create_bucket(Bucket=release_bucket)
                 for version in versions:
                     bucket.put_object(
-                        Key=f'{component_name}/{component_name}-{version}.zip',
+                        Key=(
+                            f'{component_name}/'
+                            f'{component_name}-{version}.zip'
+                        ),
                     )
                     frozen_time.tick(delta=datetime.timedelta(hours=1))
 
             found_version = find_latest_release_version(
-                boto3, release_bucket, component_name,
+                boto3, account_scheme, team_name, component_name,
+            )
+
+            assert found_version == latest_version
+
+    @given(fixed_dictionaries({
+        'team_name': text(alphabet=ALNUM, min_size=1),
+        'component_name': text(alphabet=ALNUM, min_size=1),
+        'versions': lists(
+            elements=text(alphabet=ALNUM, min_size=1),
+            min_size=1,
+        ),
+    }))
+    def test_find_latest_release_version_in_release_account(self, fixtures):
+        team_name = fixtures['team_name']
+        component_name = fixtures['component_name']
+        versions = fixtures['versions']
+        latest_version = versions[-1]
+        release_bucket = 'bucket'
+        account_scheme = Mock()
+        account_scheme.raw_scheme = {}
+        account_scheme.classic_metadata_handling = False
+        account_scheme.release_bucket = release_bucket
+
+        with mock_s3():
+            with freeze_time('2021-01-01 01:00:01') as frozen_time:
+                s3 = boto3.resource('s3')
+                bucket = s3.create_bucket(Bucket=release_bucket)
+                for version in versions:
+                    bucket.put_object(
+                        Key=(
+                            f'{team_name}/{component_name}/'
+                            f'{component_name}-{version}.zip'
+                        ),
+                    )
+                    frozen_time.tick(delta=datetime.timedelta(hours=1))
+
+            found_version = find_latest_release_version(
+                boto3, account_scheme, team_name, component_name,
             )
 
             assert found_version == latest_version

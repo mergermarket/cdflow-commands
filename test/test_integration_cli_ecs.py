@@ -59,6 +59,7 @@ class TestReleaseCLI(unittest.TestCase):
             },
             'terraform-backend-s3-bucket': 'tfstate-bucket',
             'terraform-backend-s3-dynamodb-table': 'tflocks-table',
+            'classic-metadata-handling': True,
         })
 
         mock_s3_resource = Mock()
@@ -192,6 +193,7 @@ class TestReleaseCLI(unittest.TestCase):
             },
             'terraform-backend-s3-bucket': 'tfstate-bucket',
             'terraform-backend-s3-dynamodb-table': 'tflocks-table',
+            'classic-metadata-handling': True,
         })
 
         mock_s3_resource = Mock()
