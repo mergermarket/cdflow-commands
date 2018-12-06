@@ -131,15 +131,15 @@ def run_non_release_command(
 
     if args['destroy']:
         version = find_latest_release_version(
-            release_account_session, account_scheme.release_bucket,
+            release_account_session, account_scheme, manifest.team,
             component_name,
         )
     else:
         version = args['<version>']
 
     with fetch_release(
-        release_account_session, account_scheme.release_bucket,
-        component_name, version,
+        release_account_session, account_scheme, manifest.team, component_name,
+        version,
     ) as path_to_release:
         logger.debug('Unpacked release: {}'.format(path_to_release))
         path_to_release = os.path.join(
