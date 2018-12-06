@@ -27,10 +27,15 @@ shutil.register_archive_format('zip', _make_zipfile)
 
 
 @contextmanager
-def fetch_release(boto_session, release_bucket, component_name, version):
+def fetch_release(
+    boto_session, account_scheme, team_name, component_name, version,
+):
+    if account_scheme.classic_metadata_handling:
+        release_key = format_release_key_classic(component_name, version)
+    else:
+        release_key = format_release_key(team_name, component_name, version)
     release_archive = download_release(
-        boto_session, release_bucket,
-        format_release_key(component_name, version)
+        boto_session, account_scheme.release_bucket, release_key,
     )
     with TemporaryDirectory(prefix='{}/release-{}'.format(getcwd(), time())) \
             as path_to_release:
@@ -39,10 +44,15 @@ def fetch_release(boto_session, release_bucket, component_name, version):
         yield path_to_release
 
 
-def find_latest_release_version(boto_session, release_bucket, component_name):
+def find_latest_release_version(
+    boto_session, account_scheme, team_name, component_name,
+):
     s3 = boto_session.resource('s3')
-    bucket = s3.Bucket(release_bucket)
-    key_prefix = f'{component_name}/{component_name}-'
+    bucket = s3.Bucket(account_scheme.release_bucket)
+    if account_scheme.classic_metadata_handling:
+        key_prefix = format_release_key_prefix_classic(component_name)
+    else:
+        key_prefix = format_release_key_prefix(team_name, component_name)
     component_releases = bucket.objects.filter(Prefix=key_prefix)
     ordered_releases = sorted(
         component_releases,
@@ -71,8 +81,26 @@ def download_release(boto_session, release_bucket, key):
     return ZipFile(f)
 
 
-def format_release_key(component_name, version):
-    return '{}/{}-{}.zip'.format(component_name, component_name, version)
+def format_release_key(team_name, component_name, version):
+    return (
+        f'{format_release_key_prefix(team_name, component_name)}'
+        f'{version}.zip'
+    )
+
+
+def format_release_key_prefix(team_name, component_name):
+    return f'{team_name}/{component_name}/{component_name}-'
+
+
+def format_release_key_classic(component_name, version):
+    return (
+        f'{format_release_key_prefix_classic(component_name)}'
+        f'{version}.zip'
+    )
+
+
+def format_release_key_prefix_classic(component_name):
+    return f'{component_name}/{component_name}-'
 
 
 def _copy_platform_config_files(source_dir, dest_dir):
@@ -176,9 +204,17 @@ class Release:
 
     def _upload_archive(self, release_archive):
         s3_resource = self.boto_session.resource('s3')
+        if self.account_scheme.classic_metadata_handling:
+            release_key = format_release_key_classic(
+                self.component_name, self.version,
+            )
+        else:
+            release_key = format_release_key(
+                self._team, self.component_name, self.version,
+            )
         s3_object = s3_resource.Object(
             self._release_bucket,
-            format_release_key(self.component_name, self.version)
+            release_key,
         )
         s3_object.upload_file(
             release_archive,
