@@ -808,11 +808,12 @@ class TestFetchRelease(unittest.TestCase):
 class TestFindLatestReleaseVersion(unittest.TestCase):
 
     @given(fixed_dictionaries({
-        'team_name': text(alphabet=ALNUM, min_size=1),
-        'component_name': text(alphabet=ALNUM, min_size=1),
+        'team_name': text(alphabet=ALNUM, min_size=1, max_size=2),
+        'component_name': text(alphabet=ALNUM, min_size=1, max_size=2),
         'versions': lists(
-            elements=text(alphabet=ALNUM, min_size=1),
+            elements=text(alphabet=ALNUM, min_size=1, max_size=2),
             min_size=1,
+            max_size=2,
         ),
     }))
     def test_find_latest_release_version(self, fixtures):
@@ -846,11 +847,12 @@ class TestFindLatestReleaseVersion(unittest.TestCase):
             assert found_version == latest_version
 
     @given(fixed_dictionaries({
-        'team_name': text(alphabet=ALNUM, min_size=1),
-        'component_name': text(alphabet=ALNUM, min_size=1),
+        'team_name': text(alphabet=ALNUM, min_size=1, max_size=3),
+        'component_name': text(alphabet=ALNUM, min_size=1, max_size=3),
         'versions': lists(
-            elements=text(alphabet=ALNUM, min_size=1),
+            elements=text(alphabet=ALNUM, min_size=1, max_size=3),
             min_size=1,
+            max_size=3,
         ),
     }))
     def test_find_latest_release_version_in_release_account(self, fixtures):

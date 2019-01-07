@@ -14,9 +14,9 @@ from cdflow_commands.account import Account, AccountScheme
 @composite
 def account(draw):
     return draw(fixed_dictionaries({
-        'id': text(alphabet=digits, min_size=3),
-        'alias': text(alphabet=ascii_letters+digits, min_size=1),
-        'role': text(alphabet=ROLE_SAFE_ALPHABET, min_size=1),
+        'id': text(alphabet=digits, min_size=3, max_size=4),
+        'alias': text(alphabet=ascii_letters+digits, min_size=1, max_size=3),
+        'role': text(alphabet=ROLE_SAFE_ALPHABET, min_size=1, max_size=3),
     }))
 
 
@@ -104,6 +104,7 @@ class TestAccountScheme(unittest.TestCase):
     @given(lists(
             elements=account(),
             min_size=1,
+            max_size=3,
             unique_by=lambda a: a['id'],
     ).filter(dedupe_accounts))
     def test_deploy_account_ids(self, accounts):
@@ -132,11 +133,14 @@ class TestAccountScheme(unittest.TestCase):
         'accounts': lists(
             elements=account(),
             min_size=2,
+            max_size=4,
             unique_by=lambda a: a['id'],
         ).filter(dedupe_accounts),
         'environments': lists(
             elements=text(alphabet=ascii_letters+digits, min_size=2),
-            unique=True, min_size=2,
+            unique=True,
+            min_size=2,
+            max_size=4,
         ),
     }))
     def test_environment_account_mapping(self, fixtures):
@@ -175,11 +179,14 @@ class TestAccountScheme(unittest.TestCase):
         'accounts': lists(
             elements=account(),
             min_size=2,
+            max_size=3,
             unique_by=lambda a: a['id'],
         ).filter(dedupe_accounts),
         'environments': lists(
             elements=text(alphabet=ascii_letters+digits, min_size=2),
-            unique=True, min_size=2,
+            unique=True,
+            min_size=2,
+            max_size=3,
         ),
     }))
     def test_environment_account_mapping_with_default(self, fixtures):
