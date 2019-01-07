@@ -245,7 +245,9 @@ class TestDeploy(unittest.TestCase):
         'secrets': dictionaries(
             keys=text(min_size=2), values=text(min_size=8).filter(
                 lambda v: len(v.replace('*', '')) > 0
-            ), min_size=1
+            ),
+            min_size=1,
+            max_size=4,
         ),
         'plan_output': text(alphabet=ALNUM, min_size=16)
     }))
