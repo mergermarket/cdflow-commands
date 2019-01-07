@@ -59,6 +59,7 @@ class TestRelease(unittest.TestCase):
                     'role': 'dummy'
                 }
             },
+            'classic-metadata-handling': True,
             'release-account': 'dummy',
             'default-region': self._region,
             'release-bucket': 'dummy',
@@ -279,6 +280,22 @@ class TestRelease(unittest.TestCase):
                 repositoryName=component_name
             )
 
+    @given(text(alphabet=IDENTIFIER_ALPHABET, min_size=8, max_size=16))
+    def test_ecr_repo_creation_skipped_for_new_metadata_handling(
+        self, component_name,
+    ):
+        # Given
+        self._plugin._account_scheme.classic_metadata_handling = False
+        self._release.component_name = component_name
+
+        with patch('cdflow_commands.plugins.ecs.check_call'):
+            # When
+            self._plugin.create()
+
+            # Then
+            self._ecr_client.create_repository.assert_not_called()
+            self._ecr_client.describe_repositories.assert_not_called()
+
     @given(text(alphabet=ascii_letters, min_size=8, max_size=16))
     def test_exception_re_raised(self, error_code):
         # Given
@@ -336,6 +353,7 @@ class TestRelease(unittest.TestCase):
                 }
                 for account in accounts
             },
+            'classic-metadata-handling': True,
             'release-account': accounts[0]['alias'],
             'default-region': self._region,
             'release-bucket': 'dummy',
