@@ -552,9 +552,10 @@ class TestAccountSchemeHandling(unittest.TestCase):
             {'Body': second_mock_s3_body}
         )
 
-        account_scheme = config.build_account_scheme_s3(
-            s3_resource, s3_url, 'a-team'
-        )
+        with self.assertLogs('cdflow_commands.logger', level='WARN') as logs:
+            account_scheme = config.build_account_scheme_s3(
+                s3_resource, s3_url, 'a-team'
+            )
 
         assert account_scheme.release_account.id == '123456789'
         assert account_scheme.account_ids == ['123456789']
@@ -565,6 +566,13 @@ class TestAccountSchemeHandling(unittest.TestCase):
         s3_resource.Object.assert_any_call(
             'second_s3_bucket', 'second_s3_key'
         )
+
+        assert (
+            'WARNING:cdflow_commands.logger:'
+            'Account scheme is being upgraded. Manually update '
+            'account_scheme_url in cdflow.yml to '
+            's3://second_s3_bucket/second_s3_key'
+        ) in logs.output
 
     @given(fixed_dictionaries({
         'filename': text(min_size=1),
