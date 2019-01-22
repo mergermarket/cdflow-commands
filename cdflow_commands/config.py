@@ -142,6 +142,10 @@ def build_account_scheme_s3(s3_resource, s3_url, team):
         account_scheme = AccountScheme.create(
             fetch_account_scheme(s3_resource, new_bucket, new_key), team
         )
+        logger.warning(
+            'Account scheme is being upgraded. Manually update '
+            f'account_scheme_url in cdflow.yml to {new_s3_url}'
+        )
 
     return account_scheme
 
