@@ -131,9 +131,19 @@ def fetch_account_scheme(s3_resource, bucket, key):
 
 def build_account_scheme_s3(s3_resource, s3_url, team):
     bucket, key = parse_s3_url(s3_url)
-    return AccountScheme.create(
+    account_scheme = AccountScheme.create(
         fetch_account_scheme(s3_resource, bucket, key), team
     )
+    upgrade = account_scheme.raw_scheme.get('upgrade-account-scheme')
+
+    if upgrade:
+        new_s3_url = upgrade['new-url']
+        new_bucket, new_key = parse_s3_url(new_s3_url)
+        account_scheme = AccountScheme.create(
+            fetch_account_scheme(s3_resource, new_bucket, new_key), team
+        )
+
+    return account_scheme
 
 
 def build_account_scheme_file(filename, team):
