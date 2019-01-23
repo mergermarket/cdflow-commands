@@ -129,14 +129,19 @@ def fetch_account_scheme(s3_resource, bucket, key):
     return json.loads(f.read())
 
 
-def build_account_scheme_s3(s3_resource, s3_url, team):
+def build_account_scheme_s3(s3_resource, s3_url, team, component_name):
     bucket, key = parse_s3_url(s3_url)
     account_scheme = AccountScheme.create(
         fetch_account_scheme(s3_resource, bucket, key), team
     )
     upgrade = account_scheme.raw_scheme.get('upgrade-account-scheme')
 
-    if upgrade and team in upgrade['team-whitelist']:
+    def whitelisted(team, component_name):
+        team_whitelist = upgrade.get('team-whitelist', [])
+        component_whitelist = upgrade.get('component-whitelist', [])
+        return team in team_whitelist or component_name in component_whitelist
+
+    if upgrade and whitelisted(team, component_name):
         new_s3_url = upgrade['new-url']
         new_bucket, new_key = parse_s3_url(new_s3_url)
         account_scheme = AccountScheme.create(
