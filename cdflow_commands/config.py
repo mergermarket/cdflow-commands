@@ -136,7 +136,7 @@ def build_account_scheme_s3(s3_resource, s3_url, team):
     )
     upgrade = account_scheme.raw_scheme.get('upgrade-account-scheme')
 
-    if upgrade:
+    if upgrade and team in upgrade['team-whitelist']:
         new_s3_url = upgrade['new-url']
         new_bucket, new_key = parse_s3_url(new_s3_url)
         account_scheme = AccountScheme.create(

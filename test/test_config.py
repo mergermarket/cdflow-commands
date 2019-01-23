@@ -493,87 +493,6 @@ class TestAccountSchemeHandling(unittest.TestCase):
             *fixtures['s3_bucket_and_key']
         )
 
-    def test_forward_to_new_account_scheme_from_s3(self):
-        s3_resource = Mock()
-
-        first_s3_bucket = 'firstbucket'
-        first_s3_key = 'firstkey'
-        s3_url = f's3://{first_s3_bucket}/{first_s3_key}'
-
-        first_mock_s3_body = Mock()
-        first_mock_s3_body.read.return_value = '''
-            {
-              "accounts": {
-                "myorgdev": {
-                  "id": "222222222222",
-                  "role": "admin"
-                },
-                "myorgprod": {
-                  "id": "111111111111",
-                  "role": "admin"
-                }
-              },
-              "classic-metadata-handling": true,
-              "upgrade-account-scheme": {
-                "new-url": "s3://second_s3_bucket/second_s3_key"
-              },
-              "release-account": "myorgdev",
-              "release-bucket": "myorg-account-resources",
-              "environments": {
-                "live": "myorgprod",
-                "*": "myorgdev"
-              },
-              "default-region": "eu-west-12",
-              "terraform-backend-s3-bucket": "tfstate-bucket",
-              "terraform-backend-s3-dynamodb-table": "tflocks-table"
-            }
-        '''
-
-        second_mock_s3_body = Mock()
-        second_mock_s3_body.read.return_value = json.dumps({
-            'accounts': {
-                '{team}-release-account-{team}': {
-                    'id': '123456789',
-                    'role': '{team}-role-{team}',
-                }
-            },
-            'release-bucket': '{team}-release-bucket-{team}',
-            'lambda-bucket': '{team}-lambda-bucket-{team}',
-            'release-account': '{team}-release-account-{team}',
-            'default-region': '{team}-region-{team}',
-            'environments': {},
-            'terraform-backend-s3-bucket': '{team}-backend-bucket-{team}',
-            'terraform-backend-s3-dynamodb-table':
-            '{team}-backend-dynamo-{team}',
-        })
-
-        s3_resource.Object.return_value.get.side_effect = (
-            {'Body': first_mock_s3_body},
-            {'Body': second_mock_s3_body}
-        )
-
-        with self.assertLogs('cdflow_commands.logger', level='WARN') as logs:
-            account_scheme = config.build_account_scheme_s3(
-                s3_resource, s3_url, 'a-team'
-            )
-
-        assert account_scheme.release_account.id == '123456789'
-        assert account_scheme.account_ids == ['123456789']
-
-        s3_resource.Object.assert_any_call(
-            first_s3_bucket, first_s3_key
-        )
-        s3_resource.Object.assert_any_call(
-            'second_s3_bucket', 'second_s3_key'
-        )
-
-        assert (
-            'WARNING:cdflow_commands.logger:'
-            'Account scheme is being upgraded. Manually update '
-            'account_scheme_url in cdflow.yml to '
-            's3://second_s3_bucket/second_s3_key'
-        ) in logs.output
-
     @given(fixed_dictionaries({
         'filename': text(min_size=1),
         'account_prefix': text(alphabet=ascii_letters+digits, min_size=1),
@@ -621,6 +540,110 @@ class TestAccountSchemeHandling(unittest.TestCase):
             assert sorted(account_scheme.account_ids) == \
                 sorted(['111111111111', '222222222222'])
             mocked_open.assert_called_once_with(fixtures['filename'])
+
+
+class TestForwardAccountScheme(unittest.TestCase):
+
+    def setUp(self):
+        self.s3_resource = Mock()
+
+        self.first_s3_bucket = 'firstbucket'
+        self.first_s3_key = 'firstkey'
+        self.s3_url = f's3://{self.first_s3_bucket}/{self.first_s3_key}'
+
+        self.whitelisted_team = 'team-foo'
+
+        first_mock_s3_body = Mock()
+        first_mock_s3_body.read.return_value = json.dumps({
+          'accounts': {
+            'myorgdev': {
+              'id': '222222222222',
+              'role': 'admin'
+            },
+            'myorgprod': {
+              'id': '111111111111',
+              'role': 'admin'
+            }
+          },
+          'classic-metadata-handling': True,
+          'upgrade-account-scheme': {
+            'new-url': 's3://second_s3_bucket/second_s3_key',
+            'team-whitelist': [f'{self.whitelisted_team}'],
+          },
+          'release-account': 'myorgdev',
+          'release-bucket': 'myorg-account-resources',
+          'environments': {
+            'live': 'myorgprod',
+            '*': 'myorgdev'
+          },
+          'default-region': 'eu-west-12',
+          'terraform-backend-s3-bucket': 'tfstate-bucket',
+          'terraform-backend-s3-dynamodb-table': 'tflocks-table'
+        })
+
+        second_mock_s3_body = Mock()
+        second_mock_s3_body.read.return_value = json.dumps({
+            'accounts': {
+                '{team}-release-account-{team}': {
+                    'id': '123456789',
+                    'role': '{team}-role-{team}',
+                }
+            },
+            'release-bucket': '{team}-release-bucket-{team}',
+            'lambda-bucket': '{team}-lambda-bucket-{team}',
+            'release-account': '{team}-release-account-{team}',
+            'default-region': '{team}-region-{team}',
+            'environments': {},
+            'terraform-backend-s3-bucket': '{team}-backend-bucket-{team}',
+            'terraform-backend-s3-dynamodb-table':
+            '{team}-backend-dynamo-{team}',
+        })
+
+        self.s3_resource.Object.return_value.get.side_effect = (
+            {'Body': first_mock_s3_body},
+            {'Body': second_mock_s3_body}
+        )
+
+    def test_forwards_to_new_account_scheme_when_new_url_listed(self):
+        account_scheme = config.build_account_scheme_s3(
+            self.s3_resource, self.s3_url, self.whitelisted_team,
+        )
+
+        assert account_scheme.release_account.id == '123456789'
+        assert account_scheme.account_ids == ['123456789']
+
+        self.s3_resource.Object.assert_any_call(
+            self.first_s3_bucket, self.first_s3_key
+        )
+        self.s3_resource.Object.assert_any_call(
+            'second_s3_bucket', 'second_s3_key'
+        )
+
+    def test_logs_warning_message_to_user(self):
+        with self.assertLogs('cdflow_commands.logger', level='WARN') as logs:
+            config.build_account_scheme_s3(
+                self.s3_resource, self.s3_url, self.whitelisted_team,
+            )
+
+        assert (
+            'WARNING:cdflow_commands.logger:'
+            'Account scheme is being upgraded. Manually update '
+            'account_scheme_url in cdflow.yml to '
+            's3://second_s3_bucket/second_s3_key'
+        ) in logs.output
+
+    def test_doesnt_upgrade_unless_team_is_whitelisted(self):
+        account_scheme = config.build_account_scheme_s3(
+            self.s3_resource, self.s3_url, 'not-whitelisted-team'
+        )
+
+        assert account_scheme.release_account.id == '222222222222'
+        assert sorted(account_scheme.account_ids) == \
+            sorted(['111111111111', '222222222222'])
+
+        self.s3_resource.Object.assert_called_once_with(
+            self.first_s3_bucket, self.first_s3_key
+        )
 
 
 class TestEnvWithAWSCredentials(unittest.TestCase):
