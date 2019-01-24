@@ -74,7 +74,8 @@ def _run(argv):
     root_session = Session()
 
     account_scheme = build_account_scheme_s3(
-        root_session.resource('s3'), manifest.account_scheme_url, manifest.team
+        root_session.resource('s3'), manifest.account_scheme_url,
+        manifest.team, get_component_name(args['--component']),
     )
     root_session = Session(region_name=account_scheme.default_region)
     release_account_session = assume_role(

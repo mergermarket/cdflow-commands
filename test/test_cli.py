@@ -129,6 +129,7 @@ class TestCliBuildPlugin(unittest.TestCase):
 
 class TestRoles(unittest.TestCase):
 
+    @patch('cdflow_commands.config.check_output')
     @patch('cdflow_commands.cli.load_manifest')
     @patch('cdflow_commands.cli.run_release')
     @patch('cdflow_commands.cli.assume_role')
@@ -136,7 +137,7 @@ class TestRoles(unittest.TestCase):
     @patch('cdflow_commands.cli.Session')
     def test_release_assumes_release_account_role(
         self, Session, build_account_scheme_s3, assume_role, run_release,
-        load_manifest
+        load_manifest, check_output,
     ):
 
         # Given
@@ -149,6 +150,8 @@ class TestRoles(unittest.TestCase):
         account_scheme.release_account.role = 'test-role'
         account_scheme.default_region = 'eu-west-12'
         build_account_scheme_s3.return_value = account_scheme
+        check_output.return_value = 'git@github.com:org/component.git\n'\
+            .encode('utf-8')
 
         # When
         cli._run([
