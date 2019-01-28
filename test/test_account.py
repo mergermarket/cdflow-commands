@@ -17,6 +17,7 @@ def account(draw):
         'id': text(alphabet=digits, min_size=3, max_size=4),
         'alias': text(alphabet=ascii_letters+digits, min_size=1, max_size=3),
         'role': text(alphabet=ROLE_SAFE_ALPHABET, min_size=1, max_size=3),
+        'region': text(alphabet=ascii_letters+digits, min_size=1, max_size=3),
     }))
 
 
@@ -54,6 +55,7 @@ class TestAccount(unittest.TestCase):
         assert account.id == fixtures['id']
         assert account.alias == fixtures['alias']
         assert account.role == fixtures['role']
+        assert account.region == fixtures['region']
 
 
 class TestAccountScheme(unittest.TestCase):
@@ -271,3 +273,37 @@ class TestAccountScheme(unittest.TestCase):
         }
         account_scheme = AccountScheme.create(raw_scheme, 'test-team')
         assert account_scheme.lambda_buckets == raw_scheme['lambda-buckets']
+
+    def test_account_with_region_override(self):
+        raw_scheme = {
+            'accounts': {
+                'prod': {
+                    'id': '0987654321',
+                    'role': 'admin-role',
+                },
+                'release': {
+                    'id': '1234567890',
+                    'role': 'test-role',
+                    'region': 'region-override',
+                },
+            },
+            'environments': {},
+            'release-account': 'release',
+            'release-bucket': 'release-bucket',
+            'default-region': 'test-region-1',
+            'terraform-backend-s3-bucket': 'backend-bucket',
+            'terraform-backend-s3-dynamodb-table': 'backend-table',
+            'lambda-buckets': {
+                'test-region-1': 'test-bucket-1',
+                'test-region-2': 'test-bucket-2'
+            }
+        }
+
+        account_scheme = AccountScheme.create(raw_scheme, 'test-team')
+
+        assert len(account_scheme.accounts) == 2
+        for account in account_scheme.accounts:
+            if account.alias == 'prod':
+                assert account.region == 'test-region-1'
+            if account.alias == 'release':
+                assert account.region == 'region-override'
