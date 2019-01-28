@@ -3,10 +3,11 @@ from collections import defaultdict
 
 class Account:
 
-    def __init__(self, alias, id, role):
+    def __init__(self, alias, id, role, region):
         self.alias = alias
         self.id = id
         self.role = role
+        self.region = region
 
 
 def replace_team(scheme, team):
@@ -67,8 +68,14 @@ class AccountScheme:
     @classmethod
     def create(cls, raw_scheme, team):
         scheme = replace_team(raw_scheme, team)
+        default_region = scheme['default-region']
         accounts = {
-            alias: Account(alias, account['id'], account['role'])
+            alias: Account(
+                alias,
+                account['id'],
+                account['role'],
+                account.get('region', default_region),
+            )
             for alias, account
             in scheme['accounts'].items()
         }
@@ -91,7 +98,7 @@ class AccountScheme:
             scheme['release-bucket'],
             scheme.get('lambda-bucket', ''),
             scheme.get('lambda-buckets', {}),
-            scheme['default-region'],
+            default_region,
             environment_mapping,
             scheme.get('classic-metadata-handling', False),
             scheme.get('terraform-backend-s3-bucket', None),
