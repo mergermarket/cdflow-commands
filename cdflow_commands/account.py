@@ -1,13 +1,13 @@
 from collections import defaultdict
+from dataclasses import dataclass
 
 
+@dataclass(frozen=True, order=True)
 class Account:
-
-    def __init__(self, alias, id, role, region):
-        self.alias = alias
-        self.id = id
-        self.role = role
-        self.region = region
+    alias: str
+    id: str
+    role: str
+    region: str
 
 
 def replace_team(scheme, team):
