@@ -148,6 +148,7 @@ class TestRoles(unittest.TestCase):
         account_scheme = Mock()
         account_scheme.release_account.id = '1234567890'
         account_scheme.release_account.role = 'test-role'
+        account_scheme.release_account.region_name = 'eu-west-13'
         account_scheme.default_region = 'eu-west-12'
         build_account_scheme_s3.return_value = account_scheme
         check_output.return_value = 'git@github.com:org/component.git\n'\
@@ -160,7 +161,7 @@ class TestRoles(unittest.TestCase):
 
         # Then
         assume_role.assert_called_once_with(
-            root_session, '1234567890', 'test-role', 'eu-west-12'
+            root_session, account_scheme.release_account,
         )
         run_release.assert_called_once_with(
             release_account_session, account_scheme, ANY,
@@ -188,6 +189,7 @@ class TestRoles(unittest.TestCase):
         infrastructure_account = Mock()
         infrastructure_account.id = '0987654321'
         infrastructure_account.role = 'test-role'
+        infrastructure_account.region = 'eu-west-13'
         account_scheme.account_for_environment.return_value = \
             infrastructure_account
         build_account_scheme_file.return_value = account_scheme
@@ -204,7 +206,7 @@ class TestRoles(unittest.TestCase):
         # Then
         account_scheme.account_for_environment.assert_called_once_with('ci')
         assume_role.assert_called_once_with(
-            root_session, '0987654321', 'test-role', 'eu-west-12'
+            root_session, infrastructure_account,
         )
         run_deploy.assert_called_once_with(
             ANY, account_scheme, release_account_session,
@@ -232,6 +234,7 @@ class TestRoles(unittest.TestCase):
         infrastructure_account = Mock()
         infrastructure_account.id = '0987654321'
         infrastructure_account.role = 'test-role'
+        infrastructure_account.region = 'eu-west-13'
         account_scheme.account_for_environment.return_value = \
             infrastructure_account
         build_account_scheme_file.return_value = account_scheme
@@ -248,7 +251,7 @@ class TestRoles(unittest.TestCase):
         # Then
         account_scheme.account_for_environment.assert_called_once_with('ci')
         assume_role.assert_called_once_with(
-            root_session, '0987654321', 'test-role', 'eu-west-12'
+            root_session, infrastructure_account,
         )
         run_deploy.assert_called_once_with(
             ANY, account_scheme, infrastructure_account_session,
