@@ -77,6 +77,7 @@ def assume_role(root_session, account):
 def env_with_aws_credetials(env, boto_session):
     result = env.copy()
     credentials = boto_session.get_credentials()
+    logger.debug(f'Setting region to {boto_session.region_name}')
     result.update({
         'AWS_ACCESS_KEY_ID': credentials.access_key,
         'AWS_SECRET_ACCESS_KEY': credentials.secret_key,

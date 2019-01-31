@@ -79,7 +79,7 @@ class TestRelease(unittest.TestCase):
         'region': text(alphabet=IDENTIFIER_ALPHABET, min_size=1, max_size=10),
         'account_id': text(alphabet=digits, min_size=12, max_size=12),
     }))
-    def test_builds_container(self, fixtures):
+    def test_builds_container_and_uses_release_account_region(self, fixtures):
         # Given
         component_name = fixtures['component_name']
         region = fixtures['region']
@@ -93,11 +93,12 @@ class TestRelease(unittest.TestCase):
             'accounts': {
                 'dummy': {
                     'id': account_id,
-                    'role': 'dummy'
+                    'role': 'dummy',
+                    'region': region,
                 }
             },
             'release-account': 'dummy',
-            'default-region': region,
+            'default-region': 'eu-west-42',
             'release-bucket': 'dummy',
             'environments': {
                 'live': 'dummy',
