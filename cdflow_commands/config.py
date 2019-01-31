@@ -54,29 +54,30 @@ def load_manifest():
         )
 
 
-def assume_role(root_session, account_id, role_name, region=None):
+def assume_role(root_session, account):
     sts = root_session.client('sts')
     session_name = get_role_session_name(sts)
     logger.debug(
         "Assuming role arn:aws:iam::{}:role/admin with session {}".format(
-            account_id, session_name
+            account.id, session_name
         )
     )
     response = sts.assume_role(
-        RoleArn=f'arn:aws:iam::{account_id}:role/{role_name}',
+        RoleArn=f'arn:aws:iam::{account.id}:role/{account.role}',
         RoleSessionName=session_name,
     )
     return Session(
         response['Credentials']['AccessKeyId'],
         response['Credentials']['SecretAccessKey'],
         response['Credentials']['SessionToken'],
-        region if region else root_session.region_name,
+        account.region,
     )
 
 
 def env_with_aws_credetials(env, boto_session):
     result = env.copy()
     credentials = boto_session.get_credentials()
+    logger.debug(f'Setting region to {boto_session.region_name}')
     result.update({
         'AWS_ACCESS_KEY_ID': credentials.access_key,
         'AWS_SECRET_ACCESS_KEY': credentials.secret_key,
