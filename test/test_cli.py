@@ -1,7 +1,8 @@
 import unittest
 
-from mock import patch, Mock, ANY
+from mock import patch, Mock, MagicMock, ANY
 
+from cdflow_commands.account import AccountScheme, Account
 from cdflow_commands import cli
 from cdflow_commands.exceptions import UnknownProjectTypeError, UserFacingError
 
@@ -111,6 +112,13 @@ class TestCliBuildPlugin(unittest.TestCase):
     ):
         # Given
         os.environ = {'JOB_NAME': 'dummy-job-name'}
+        account_scheme = MagicMock(spec=AccountScheme)
+        account_scheme.default_region = 'eu-west-12'
+        account_scheme.release_account = MagicMock(spec=Account)
+        account_scheme.release_bucket = 'bucket'
+        build_account_scheme_s3.return_value = (
+            account_scheme, None,
+        )
 
         check_output.return_value = 'hash\n'.encode('utf-8')
 
@@ -150,7 +158,7 @@ class TestRoles(unittest.TestCase):
         account_scheme.release_account.role = 'test-role'
         account_scheme.release_account.region_name = 'eu-west-13'
         account_scheme.default_region = 'eu-west-12'
-        build_account_scheme_s3.return_value = account_scheme
+        build_account_scheme_s3.return_value = (account_scheme, None)
         check_output.return_value = 'git@github.com:org/component.git\n'\
             .encode('utf-8')
 

@@ -73,7 +73,7 @@ def _run(argv):
     manifest = load_manifest()
     root_session = Session()
 
-    account_scheme = build_account_scheme_s3(
+    account_scheme, _ = build_account_scheme_s3(
         root_session.resource('s3'), manifest.account_scheme_url,
         manifest.team, get_component_name(args['--component']),
     )
