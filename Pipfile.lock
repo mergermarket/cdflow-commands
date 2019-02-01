@@ -397,11 +397,11 @@
         },
         "flake8": {
             "hashes": [
-                "sha256:2baac1c277d917f3e01ce17a60dcfad4a4ce13a2c5d50a15d0811302a3bdf7aa",
-                "sha256:7eda8e5c29ac9e0d3c0fd44649298c29768efc79a9b872b41c8f05ca5f502c83"
+                "sha256:09b9bb539920776da542e67a570a5df96ff933c9a08b62cfae920bcc789e4383",
+                "sha256:e0f8cd519cfc0072c0ee31add5def09d2b3ef6040b34dc426445c3af9b02163c"
             ],
             "index": "pypi",
-            "version": "==3.7.0"
+            "version": "==3.7.4"
         },
         "freezegun": {
             "hashes": [
@@ -527,10 +527,10 @@
         },
         "pbr": {
             "hashes": [
-                "sha256:f59d71442f9ece3dffc17bc36575768e1ee9967756e6b6535f0ee1f0054c3d68",
-                "sha256:f6d5b23f226a2ba58e14e49aa3b1bfaf814d0199144b95d78458212444de1387"
+                "sha256:a7953f66e1f82e4b061f43096a4bcc058f7d3d41de9b94ac871770e8bdd831a2",
+                "sha256:d717573351cfe09f49df61906cd272abaa759b3e91744396b804965ff7bff38b"
             ],
-            "version": "==5.1.1"
+            "version": "==5.1.2"
         },
         "pluggy": {
             "hashes": [
