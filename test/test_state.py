@@ -1,4 +1,5 @@
 import unittest
+import datetime
 from contextlib import ExitStack
 from io import BufferedRandom
 from os.path import join
@@ -6,16 +7,20 @@ from re import match
 from string import ascii_lowercase, digits
 from textwrap import dedent
 
+import boto3
 from boto3.session import Session
 from botocore.exceptions import ClientError
 from cdflow_commands.account import AccountScheme
 from cdflow_commands.state import (
     TFSTATE_TAG_NAME, TAG_VALUE, IncorrectSchemaError, LockTableFactory,
-    S3BucketFactory, terraform_state, remove_file
+    S3BucketFactory, terraform_state, remove_file, migrate_state,
 )
 from hypothesis import given
 from hypothesis.strategies import fixed_dictionaries, text
 from mock import MagicMock, Mock, patch, ANY
+from moto import mock_s3, mock_sts
+from freezegun import freeze_time
+
 
 NEW_BUCKET_PATTERN = r'^cdflow-tfstate-[a-z0-9]+$'
 
@@ -995,3 +1000,326 @@ class TestTerraformBackendConfig(unittest.TestCase):
             ],
             cwd=base_directory,
         )
+
+
+class TestMigrateState(unittest.TestCase):
+
+    @mock_s3
+    @mock_sts
+    def test_migrate_with_single_environment(self):
+        team = 'a-team'
+        component_name = 'a-service'
+        raw_scheme = {
+            'accounts': {
+                'dev': {
+                    'id': '123456789',
+                    'role': 'admin',
+                },
+                'release': {
+                    'id': '98754321',
+                    'role': 'admin',
+                },
+            },
+            'release-bucket': 'release-bucket',
+            'lambda-bucket': 'lambda-bucket',
+            'release-account': 'dev',
+            'default-region': 'eu-west-1',
+            'environments': {},
+            'terraform-backend-s3-bucket': 'backend-s3-bucket',
+            'terraform-backend-s3-dynamodb-table': 'backend-s3-dynamodb-table',
+        }
+        account_scheme = AccountScheme.create(raw_scheme, team)
+
+        old_raw_scheme = {
+            'accounts': {
+                'dev': {
+                    'id': '123456789',
+                    'role': 'admin',
+                },
+            },
+            'release-bucket': 'release-bucket',
+            'lambda-bucket': 'lambda-bucket',
+            'release-account': 'dev',
+            'default-region': 'eu-west-1',
+            'environments': {},
+            'classic-metadata-handling': True,
+        }
+        old_scheme = AccountScheme.create(old_raw_scheme, team)
+
+        s3_resource = boto3.resource('s3', region_name='eu-west-1')
+
+        s3_client = boto3.client('s3', region_name='eu-west-1')
+        s3_client.create_bucket(
+            Bucket='cdflow-tfstate',
+            CreateBucketConfiguration={
+                'LocationConstraint': 'eu-west-1',
+            },
+        )
+        s3_client.put_bucket_tagging(
+            Bucket='cdflow-tfstate',
+            Tagging={
+                'TagSet': [
+                    {
+                        'Key': TFSTATE_TAG_NAME,
+                        'Value': TAG_VALUE,
+                    }
+                ]
+            }
+        )
+
+        s3_client.create_bucket(
+            Bucket='backend-s3-bucket',
+            CreateBucketConfiguration={
+                'LocationConstraint': 'eu-west-1',
+            },
+        )
+
+        original_state = s3_resource.Object(
+            'cdflow-tfstate',
+            f'test/{component_name}/terraform.tfstate',
+        )
+        original_state.put(Body=b'state')
+
+        root_session = Session(region_name='eu-west-1')
+        migrate_state(
+            root_session, account_scheme, old_scheme, team, component_name,
+        )
+
+        new_state = s3_resource.Object(
+            'backend-s3-bucket',
+            f'{team}/{component_name}/test/terraform.tfstate',
+        )
+        response = new_state.get()
+        body = response['Body'].read()
+
+        assert body == b'state'
+
+        migrated_marker = s3_resource.Object(
+            'backend-s3-bucket',
+            f'{team}/{component_name}/test/MIGRATED',
+        )
+        migrated_response = migrated_marker.get()
+        migrated_body = migrated_response['Body'].read()
+
+        assert migrated_body == b'1'
+
+    @mock_s3
+    @mock_sts
+    def test_migrate_with_multiple_environments(self):
+        team = 'a-team'
+        component_name = 'a-service'
+        raw_scheme = {
+            'accounts': {
+                'dev': {
+                    'id': '123456789',
+                    'role': 'admin',
+                },
+                'prod': {
+                    'id': '987654321',
+                    'role': 'admin',
+                },
+                'release': {
+                    'id': '98754321',
+                    'role': 'admin',
+                },
+            },
+            'release-bucket': 'release-bucket',
+            'lambda-bucket': 'lambda-bucket',
+            'release-account': 'dev',
+            'default-region': 'eu-west-1',
+            'environments': {},
+            'terraform-backend-s3-bucket': 'backend-s3-bucket',
+            'terraform-backend-s3-dynamodb-table': 'backend-s3-dynamodb-table',
+        }
+        account_scheme = AccountScheme.create(raw_scheme, team)
+
+        old_raw_scheme = {
+            'accounts': {
+                'dev': {
+                    'id': '123456789',
+                    'role': 'admin',
+                },
+                'prod': {
+                    'id': '987654321',
+                    'role': 'admin',
+                },
+            },
+            'release-bucket': 'release-bucket',
+            'lambda-bucket': 'lambda-bucket',
+            'release-account': 'dev',
+            'default-region': 'eu-west-1',
+            'environments': {},
+            'classic-metadata-handling': True,
+        }
+        old_scheme = AccountScheme.create(old_raw_scheme, team)
+
+        s3_resource = boto3.resource('s3', region_name='eu-west-1')
+
+        s3_client = boto3.client('s3', region_name='eu-west-1')
+        s3_client.create_bucket(
+            Bucket='cdflow-tfstate',
+            CreateBucketConfiguration={
+                'LocationConstraint': 'eu-west-1',
+            },
+        )
+        s3_client.put_bucket_tagging(
+            Bucket='cdflow-tfstate',
+            Tagging={
+                'TagSet': [
+                    {
+                        'Key': TFSTATE_TAG_NAME,
+                        'Value': TAG_VALUE,
+                    }
+                ]
+            }
+        )
+
+        s3_client.create_bucket(
+            Bucket='backend-s3-bucket',
+            CreateBucketConfiguration={
+                'LocationConstraint': 'eu-west-1',
+            },
+        )
+
+        environments = ('ci', 'qa', 'aslive', 'live')
+
+        for env in environments:
+            s3_resource.Object(
+                'cdflow-tfstate',
+                f'{env}/{component_name}/terraform.tfstate',
+            ).put(Body=f'{env} state'.encode('utf-8'))
+
+        root_session = Session(region_name='eu-west-1')
+        migrate_state(
+            root_session, account_scheme, old_scheme, team, component_name,
+        )
+
+        for env in environments:
+            new_state = s3_resource.Object(
+                'backend-s3-bucket',
+                f'{team}/{component_name}/{env}/terraform.tfstate',
+            )
+            response = new_state.get()
+            body = response['Body'].read()
+
+            assert body == f'{env} state'.encode()
+
+            migrated_marker = s3_resource.Object(
+                'backend-s3-bucket',
+                f'{team}/{component_name}/{env}/MIGRATED',
+            )
+            migrated_response = migrated_marker.get()
+            migrated_body = migrated_response['Body'].read()
+
+            assert migrated_body == b'1'
+
+    @mock_s3
+    @mock_sts
+    def test_does_not_migrate_state_if_already_migrated(self):
+        with freeze_time("2012-01-14") as frozen_time:
+            team = 'a-team'
+            component_name = 'a-service'
+            raw_scheme = {
+                'accounts': {
+                    'dev': {
+                        'id': '123456789',
+                        'role': 'admin',
+                    },
+                    'prod': {
+                        'id': '987654321',
+                        'role': 'admin',
+                    },
+                    'release': {
+                        'id': '98754321',
+                        'role': 'admin',
+                    },
+                },
+                'release-bucket': 'release-bucket',
+                'lambda-bucket': 'lambda-bucket',
+                'release-account': 'dev',
+                'default-region': 'eu-west-1',
+                'environments': {},
+                'terraform-backend-s3-bucket': 'backend-s3-bucket',
+                'terraform-backend-s3-dynamodb-table':
+                    'backend-s3-dynamodb-table',
+            }
+            account_scheme = AccountScheme.create(raw_scheme, team)
+
+            old_raw_scheme = {
+                'accounts': {
+                    'dev': {
+                        'id': '123456789',
+                        'role': 'admin',
+                    },
+                    'prod': {
+                        'id': '987654321',
+                        'role': 'admin',
+                    },
+                },
+                'release-bucket': 'release-bucket',
+                'lambda-bucket': 'lambda-bucket',
+                'release-account': 'dev',
+                'default-region': 'eu-west-1',
+                'environments': {},
+                'classic-metadata-handling': True,
+            }
+            old_scheme = AccountScheme.create(old_raw_scheme, team)
+
+            s3_resource = boto3.resource('s3', region_name='eu-west-1')
+
+            s3_client = boto3.client('s3', region_name='eu-west-1')
+            s3_client.create_bucket(
+                Bucket='cdflow-tfstate',
+                CreateBucketConfiguration={
+                    'LocationConstraint': 'eu-west-1',
+                },
+            )
+            s3_client.put_bucket_tagging(
+                Bucket='cdflow-tfstate',
+                Tagging={
+                    'TagSet': [
+                        {
+                            'Key': TFSTATE_TAG_NAME,
+                            'Value': TAG_VALUE,
+                        }
+                    ]
+                }
+            )
+
+            s3_client.create_bucket(
+                Bucket='backend-s3-bucket',
+                CreateBucketConfiguration={
+                    'LocationConstraint': 'eu-west-1',
+                },
+            )
+
+            environments = ('ci', 'qa', 'aslive', 'live')
+
+            state_written_time = frozen_time
+
+            for env in environments:
+                s3_resource.Object(
+                    'cdflow-tfstate',
+                    f'{env}/{component_name}/terraform.tfstate',
+                ).put(Body=f'{env} state'.encode('utf-8'))
+
+                new_state = s3_resource.Object(
+                    'backend-s3-bucket',
+                    f'{team}/{component_name}/{env}/MIGRATED',
+                ).put(Body=b'1')
+
+            frozen_time.tick(datetime.timedelta(days=1))
+
+            root_session = Session(region_name='eu-west-1')
+            migrate_state(
+                root_session, account_scheme, old_scheme, team, component_name,
+            )
+
+            for env in environments:
+                new_state = s3_resource.Object(
+                    'backend-s3-bucket',
+                    f'{team}/{component_name}/{env}/terraform.tfstate',
+                )
+
+                assert new_state.last_modified.strftime("%Y-%m-%d") == \
+                    state_written_time.time_to_freeze.strftime("%Y-%m-%d")
