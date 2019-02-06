@@ -272,6 +272,15 @@ def is_migrated(migrated_flag_object):
     return migrated
 
 
+def key_exists(key):
+    exists = True
+    try:
+        key.load()
+    except ClientError:
+        exists = False
+    return exists
+
+
 def migrate_state(
     root_session, account_scheme, old_scheme, team, component_name,
 ):
@@ -281,9 +290,11 @@ def migrate_state(
     release_s3 = release_account_session.resource('s3')
 
     for account in old_scheme.accounts:
+        logger.debug(f'Looking for state in account {account.alias}')
         session = assume_role(root_session, account)
         state_bucket = S3BucketFactory(session).get_bucket_name()
         prefixes = get_bucket_prefixes(session, state_bucket)
+        logger.debug(f'State bucket {state_bucket} has prefixes: {prefixes}')
 
         s3 = session.resource('s3')
 
@@ -292,11 +303,19 @@ def migrate_state(
                 account_scheme.backend_s3_bucket,
                 f'{team}/{component_name}/{env}/MIGRATED',
             )
-            if not is_migrated(migrated_flag):
-                old_state = s3.Object(
-                    state_bucket, f'{env}/{component_name}/terraform.tfstate',
+            old_state = s3.Object(
+                state_bucket, f'{env}/{component_name}/terraform.tfstate',
+            )
+            if key_exists(old_state) and not is_migrated(migrated_flag):
+                logger.debug(
+                    'Not migrated, checking for state at: '
+                    f'{env}/{component_name}/terraform.tfstate',
                 )
                 old_state_content = old_state.get()['Body'].read()
+                logger.debug(
+                    f'Putting state into {account_scheme.backend_s3_bucket} '
+                    f'under {team}/{component_name}/{env}/terraform.tfstate',
+                )
                 new_state = release_s3.Object(
                     account_scheme.backend_s3_bucket,
                     f'{team}/{component_name}/{env}/terraform.tfstate',
