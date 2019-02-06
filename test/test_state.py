@@ -1,6 +1,7 @@
 import unittest
 import datetime
 from contextlib import ExitStack
+from copy import deepcopy
 from io import BufferedRandom
 from os.path import join
 from re import match
@@ -1295,7 +1296,7 @@ class TestMigrateState(unittest.TestCase):
 
             environments = ('ci', 'qa', 'aslive', 'live')
 
-            state_written_time = frozen_time
+            state_written_time = deepcopy(frozen_time)
 
             for env in environments:
                 s3_resource.Object(
@@ -1303,7 +1304,12 @@ class TestMigrateState(unittest.TestCase):
                     f'{env}/{component_name}/terraform.tfstate',
                 ).put(Body=f'{env} state'.encode('utf-8'))
 
-                new_state = s3_resource.Object(
+                s3_resource.Object(
+                    'backend-s3-bucket',
+                    f'{team}/{component_name}/{env}/terraform.tfstate',
+                ).put(Body=f'{env} state'.encode('utf-8'))
+
+                s3_resource.Object(
                     'backend-s3-bucket',
                     f'{team}/{component_name}/{env}/MIGRATED',
                 ).put(Body=b'1')
