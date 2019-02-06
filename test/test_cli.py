@@ -324,3 +324,47 @@ class TestSecretsFromInfraAccount(unittest.TestCase):
         get_secrets.assert_called_once_with(
             env, manifest.team, component_name, deploy_session
         )
+
+
+class TestMigrateState(unittest.TestCase):
+
+    @patch('cdflow_commands.cli.Session')
+    @patch('cdflow_commands.cli.migrate_state')
+    @patch('cdflow_commands.cli.os')
+    @patch('cdflow_commands.cli.check_output')
+    @patch('cdflow_commands.cli.rmtree')
+    @patch('cdflow_commands.cli.sys')
+    @patch('cdflow_commands.cli.load_manifest')
+    @patch('cdflow_commands.cli.build_account_scheme_s3')
+    @patch('cdflow_commands.cli.assume_role')
+    @patch('cdflow_commands.cli.run_release')
+    @patch('cdflow_commands.cli.get_component_name')
+    def test_migrate_state_function_is_called(
+        self, get_component_name, run_release, assume_role,
+        build_account_scheme_s3, load_manifest, sys, rmtree, check_output, os,
+        migrate_state, Session,
+    ):
+        os.environ = {'JOB_NAME': 'dummy-job-name'}
+        account_scheme = MagicMock(spec=AccountScheme)
+        account_scheme.default_region = 'eu-west-12'
+        account_scheme.release_account = MagicMock(spec=Account)
+        account_scheme.release_bucket = 'bucket'
+        old_account_scheme = MagicMock(spec=AccountScheme)
+        old_account_scheme.default_region = 'eu-west-12'
+        old_account_scheme.release_account = MagicMock(spec=Account)
+        old_account_scheme.release_bucket = 'bucket'
+        build_account_scheme_s3.return_value = (
+            account_scheme, old_account_scheme,
+        )
+
+        check_output.return_value = 'hash\n'.encode('utf-8')
+
+        cli._run(['release', '--platform-config', 'path/to/config', 'version'])
+
+        migrate_state.assert_called_once_with(
+            Session.return_value,
+            account_scheme,
+            old_account_scheme,
+            load_manifest.return_value.team,
+            get_component_name.return_value,
+        )
