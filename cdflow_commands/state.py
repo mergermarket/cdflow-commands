@@ -263,6 +263,15 @@ def get_bucket_prefixes(session, bucket_name):
     return [prefix['Prefix'] for prefix in result.search('CommonPrefixes')]
 
 
+def is_migrated(migrated_flag_object):
+    migrated = True
+    try:
+        migrated_flag_object.load()
+    except ClientError:
+        migrated = False
+    return migrated
+
+
 def migrate_state(
     root_session, account_scheme, old_scheme, team, component_name,
 ):
@@ -279,20 +288,21 @@ def migrate_state(
         s3 = session.resource('s3')
 
         for env in [p.strip('/') for p in prefixes]:
-            old_state = s3.Object(
-                state_bucket, f'{env}/{component_name}/terraform.tfstate',
-            )
-            old_state_content = old_state.get()['Body'].read()
-            new_state = release_s3.Object(
-                account_scheme.backend_s3_bucket,
-                f'{team}/{component_name}/{env}/terraform.tfstate',
-            )
-            new_state.put(Body=old_state_content)
             migrated_flag = release_s3.Object(
                 account_scheme.backend_s3_bucket,
                 f'{team}/{component_name}/{env}/MIGRATED',
             )
-            migrated_flag.put(Body=b'1')
+            if not is_migrated(migrated_flag):
+                old_state = s3.Object(
+                    state_bucket, f'{env}/{component_name}/terraform.tfstate',
+                )
+                old_state_content = old_state.get()['Body'].read()
+                new_state = release_s3.Object(
+                    account_scheme.backend_s3_bucket,
+                    f'{team}/{component_name}/{env}/terraform.tfstate',
+                )
+                new_state.put(Body=old_state_content)
+                migrated_flag.put(Body=b'1')
 
 
 def terraform_state(
