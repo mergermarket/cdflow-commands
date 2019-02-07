@@ -143,6 +143,7 @@ def build_account_scheme_s3(s3_resource, s3_url, team, component_name):
         return team in team_whitelist or component_name in component_whitelist
 
     if upgrade and whitelisted(team, component_name):
+        old_scheme = account_scheme
         new_s3_url = upgrade['new-url']
         new_bucket, new_key = parse_s3_url(new_s3_url)
         account_scheme = AccountScheme.create(
@@ -152,8 +153,10 @@ def build_account_scheme_s3(s3_resource, s3_url, team, component_name):
             'Account scheme is being upgraded. Manually update '
             f'account_scheme_url in cdflow.yml to {new_s3_url}'
         )
+    else:
+        old_scheme = None
 
-    return account_scheme
+    return account_scheme, old_scheme
 
 
 def build_account_scheme_file(filename, team):

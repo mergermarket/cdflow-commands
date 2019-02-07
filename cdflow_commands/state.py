@@ -8,6 +8,7 @@ from textwrap import dedent
 from botocore.exceptions import ClientError
 
 from cdflow_commands.constants import TERRAFORM_BINARY
+from cdflow_commands.config import assume_role
 from cdflow_commands.exceptions import CDFlowError
 from cdflow_commands.logger import logger
 from cdflow_commands.process import check_call, check_output
@@ -253,6 +254,74 @@ class TerraformState:
                 f'Creating new workspace {self.environment_name}'
             )
             self.terraform_new_workspace()
+
+
+def get_bucket_prefixes(session, bucket_name):
+    client = session.client('s3')
+    paginator = client.get_paginator('list_objects_v2')
+    result = paginator.paginate(Bucket=bucket_name, Delimiter='/')
+    return [prefix['Prefix'] for prefix in result.search('CommonPrefixes')]
+
+
+def is_migrated(migrated_flag_object):
+    migrated = True
+    try:
+        migrated_flag_object.load()
+    except ClientError:
+        migrated = False
+    return migrated
+
+
+def key_exists(key):
+    exists = True
+    try:
+        key.load()
+    except ClientError:
+        exists = False
+    return exists
+
+
+def migrate_state(
+    root_session, account_scheme, old_scheme, team, component_name,
+):
+    release_account_session = assume_role(
+        root_session, account_scheme.release_account,
+    )
+    release_s3 = release_account_session.resource('s3')
+
+    for account in old_scheme.accounts:
+        logger.debug(f'Looking for state in account {account.alias}')
+        session = assume_role(root_session, account)
+        state_bucket = S3BucketFactory(session).get_bucket_name()
+        prefixes = get_bucket_prefixes(session, state_bucket)
+        logger.debug(f'State bucket {state_bucket} has prefixes: {prefixes}')
+
+        s3 = session.resource('s3')
+
+        for env in [p.strip('/') for p in prefixes]:
+            migrated_flag = release_s3.Object(
+                account_scheme.backend_s3_bucket,
+                f'{team}/{component_name}/{env}/MIGRATED',
+            )
+            old_state = s3.Object(
+                state_bucket, f'{env}/{component_name}/terraform.tfstate',
+            )
+            if key_exists(old_state) and not is_migrated(migrated_flag):
+                logger.debug(
+                    'Not migrated, checking for state at: '
+                    f'{env}/{component_name}/terraform.tfstate',
+                )
+                old_state_content = old_state.get()['Body'].read()
+                logger.debug(
+                    f'Putting state into {account_scheme.backend_s3_bucket} '
+                    f'under {team}/{component_name}/{env}/terraform.tfstate',
+                )
+                new_state = release_s3.Object(
+                    account_scheme.backend_s3_bucket,
+                    f'{team}/{component_name}/{env}/terraform.tfstate',
+                )
+                new_state.put(Body=old_state_content)
+                migrated_flag.put(Body=b'1')
 
 
 def terraform_state(

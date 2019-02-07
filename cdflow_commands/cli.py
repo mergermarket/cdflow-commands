@@ -42,7 +42,7 @@ from cdflow_commands.release import (
     Release, fetch_release, find_latest_release_version,
 )
 from cdflow_commands.secrets import get_secrets
-from cdflow_commands.state import terraform_state
+from cdflow_commands.state import terraform_state, migrate_state
 from docopt import docopt
 
 
@@ -73,11 +73,20 @@ def _run(argv):
     manifest = load_manifest()
     root_session = Session()
 
-    account_scheme = build_account_scheme_s3(
+    team = manifest.team
+    component = get_component_name(args['--component'])
+
+    account_scheme, old_scheme = build_account_scheme_s3(
         root_session.resource('s3'), manifest.account_scheme_url,
-        manifest.team, get_component_name(args['--component']),
+        team, component,
     )
     root_session = Session(region_name=account_scheme.default_region)
+
+    if old_scheme:
+        migrate_state(
+            root_session, account_scheme, old_scheme, team, component,
+        )
+
     release_account_session = assume_role(
         root_session, account_scheme.release_account,
     )
