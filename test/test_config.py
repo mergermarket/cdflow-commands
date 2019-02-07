@@ -438,9 +438,11 @@ class TestAccountSchemeHandling(unittest.TestCase):
             'Body': mock_s3_body
         }
 
-        account_scheme = config.build_account_scheme_s3(
+        account_scheme, old_scheme = config.build_account_scheme_s3(
             s3_resource, s3_url, 'a-team', 'component-name',
         )
+
+        assert not old_scheme
 
         assert account_scheme.release_account.id == '222222222222'
         assert sorted(account_scheme.account_ids) == \
@@ -564,13 +566,18 @@ class TestForwardAccountScheme(unittest.TestCase):
         )
 
     def test_forwards_to_new_account_scheme_when_new_url_listed(self):
-        account_scheme = config.build_account_scheme_s3(
+        account_scheme, old_scheme = config.build_account_scheme_s3(
             self.s3_resource, self.s3_url, self.whitelisted_team,
             self.whitelisted_component,
         )
 
         assert account_scheme.release_account.id == '123456789'
         assert account_scheme.account_ids == ['123456789']
+
+        assert old_scheme.release_account.id == '222222222222'
+        assert sorted(old_scheme.account_ids) == [
+            '111111111111', '222222222222',
+        ]
 
         self.s3_resource.Object.assert_any_call(
             self.first_s3_bucket, self.first_s3_key
@@ -594,7 +601,7 @@ class TestForwardAccountScheme(unittest.TestCase):
         ) in logs.output
 
     def test_doesnt_upgrade_if_team_and_component_arent_whitelisted(self):
-        account_scheme = config.build_account_scheme_s3(
+        account_scheme, old_scheme = config.build_account_scheme_s3(
             self.s3_resource, self.s3_url, 'not-whitelisted-team',
             'not-whitelisted-component',
         )
@@ -603,18 +610,25 @@ class TestForwardAccountScheme(unittest.TestCase):
         assert sorted(account_scheme.account_ids) == \
             sorted(['111111111111', '222222222222'])
 
+        assert not old_scheme
+
         self.s3_resource.Object.assert_called_once_with(
             self.first_s3_bucket, self.first_s3_key
         )
 
     def test_upgrades_if_just_component_is_whitelisted(self):
-        account_scheme = config.build_account_scheme_s3(
+        account_scheme, old_scheme = config.build_account_scheme_s3(
             self.s3_resource, self.s3_url, 'not-whitelisted-team',
             self.whitelisted_component,
         )
 
         assert account_scheme.release_account.id == '123456789'
         assert account_scheme.account_ids == ['123456789']
+
+        assert old_scheme.release_account.id == '222222222222'
+        assert sorted(old_scheme.account_ids) == [
+            '111111111111', '222222222222',
+        ]
 
         self.s3_resource.Object.assert_any_call(
             self.first_s3_bucket, self.first_s3_key
@@ -624,13 +638,18 @@ class TestForwardAccountScheme(unittest.TestCase):
         )
 
     def test_upgrades_if_just_team_is_whitelisted(self):
-        account_scheme = config.build_account_scheme_s3(
+        account_scheme, old_scheme = config.build_account_scheme_s3(
             self.s3_resource, self.s3_url, self.whitelisted_team,
             'not-whitelisted-component',
         )
 
         assert account_scheme.release_account.id == '123456789'
         assert account_scheme.account_ids == ['123456789']
+
+        assert old_scheme.release_account.id == '222222222222'
+        assert sorted(old_scheme.account_ids) == [
+            '111111111111', '222222222222',
+        ]
 
         self.s3_resource.Object.assert_any_call(
             self.first_s3_bucket, self.first_s3_key
