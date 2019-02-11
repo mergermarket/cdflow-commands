@@ -103,6 +103,16 @@ def _run(argv):
             args
         )
 
+    if old_scheme:
+        new_url = old_scheme.raw_scheme\
+            .get('upgrade-account-scheme', {}).get('new-url')
+        logger.warning('*'*20)
+        logger.warning(
+            'Account scheme has been upgraded. Manually change '
+            f'account_scheme_url key in cdflow.yml to {new_url}'
+        )
+        logger.warning('*'*20)
+
 
 def run_release(release_account_session, account_scheme, manifest, args):
     commit = check_output(

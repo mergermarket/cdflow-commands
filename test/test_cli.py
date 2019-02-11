@@ -348,11 +348,14 @@ class TestMigrateState(unittest.TestCase):
         account_scheme = MagicMock(spec=AccountScheme)
         account_scheme.default_region = 'eu-west-12'
         account_scheme.release_account = MagicMock(spec=Account)
+        account_scheme.release_account.alias = 'release'
         account_scheme.release_bucket = 'bucket'
         old_account_scheme = MagicMock(spec=AccountScheme)
         old_account_scheme.default_region = 'eu-west-12'
         old_account_scheme.release_account = MagicMock(spec=Account)
+        old_account_scheme.release_account.alias = 'old-release'
         old_account_scheme.release_bucket = 'bucket'
+        old_account_scheme.raw_scheme = {}
         build_account_scheme_s3.return_value = (
             account_scheme, old_account_scheme,
         )
