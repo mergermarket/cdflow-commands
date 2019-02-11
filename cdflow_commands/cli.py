@@ -83,6 +83,10 @@ def _run(argv):
     root_session = Session(region_name=account_scheme.default_region)
 
     if old_scheme:
+        logger.debug(
+            f'Migrating state from {old_scheme.release_account.alias} '
+            f'to {account_scheme.release_account.alias}'
+        )
         migrate_state(
             root_session, account_scheme, old_scheme, team, component,
         )
