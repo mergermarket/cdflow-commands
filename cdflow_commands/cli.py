@@ -65,6 +65,27 @@ class NoopReleasePlugin:
         return {}
 
 
+def swap_account_schemes_back_if_component_flag(
+    account_scheme, old_scheme, args,
+):
+    if args['--component'] and old_scheme:
+        account_scheme, old_scheme = old_scheme, None
+
+        highlight_log_message(
+            ('Passing the --component flag to cdflow is deprecated',)
+        )
+
+    return account_scheme, old_scheme
+
+
+def highlight_log_message(messages):
+    stars_count = max(len(m) for m in messages)
+    logger.warning('*'*stars_count)
+    for message in messages:
+        logger.warning(message)
+    logger.warning('*'*stars_count)
+
+
 def _run(argv):
     args = docopt(__doc__, argv=argv)
 
@@ -80,6 +101,11 @@ def _run(argv):
         root_session.resource('s3'), manifest.account_scheme_url,
         team, component,
     )
+
+    account_scheme, old_scheme = swap_account_schemes_back_if_component_flag(
+        account_scheme, old_scheme, args,
+    )
+
     root_session = Session(region_name=account_scheme.default_region)
 
     if old_scheme:
@@ -106,12 +132,13 @@ def _run(argv):
     if old_scheme:
         new_url = old_scheme.raw_scheme\
             .get('upgrade-account-scheme', {}).get('new-url')
-        logger.warning('*'*20)
-        logger.warning(
-            'Account scheme has been upgraded. Manually change '
-            f'account_scheme_url key in cdflow.yml to {new_url}'
-        )
-        logger.warning('*'*20)
+        highlight_log_message((
+            'Account scheme has been upgraded.',
+            (
+                'Manually change account_scheme_url key in '
+                f'cdflow.yml to {new_url}'
+            ),
+        ))
 
 
 def run_release(release_account_session, account_scheme, manifest, args):
