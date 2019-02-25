@@ -10,6 +10,7 @@ class ReleasePlugin:
     def __init__(self, release, account_scheme):
         self._boto_session = release.boto_session
         self._component_name = release.component_name
+        self._team = release._team
         self._version = release.version
         self._account_scheme = account_scheme
         self._multi_region = release.multi_region
@@ -20,9 +21,12 @@ class ReleasePlugin:
 
     @property
     def _lambda_s3_key(self):
-        return '{}/{}-{}.zip'.format(
+        key = '{}/{}-{}.zip'.format(
             self._component_name, self._component_name, self._version
         )
+        if not self._account_scheme.classic_metadata_handling:
+            key = f'{self._team}/{key}'
+        return key
 
     @property
     def _boto_s3_client(self):
