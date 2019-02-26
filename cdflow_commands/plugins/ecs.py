@@ -24,7 +24,6 @@ class ReleasePlugin:
     def create(self):
         check_call([
             'docker', 'build',
-            '--cache-from', self._latest_image_name,
             '-t', self._image_name, '.'
         ])
 
