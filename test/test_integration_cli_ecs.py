@@ -121,12 +121,6 @@ class TestReleaseCLI(unittest.TestCase):
             component_name,
             version
         )
-        latest_image_name = '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
-            123456789,
-            'us-north-4',
-            component_name,
-            'latest'
-        )
 
         cli.run([
             'release', '--platform-config', 'path/to/config',
@@ -142,7 +136,6 @@ class TestReleaseCLI(unittest.TestCase):
 
         check_call.assert_any_call([
             'docker', 'build',
-            '--cache-from', latest_image_name,
             '-t', image_name, '.'
         ])
         check_call.assert_any_call(['docker', 'push', image_name])
@@ -262,16 +255,9 @@ class TestReleaseCLI(unittest.TestCase):
             component_name,
             version
         )
-        latest_image_name = '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
-            123456789,
-            'us-north-4',
-            component_name,
-            'latest'
-        )
 
         check_call.assert_any_call([
             'docker', 'build',
-            '--cache-from', latest_image_name,
             '-t', image_name, '.'
         ])
         check_call.assert_any_call(['docker', 'push', image_name])

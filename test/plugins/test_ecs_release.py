@@ -111,10 +111,6 @@ class TestRelease(unittest.TestCase):
             account_id, region, component_name, 'dev'
         )
 
-        latest_image_name = '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
-            account_id, region, component_name, 'latest'
-        )
-
         plugin = ReleasePlugin(release, account_scheme)
 
         with patch('cdflow_commands.plugins.ecs.check_call') as check_call:
@@ -127,7 +123,6 @@ class TestRelease(unittest.TestCase):
             check_call.assert_called_once_with([
                 'docker',
                 'build',
-                '--cache-from', latest_image_name,
                 '-t', image_name, '.'
             ])
 
@@ -146,14 +141,9 @@ class TestRelease(unittest.TestCase):
                 self._account_id, self._region, self._component_name, version
             )
 
-            latest_image_name = '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
-                self._account_id, self._region, self._component_name, 'latest'
-            )
-
             check_call.assert_any_call([
                 'docker',
                 'build',
-                '--cache-from', latest_image_name,
                 '-t', image_name, '.'
             ])
 
