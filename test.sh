@@ -1,28 +1,19 @@
-#!/bin/bash
+#!/bin/sh
 
-set -euo pipefail
+set -e
 
-IMAGE_ID="$(basename $(pwd))-test"
+docker build -t cdflow-commands.test --target test .
 
-docker image build -t "${IMAGE_ID}" --target test .
-
-if [[ "${!#}" == "--shell" ]]
-then
-    ARGS="sh"
-else
-    ARGS="py.test \
-            -n auto \
-            --cov=. \
-            --cov-report term-missing \
-            --tb=short \
-            $@"
-fi
-
-docker container run \
-    --name "${IMAGE_ID}" \
+docker run \
+    --name cdflow-commands.test \
     --rm \
     -i $(tty -s && echo -t) \
-    -v "$(pwd)":/opt/cdflow-commands \
-    "${IMAGE_ID}" sh -c "${ARGS}"
+    $(tty -s && echo -v $(pwd)/.hypothesis/:/usr/src/app/.hypothesis/) \
+    cdflow-commands.test py.test \
+    	-n auto \
+        --cov=. \
+        --cov-report term-missing \
+        --tb=short \
+        "$@"
 
-docker container run --rm "${IMAGE_ID}" flake8 --max-complexity=4
+docker run --rm cdflow-commands.test flake8 --max-complexity=4
