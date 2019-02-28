@@ -37,14 +37,13 @@ RUN pipenv install --deploy --system
 
 FROM base AS test
 
+RUN apk add bash
+
 ENV AWS_ACCESS_KEY_ID dummy
 ENV AWS_SECRET_ACCESS_KEY dummy
 
 COPY Pipfile Pipfile.lock ./
 RUN pipenv install --deploy --system --dev
-
-COPY ./cdflow_commands /opt/cdflow-commands/cdflow_commands/
-COPY ./test /opt/cdflow-commands/test/
 
 FROM base
 
