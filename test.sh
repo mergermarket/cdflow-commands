@@ -8,7 +8,7 @@ docker image build -t "${IMAGE_ID}" --target test .
 
 if [[ "${!#}" == "--shell" ]]
 then
-    ARGS="sh"
+    ARGS="bash"
 else
     ARGS="py.test \
             -n auto \
