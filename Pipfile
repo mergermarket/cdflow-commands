@@ -7,7 +7,7 @@ name = "pypi"
 "boto3" = "*"
 credstash = "*"
 docopt = "*"
-pyyaml = "*"
+pyyaml = ">=4.2b1"
 
 [dev-packages]
 pytest = "*"
@@ -23,3 +23,6 @@ freezegun = "*"
 
 [requires]
 python_version = "3.7"
+
+[pipenv]
+allow_prereleases = true
