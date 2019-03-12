@@ -6,7 +6,7 @@ from string import ascii_letters, digits
 import unittest
 from zipfile import ZipInfo
 
-from hypothesis import given
+from hypothesis import given, settings
 from hypothesis.strategies import dictionaries, fixed_dictionaries, lists, text
 from mock import MagicMock, Mock, patch, ANY
 from moto import mock_s3
@@ -816,6 +816,7 @@ class TestFindLatestReleaseVersion(unittest.TestCase):
             max_size=2,
         ),
     }))
+    @settings(deadline=None)
     def test_find_latest_release_version(self, fixtures):
         team_name = fixtures['team_name']
         component_name = fixtures['component_name']
