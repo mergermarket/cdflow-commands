@@ -856,6 +856,7 @@ class TestFindLatestReleaseVersion(unittest.TestCase):
             max_size=3,
         ),
     }))
+    @settings(deadline=None)
     def test_find_latest_release_version_in_release_account(self, fixtures):
         team_name = fixtures['team_name']
         component_name = fixtures['component_name']
