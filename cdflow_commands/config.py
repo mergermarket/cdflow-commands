@@ -44,7 +44,7 @@ Manifest = namedtuple('Manifest', [
 
 def load_manifest():
     with open('cdflow.yml') as f:
-        manifest_data = yaml.load(f.read())
+        manifest_data = yaml.load(f.read(), Loader=yaml.SafeLoader)
         return Manifest(
             manifest_data['account-scheme-url'],
             manifest_data['team'],
