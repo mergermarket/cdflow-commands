@@ -235,9 +235,9 @@ def run_non_release_command_on_release(
         )
     elif args['destroy']:
         run_destroy(
-            path_to_release, metadata_account_session,
+            path_to_release, account_scheme, metadata_account_session,
             infrastructure_account_session, manifest, args, environment,
-            component_name, account_scheme
+            component_name
         )
 
 
@@ -267,25 +267,33 @@ def run_deploy(
 
 
 def run_destroy(
-    path_to_release, metadata_account_session, infrastructure_account_session,
-    manifest, args, environment, component_name, account_scheme
+    path_to_release, account_scheme, metadata_account_session,
+    infrastructure_account_session, manifest, args, environment, component_name
 ):
     state = terraform_state(
-        path_to_release, '',
+        path_to_release, INFRASTRUCTURE_DEFINITIONS_PATH,
         metadata_account_session, environment, component_name,
         manifest.tfstate_filename, account_scheme, manifest.team,
     )
     state.init()
 
-    destroy = Destroy(infrastructure_account_session, path_to_release)
+    secrets = {
+        'secrets': get_secrets(
+            environment, manifest.team,
+            component_name, infrastructure_account_session
+        )
+    }
 
-    plan_only = args['--plan-only']
+    destroy = Destroy(
+        environment, path_to_release, secrets,
+        account_scheme, infrastructure_account_session
+    )
 
     logger.info(
         f'Planning destruction of {component_name} in {environment}'
     )
 
-    destroy.run(plan_only)
+    destroy.run(args['--plan-only'])
 
 
 def conditionally_set_debug(verbose):
