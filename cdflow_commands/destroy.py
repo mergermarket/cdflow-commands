@@ -41,7 +41,7 @@ class Destroy:
                 f'terraform plan exited with {plan_exit_code}'
             )
         if not plan_only and \
-            plan_exit_code == TERRAFORM_PLAN_EXIT_CODE_SUCCESS_CHANGES_PRESENT:
+           plan_exit_code == TERRAFORM_PLAN_EXIT_CODE_SUCCESS_CHANGES_PRESENT:
             self._apply()
 
     def _print_obfuscated_output(self, out):
