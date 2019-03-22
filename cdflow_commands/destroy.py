@@ -9,6 +9,7 @@ from cdflow_commands.config import env_with_aws_credetials
 from cdflow_commands.constants import (
     CONFIG_BASE_PATH, GLOBAL_CONFIG_FILE, INFRASTRUCTURE_DEFINITIONS_PATH,
     PLATFORM_CONFIG_BASE_PATH, RELEASE_METADATA_FILE, TERRAFORM_BINARY,
+    TERRAFORM_PLAN_EXIT_CODE_SUCCESS_NO_CHANGES,
     TERRAFORM_PLAN_EXIT_CODE_ERROR,
     TERRAFORM_PLAN_EXIT_CODE_SUCCESS_CHANGES_PRESENT
 )
@@ -40,8 +41,10 @@ class Destroy:
             raise TerraformApplyError(
                 f'terraform plan exited with {plan_exit_code}'
             )
-        if not plan_only and \
-           plan_exit_code == TERRAFORM_PLAN_EXIT_CODE_SUCCESS_CHANGES_PRESENT:
+        logger.debug(f'terraform plan exit code: {plan_exit_code}')
+        if plan_only:
+            return
+        if plan_exit_code == TERRAFORM_PLAN_EXIT_CODE_SUCCESS_CHANGES_PRESENT:
             self._apply()
 
     def _print_obfuscated_output(self, out):
@@ -94,7 +97,7 @@ class Destroy:
 
                 exit_code = process.poll()
                 if exit_code is not None:
-                    return exit_code
+                    return self._handle_plan_exit_code(out, exit_code)
 
     def _apply(self):
         check_call(
@@ -163,3 +166,17 @@ class Destroy:
             parameters += ['-var-file', GLOBAL_CONFIG_FILE]
 
         return parameters
+
+    def _handle_plan_exit_code(self, out, exit_code):
+        """ Handles terraform plan exit code
+        Terraform fix when 'terraform plan -destroy -detailed-exitcode'
+        returns the wrong exit code when no changes are present
+        More info:
+        https://github.com/hashicorp/terraform/issues/18453
+        https://github.com/hashicorp/terraform/issues/18224
+        """
+        if exit_code != TERRAFORM_PLAN_EXIT_CODE_ERROR:
+            if 'No changes. Infrastructure is up-to-date.' \
+               in out.decode('utf-8'):
+                exit_code = TERRAFORM_PLAN_EXIT_CODE_SUCCESS_NO_CHANGES
+        return exit_code
