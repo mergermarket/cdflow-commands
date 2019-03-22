@@ -12,3 +12,8 @@ CDFLOW_BASE_PATH = '/cdflow'
 
 RELEASE_METADATA_FILE = 'release.json'
 ACCOUNT_SCHEME_FILE = 'account-scheme.json'
+
+# More in: https://www.terraform.io/docs/commands/plan.html#detailed-exitcode
+TERRAFORM_PLAN_EXIT_CODE_SUCCESS_NO_CHANGES = 0
+TERRAFORM_PLAN_EXIT_CODE_ERROR = 1
+TERRAFORM_PLAN_EXIT_CODE_SUCCESS_CHANGES_PRESENT = 2
