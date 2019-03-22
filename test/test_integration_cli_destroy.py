@@ -160,7 +160,7 @@ class TestDestroyCLI(unittest.TestCase):
         mock_find_latest_release_version.return_value = '1'
 
         process_mock = Mock()
-        process_mock.poll.return_value = 0
+        process_mock.poll.return_value = 2
         attrs = {
             'communicate.return_value': (
                 ''.encode('utf-8'),
@@ -208,7 +208,8 @@ class TestDestroyCLI(unittest.TestCase):
 
         popen_call.assert_any_call(
             [
-                'terraform', 'plan', '-input=false', '-destroy',
+                'terraform', 'plan', '-input=false',
+                '-destroy', '-detailed-exitcode',
                 '-var', 'env=live',
                 '-var-file', 'release.json',
                 '-var-file', ANY,
@@ -265,7 +266,8 @@ class TestDestroyCLI(unittest.TestCase):
         # Then
         popen_call.assert_called_once_with(
             [
-                'terraform', 'plan', '-input=false', '-destroy',
+                'terraform', 'plan', '-input=false',
+                '-destroy', '-detailed-exitcode',
                 '-var', 'env=live',
                 '-var-file', 'release.json',
                 '-var-file', ANY,
