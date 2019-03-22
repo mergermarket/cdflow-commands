@@ -8,7 +8,9 @@ from time import time
 from cdflow_commands.config import env_with_aws_credetials
 from cdflow_commands.constants import (
     CONFIG_BASE_PATH, GLOBAL_CONFIG_FILE, INFRASTRUCTURE_DEFINITIONS_PATH,
-    PLATFORM_CONFIG_BASE_PATH, RELEASE_METADATA_FILE, TERRAFORM_BINARY
+    PLATFORM_CONFIG_BASE_PATH, RELEASE_METADATA_FILE, TERRAFORM_BINARY,
+    TERRAFORM_PLAN_EXIT_CODE_ERROR,
+    TERRAFORM_PLAN_EXIT_CODE_SUCCESS_CHANGES_PRESENT
 )
 from cdflow_commands.exceptions import UserFacingError
 from cdflow_commands.logger import logger
@@ -34,11 +36,12 @@ class Destroy:
 
     def run(self, plan_only=False):
         plan_exit_code = self._plan()
-        if plan_exit_code != 0:
+        if plan_exit_code == TERRAFORM_PLAN_EXIT_CODE_ERROR:
             raise TerraformApplyError(
                 f'terraform plan exited with {plan_exit_code}'
             )
-        if not plan_only:
+        if not plan_only and \
+            plan_exit_code == TERRAFORM_PLAN_EXIT_CODE_SUCCESS_CHANGES_PRESENT:
             self._apply()
 
     def _print_obfuscated_output(self, out):
@@ -70,8 +73,9 @@ class Destroy:
             logger.debug(f'Writing secrets to file {secrets_file.name}')
             json.dump(self._secrets, secrets_file)
             secrets_file.flush()
+            flags = ['-destroy', '-detailed-exitcode']
             command = self._build_parameters(
-                'plan', secrets_file.name, flags=['-destroy']
+                'plan', secrets_file.name, flags=flags
             )
             logger.debug(f'Running {command}')
 

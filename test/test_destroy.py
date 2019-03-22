@@ -113,7 +113,8 @@ class TestDestroy(unittest.TestCase):
 
             popen_call.assert_any_call(
                 [
-                    'terraform', 'plan', '-input=false', '-destroy',
+                    'terraform', 'plan', '-input=false',
+                    '-destroy', '-detailed-exitcode',
                     '-var', 'env={}'.format(environment),
                     '-var-file', 'release.json',
                     '-var-file', 'platform-config/{}/{}.json'.format(
@@ -200,7 +201,7 @@ class TestDestroy(unittest.TestCase):
             time.return_value = utcnow
 
             process_mock = Mock()
-            process_mock.poll.return_value = 0
+            process_mock.poll.return_value = 2
             attrs = {
                 'communicate.return_value': (
                     (
@@ -398,7 +399,8 @@ class TestDestroy(unittest.TestCase):
 
             popen_call.assert_called_once_with(
                 [
-                    'terraform', 'plan', '-input=false', '-destroy',
+                    'terraform', 'plan', '-input=false',
+                    '-destroy', '-detailed-exitcode',
                     '-var', 'env={}'.format(environment),
                     '-var-file', 'release.json',
                     '-var-file', 'platform-config/{}/{}.json'.format(
@@ -477,7 +479,7 @@ class TestDestroy(unittest.TestCase):
             time.return_value = utcnow
 
             process_mock = Mock()
-            process_mock.poll.return_value = 0
+            process_mock.poll.return_value = 2
             attrs = {
                 'communicate.return_value': (
                     ''.encode('utf-8'),
@@ -498,7 +500,8 @@ class TestDestroy(unittest.TestCase):
 
             popen_call.assert_any_call(
                 [
-                    'terraform', 'plan', '-input=false', '-destroy',
+                    'terraform', 'plan', '-input=false',
+                    '-destroy', '-detailed-exitcode',
                     '-var', 'env={}'.format(environment),
                     '-var-file', 'release.json',
                     '-var-file', 'platform-config/{}/{}.json'.format(
@@ -577,7 +580,7 @@ class TestDestroy(unittest.TestCase):
             time.return_value = utcnow
 
             process_mock = Mock()
-            process_mock.poll.return_value = 0
+            process_mock.poll.return_value = 2
             attrs = {
                 'communicate.return_value': (
                     ''.encode('utf-8'),
@@ -603,7 +606,8 @@ class TestDestroy(unittest.TestCase):
 
             popen_call.assert_any_call(
                 [
-                    'terraform', 'plan', '-input=false', '-destroy',
+                    'terraform', 'plan', '-input=false',
+                    '-destroy', '-detailed-exitcode',
                     '-var', 'env={}'.format(environment),
                     '-var-file', 'release.json',
                     '-var-file', 'platform-config/{}/{}.json'.format(
