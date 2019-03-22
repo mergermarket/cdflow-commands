@@ -43,20 +43,20 @@ def build(dockerHubCredentialsId, imageName, registry) {
                 docker.image(imageNameTag).push()
             }
 
-            // parallel(
-            //   cdflow_test_service_classic_metadata_handling: {
-            //     build job: 'platform/cdflow-test-service-classic-metadata-handling', parameters: [string(name: 'CDFLOW_IMAGE_ID', value: imageNameTag) ]
-            //   },
-            //   cdflow_test_service: {
-            //     build job: 'platform/cdflow-test-service', parameters: [string(name: 'CDFLOW_IMAGE_ID', value: imageNameTag) ]
-            //   },
-            //   cdflow_test_infrastructure: {
-            //     build job: 'platform/cdflow-test-infrastructure', parameters: [string(name: 'CDFLOW_IMAGE_ID', value: imageNameTag) ]
-            //   },
-            //   cdflow_test_lambda: {
-            //     build job: 'platform/cdflow-test-lambda', parameters: [string(name: 'CDFLOW_IMAGE_ID', value: imageNameTag) ]
-            //   }
-            // )
+            parallel(
+              cdflow_test_service_classic_metadata_handling: {
+                build job: 'platform/cdflow-test-service-classic-metadata-handling', parameters: [string(name: 'CDFLOW_IMAGE_ID', value: imageNameTag) ]
+              },
+              cdflow_test_service: {
+                build job: 'platform/cdflow-test-service', parameters: [string(name: 'CDFLOW_IMAGE_ID', value: imageNameTag) ]
+              },
+              cdflow_test_infrastructure: {
+                build job: 'platform/cdflow-test-infrastructure', parameters: [string(name: 'CDFLOW_IMAGE_ID', value: imageNameTag) ]
+              },
+              cdflow_test_lambda: {
+                build job: 'platform/cdflow-test-lambda', parameters: [string(name: 'CDFLOW_IMAGE_ID', value: imageNameTag) ]
+              }
+            )
         }
     }
 }
