@@ -88,6 +88,15 @@ def highlight_log_message(messages):
     logger.warning('*'*stars_count)
 
 
+def get_command_function(args):
+    if args['release']:
+        return run_release
+    elif args['shell']:
+        return run_shell
+    else:
+        return run_non_release_command
+
+
 def _run(argv):
     args = docopt(__doc__, argv=argv)
 
@@ -123,18 +132,13 @@ def _run(argv):
         root_session, account_scheme.release_account,
     )
 
-    if args['release']:
-        run_release(release_account_session, account_scheme, manifest, args)
-    elif args['shell']:
-        run_shell(
-            root_session, release_account_session, account_scheme, manifest,
-            args,
-        )
-    else:
-        run_non_release_command(
-            root_session, release_account_session, account_scheme, manifest,
-            args
-        )
+    get_command_function(args)(
+        root_session,
+        release_account_session,
+        account_scheme,
+        manifest,
+        args,
+    )
 
     if old_scheme:
         new_url = old_scheme.raw_scheme\
@@ -148,7 +152,7 @@ def _run(argv):
         ))
 
 
-def run_release(release_account_session, account_scheme, manifest, args):
+def run_release(_, release_account_session, account_scheme, manifest, args):
     commit = check_output(
         ['git', 'rev-parse', 'HEAD']
     ).decode('utf-8').strip()
