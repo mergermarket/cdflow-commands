@@ -716,6 +716,67 @@ class TestTerraformBackendConfigClassic(unittest.TestCase):
             cwd=base_directory,
         )
 
+    @given(terraform_backend_input)
+    def test_modules_and_plugins_can_be_fetched(self, terraform_backend_input):
+        base_directory = terraform_backend_input['base_directory']
+        sub_directory = terraform_backend_input['sub_directory']
+        bucket_name = terraform_backend_input['bucket_name']
+        lock_table_name = terraform_backend_input['lock_table_name']
+        environment_name = terraform_backend_input['environment_name']
+        component_name = terraform_backend_input['component_name']
+        tfstate_filename = terraform_backend_input['tfstate_filename']
+        team_name = terraform_backend_input['team_name']
+        boto_session = MagicMock(spec=Session)
+        account_scheme = MagicMock(spec=AccountScheme)
+        account_scheme.classic_metadata_handling = True
+
+        state_file_key = (
+            f'{environment_name}/{component_name}/{tfstate_filename}'
+        )
+
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch('cdflow_commands.state.NamedTemporaryFile')
+            )
+            stack.enter_context(patch('cdflow_commands.state.atexit'))
+            check_call = stack.enter_context(
+                patch('cdflow_commands.state.check_call')
+            )
+            LockTableFactory = stack.enter_context(
+                patch('cdflow_commands.state.LockTableFactory')
+            )
+            LockTableFactory.return_value.get_table_name.return_value = \
+                lock_table_name
+            S3BucketFactory = stack.enter_context(
+                patch('cdflow_commands.state.S3BucketFactory')
+            )
+            S3BucketFactory.return_value.get_bucket_name.return_value = \
+                bucket_name
+
+            state = terraform_state(
+                base_directory, sub_directory, boto_session,
+                environment_name, component_name, tfstate_filename,
+                account_scheme, team_name,
+            )
+            state.init(get_terraform_modules=True)
+
+        check_call.assert_called_once_with(
+            [
+                'terraform', 'init',
+                '-get=true',
+                '-get-plugins=true',
+                f'-backend-config=bucket={bucket_name}',
+                f'-backend-config=region={boto_session.region_name}',
+                f'-backend-config=key={state_file_key}',
+                f'-backend-config=dynamodb_table={lock_table_name}',
+                ANY,
+                ANY,
+                ANY,
+                join(base_directory, sub_directory),
+            ],
+            cwd=base_directory,
+        )
+
     @given(fixed_dictionaries({
         'terraform_backend_input': terraform_backend_input,
         'temp_file_name': text(
@@ -893,6 +954,63 @@ class TestTerraformBackendConfig(unittest.TestCase):
                 'terraform', 'init',
                 '-get=false',
                 '-get-plugins=false',
+                f'-backend-config=bucket={bucket_name}',
+                f'-backend-config=region={boto_session.region_name}',
+                f'-backend-config=key={tfstate_filename}',
+                (
+                    '-backend-config=workspace_key_prefix'
+                    f'={team_name}/{component_name}'
+                ),
+                f'-backend-config=dynamodb_table={lock_table_name}',
+                ANY,
+                ANY,
+                ANY,
+                join(base_directory, sub_directory),
+            ],
+            cwd=base_directory,
+        )
+
+    @given(terraform_backend_input)
+    def test_modules_and_plugins_can_be_fetched(self, terraform_backend_input):
+        base_directory = terraform_backend_input['base_directory']
+        sub_directory = terraform_backend_input['sub_directory']
+        bucket_name = terraform_backend_input['bucket_name']
+        lock_table_name = terraform_backend_input['lock_table_name']
+        environment_name = terraform_backend_input['environment_name']
+        component_name = terraform_backend_input['component_name']
+        tfstate_filename = terraform_backend_input['tfstate_filename']
+        team_name = terraform_backend_input['team_name']
+        boto_session = MagicMock(spec=Session)
+        account_scheme = MagicMock(spec=AccountScheme)
+        account_scheme.classic_metadata_handling = False
+        account_scheme.backend_s3_bucket = bucket_name
+        account_scheme.backend_s3_dynamodb_table = lock_table_name
+
+        with ExitStack() as stack:
+            stack.enter_context(
+                patch('cdflow_commands.state.NamedTemporaryFile')
+            )
+            stack.enter_context(patch('cdflow_commands.state.atexit'))
+            check_call = stack.enter_context(
+                patch('cdflow_commands.state.check_call')
+            )
+            check_output = stack.enter_context(
+                patch('cdflow_commands.state.check_output')
+            )
+            check_output.return_value = '* default'.encode('utf-8')
+
+            state = terraform_state(
+                base_directory, sub_directory, boto_session,
+                environment_name, component_name, tfstate_filename,
+                account_scheme, team_name,
+            )
+            state.init(get_terraform_modules=True)
+
+        check_call.assert_any_call(
+            [
+                'terraform', 'init',
+                '-get=true',
+                '-get-plugins=true',
                 f'-backend-config=bucket={bucket_name}',
                 f'-backend-config=region={boto_session.region_name}',
                 f'-backend-config=key={tfstate_filename}',
