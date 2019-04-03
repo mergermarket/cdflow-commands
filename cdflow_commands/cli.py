@@ -8,6 +8,7 @@ Usage:
                    [--release-data=key=value]... <version> [options]
     cdflow deploy <environment> <version> [options]
     cdflow destroy <environment> [options]
+    cdflow shell <environment> [options]
 
 Options:
     -c <component_name>, --component <component_name>
@@ -20,6 +21,7 @@ import logging
 import sys
 from shutil import rmtree
 from subprocess import check_output
+import pty
 
 from boto3.session import Session
 
@@ -123,6 +125,11 @@ def _run(argv):
 
     if args['release']:
         run_release(release_account_session, account_scheme, manifest, args)
+    elif args['shell']:
+        run_shell(
+            root_session, release_account_session, account_scheme, manifest,
+            args,
+        )
     else:
         run_non_release_command(
             root_session, release_account_session, account_scheme, manifest,
@@ -170,6 +177,35 @@ def run_release(release_account_session, account_scheme, manifest, args):
         ))
 
     release.create(plugin)
+
+
+def run_shell(
+    root_session, release_account_session, account_scheme, manifest, args
+):
+    os.chdir(INFRASTRUCTURE_DEFINITIONS_PATH)
+    cwd = os.getcwd()
+
+    environment = args['<environment>']
+    component_name = get_component_name(args['--component'])
+
+    infrastructure_account_session = assume_infrastructure_account_role(
+        account_scheme, environment, root_session
+    )
+    if account_scheme.classic_metadata_handling:
+        metadata_account_session = infrastructure_account_session
+    else:
+        metadata_account_session = release_account_session
+
+    state = terraform_state(
+        cwd, '.',
+        metadata_account_session, environment, component_name,
+        manifest.tfstate_filename, account_scheme, manifest.team,
+    )
+    state.init(True)
+
+    with open('/tmp/shrc', 'w+') as f:
+        f.write('export PS1="terraform # "')
+    pty.spawn(('bash', '--rcfile', '/tmp/shrc',))
 
 
 def run_non_release_command(

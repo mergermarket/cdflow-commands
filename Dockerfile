@@ -9,7 +9,7 @@ ENV K8SVERSIONDATE=2018-12-06
 
 RUN echo http://dl-cdn.alpinelinux.org/alpine/latest-stable/main >> /etc/apk/repositories
 RUN apk update
-RUN apk --no-cache add gcc musl-dev libffi-dev openssl-dev docker curl git zip unzip wget libc6-compat
+RUN apk --no-cache add gcc musl-dev libffi-dev openssl-dev docker curl git zip unzip wget libc6-compat bash
 
 RUN cd /tmp && \
     curl -o kubectl https://amazon-eks.s3-us-west-2.amazonaws.com/${K8SVERSION}/${K8SVERSIONDATE}/bin/linux/amd64/kubectl && \
