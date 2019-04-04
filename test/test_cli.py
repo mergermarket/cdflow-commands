@@ -170,6 +170,7 @@ class TestRoles(unittest.TestCase):
             root_session, account_scheme.release_account,
         )
         run_release.assert_called_once_with(
+            ANY,
             release_account_session, account_scheme, ANY,
             ANY
         )

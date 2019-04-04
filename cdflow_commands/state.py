@@ -73,7 +73,7 @@ class TerraformStateClassic:
             self.environment_name, self.component_name, self.tfstate_filename,
         )
 
-    def init(self):
+    def init(self, get_terraform_modules=False):
         with NamedTemporaryFile(
             prefix='cdflow_backend_', suffix='.tf',
             dir=self.working_directory, delete=False, mode='w+'
@@ -100,8 +100,8 @@ class TerraformStateClassic:
         check_call(
             [
                 TERRAFORM_BINARY, 'init',
-                '-get=false',
-                '-get-plugins=false',
+                f'-get={"true" if get_terraform_modules else "false"}',
+                f'-get-plugins={"true" if get_terraform_modules else "false"}',
                 f'-backend-config=bucket={self.bucket}',
                 f'-backend-config=region={self.boto_session.region_name}',
                 f'-backend-config=key={self.state_file_key}',
@@ -172,7 +172,7 @@ class TerraformState:
         )
         atexit.register(remove_file, backend_file.name)
 
-    def terraform_init(self):
+    def terraform_init(self, get=False):
         credentials = self.boto_session.get_credentials()
         logger.debug(
             f'Initialising in {self.boto_session.region_name} '
@@ -184,8 +184,8 @@ class TerraformState:
         check_call(
             [
                 TERRAFORM_BINARY, 'init',
-                '-get=false',
-                '-get-plugins=false',
+                f'-get={"true" if get else "false"}',
+                f'-get-plugins={"true" if get else "false"}',
                 f'-backend-config=bucket={self.bucket}',
                 f'-backend-config=region={self.boto_session.region_name}',
                 f'-backend-config=key={self.tfstate_filename}',
@@ -235,14 +235,14 @@ class TerraformState:
             cwd=self.base_directory,
         )
 
-    def init(self):
+    def init(self, get_terraform_modules=False):
         with NamedTemporaryFile(
             prefix='cdflow_backend_', suffix='.tf',
             dir=self.working_directory, delete=False, mode='w+'
         ) as backend_file:
             self.write_backend_config(backend_file)
 
-        self.terraform_init()
+        self.terraform_init(get_terraform_modules)
 
         if self.workspace_exists():
             logger.debug(
