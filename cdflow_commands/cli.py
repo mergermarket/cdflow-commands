@@ -8,7 +8,7 @@ Usage:
                    [--release-data=key=value]... <version> [options]
     cdflow deploy <environment> <version> [options]
     cdflow destroy <environment> [options]
-    cdflow shell <environment> [options]
+    cdflow shell <environment> [<version>] [options]
 
 Options:
     -c <component_name>, --component <component_name>
@@ -186,11 +186,9 @@ def run_release(_, release_account_session, account_scheme, manifest, args):
 def run_shell(
     root_session, release_account_session, account_scheme, manifest, args
 ):
-    os.chdir(INFRASTRUCTURE_DEFINITIONS_PATH)
-    cwd = os.getcwd()
-
     environment = args['<environment>']
     component_name = get_component_name(args['--component'])
+    version = args['<version>']
 
     infrastructure_account_session = assume_infrastructure_account_role(
         account_scheme, environment, root_session
@@ -200,16 +198,46 @@ def run_shell(
     else:
         metadata_account_session = release_account_session
 
-    state = terraform_state(
-        cwd, '.',
-        metadata_account_session, environment, component_name,
-        manifest.tfstate_filename, account_scheme, manifest.team,
-    )
-    state.init(True)
+    credentials = infrastructure_account_session.get_credentials()
 
-    with open('/tmp/shrc', 'w+') as f:
-        f.write('export PS1="terraform # "')
-    pty.spawn(('bash', '--rcfile', '/tmp/shrc',))
+    os.environ['AWS_ACCESS_KEY_ID'] = credentials.access_key
+    os.environ['AWS_SECRET_ACCESS_KEY'] = credentials.secret_key
+    os.environ['AWS_SESSION_TOKEN'] = credentials.token
+    os.environ['AWS_DEFAULT_REGION'] = infrastructure_account_session\
+        .region_name
+
+    if version:
+        with fetch_release(
+            release_account_session, account_scheme, manifest.team,
+            component_name, version,
+        ) as path_to_release:
+            logger.debug('Unpacked release: {}'.format(path_to_release))
+            path_to_release = os.path.join(
+                path_to_release, '{}-{}'.format(component_name, version)
+            )
+            os.chdir(path_to_release)
+            state = terraform_state(
+                path_to_release, INFRASTRUCTURE_DEFINITIONS_PATH,
+                metadata_account_session, environment, component_name,
+                manifest.tfstate_filename, account_scheme, manifest.team,
+            )
+            state.init()
+            with open('/tmp/shrc', 'w+') as f:
+                f.write('export PS1="terraform # "')
+            pty.spawn(('bash', '--rcfile', '/tmp/shrc',))
+    else:
+        os.chdir(INFRASTRUCTURE_DEFINITIONS_PATH)
+        cwd = os.getcwd()
+
+        state = terraform_state(
+            cwd, '.',
+            metadata_account_session, environment, component_name,
+            manifest.tfstate_filename, account_scheme, manifest.team,
+        )
+        state.init(True)
+        with open('/tmp/shrc', 'w+') as f:
+            f.write('export PS1="terraform # "')
+        pty.spawn(('bash', '--rcfile', '/tmp/shrc',))
 
 
 def run_non_release_command(
