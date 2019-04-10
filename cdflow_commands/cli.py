@@ -300,7 +300,17 @@ def write_plan_helper_script(plan_args):
 
 def start_shell():
     with open('/tmp/shrc', 'w+') as f:
-        f.write('export PS1="terraform # "')
+        f.write('''
+echo terraform shell
+echo ===============
+echo
+if [ -f plan.sh ]
+then
+    echo Run ./plan.sh to generate a plan file, which can then be applied.
+fi
+echo
+export PS1="terraform # "
+''')
     pty.spawn(('bash', '--rcfile', '/tmp/shrc',))
 
 
