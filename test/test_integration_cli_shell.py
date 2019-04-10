@@ -2,10 +2,18 @@ import unittest
 from unittest.mock import Mock, patch, MagicMock, ANY
 from io import TextIOWrapper
 import json
+from dataclasses import dataclass
 
 import yaml
 
 from cdflow_commands import cli
+
+
+@dataclass
+class creds:
+    access_key: str
+    secret_key: str
+    token: str
 
 
 class TestCliShell(unittest.TestCase):
@@ -15,21 +23,27 @@ class TestCliShell(unittest.TestCase):
     @patch('cdflow_commands.cli.Session')
     @patch('cdflow_commands.config.Session')
     @patch('cdflow_commands.config.check_output')
-    @patch('cdflow_commands.cli.os')
+    @patch('cdflow_commands.cli.os.getcwd')
+    @patch('cdflow_commands.cli.os.chdir')
     @patch('cdflow_commands.state.NamedTemporaryFile')
     @patch('cdflow_commands.state.check_output')
     @patch('cdflow_commands.state.atexit')
     @patch('cdflow_commands.cli.pty')
     def test_enters_shell(
-        self, pty, atexit, check_output_state, NamedTemporaryFile_state,
-        cli_os, config_check_output, Session_from_config, Session_from_cli,
+        self, pty, atexit, check_output_state, NamedTemporaryFile_state, chdir,
+        cli_getcwd, config_check_output, Session_from_config, Session_from_cli,
         _open, check_call_state,
     ):
-        cli_os.getcwd.return_value = '/tmp/'
+        cli_getcwd.return_value = '/tmp/'
 
         config_check_output.return_value = (
             'git@github.com:org/my-component.git'
         ).encode('utf-8')
+
+        Session_from_config.return_value.get_credentials.return_value = creds(
+            'access-key', 'secret-key', 'token',
+        )
+        Session_from_config.return_value.region_name = 'eu-central-2'
 
         mock_metadata_file = MagicMock(spec=TextIOWrapper)
         metadata = {
@@ -95,18 +109,19 @@ class TestCliShell(unittest.TestCase):
         check_call_state.assert_any_call(
             [
                 'terraform', 'init',
-                ANY, ANY, ANY, ANY, ANY, ANY, ANY, ANY, ANY, ANY,
-                '/tmp/.',
+                '-get=true', '-get-plugins=true',
+                ANY, ANY, ANY, ANY, ANY, ANY, ANY, ANY,
+                '/tmp/infra/.',
             ],
-            cwd='/tmp/',
+            cwd='/tmp/infra',
         )
 
         check_call_state.assert_any_call(
             [
                 'terraform', 'workspace', 'select', 'live',
-                '/tmp/.',
+                '/tmp/infra/.',
             ],
-            cwd='/tmp/',
+            cwd='/tmp/infra',
         )
 
         pty.spawn.assert_called_once()
@@ -116,12 +131,14 @@ class TestCliShell(unittest.TestCase):
             RoleSessionName=ANY,
         )
 
+    @patch('cdflow_commands.cli.move')
     @patch('cdflow_commands.state.check_call')
     @patch('cdflow_commands.config.open')
     @patch('cdflow_commands.cli.Session')
     @patch('cdflow_commands.config.Session')
     @patch('cdflow_commands.config.check_output')
-    @patch('cdflow_commands.cli.os')
+    @patch('cdflow_commands.cli.os.getcwd')
+    @patch('cdflow_commands.cli.os.chdir')
     @patch('cdflow_commands.state.NamedTemporaryFile')
     @patch('cdflow_commands.state.check_output')
     @patch('cdflow_commands.cli.pty')
@@ -131,16 +148,23 @@ class TestCliShell(unittest.TestCase):
     @patch('cdflow_commands.state.atexit')
     def test_finds_release_and_enters_shell(
         self, atexit, TemporaryDirectory, ZipFile, time, pty,
-        check_output_state, NamedTemporaryFile_state, cli_os,
+        check_output_state, NamedTemporaryFile_state, cli_chdir, cli_getcwd,
         config_check_output, Session_from_config, Session_from_cli, _open,
-        check_call_state,
+        check_call_state, move,
     ):
-        cli_os.getcwd.return_value = '/tmp/'
-        cli_os.path.join.return_value = f'/tmp/my-component-1.2.3/'
+
+        cli_getcwd.return_value = '/tmp/my-component-1.2.3'
+
+        TemporaryDirectory.return_value.__enter__.return_value = '/foo/'
 
         config_check_output.return_value = (
             'git@github.com:org/my-component.git'
         ).encode('utf-8')
+
+        Session_from_config.return_value.get_credentials.return_value = creds(
+            'access-key', 'secret-key', 'token',
+        )
+        Session_from_config.return_value.region_name = 'eu-central-2'
 
         mock_metadata_file = MagicMock(spec=TextIOWrapper)
         metadata = {
@@ -206,18 +230,19 @@ class TestCliShell(unittest.TestCase):
         check_call_state.assert_any_call(
             [
                 'terraform', 'init',
-                ANY, ANY, ANY, ANY, ANY, ANY, ANY, ANY, ANY, ANY,
-                '/tmp/my-component-1.2.3/infra',
+                '-get=false', '-get-plugins=false',
+                ANY, ANY, ANY, ANY, ANY, ANY, ANY, ANY,
+                '/tmp/my-component-1.2.3/infra/.',
             ],
-            cwd='/tmp/my-component-1.2.3/',
+            cwd='/tmp/my-component-1.2.3/infra',
         )
 
         check_call_state.assert_any_call(
             [
                 'terraform', 'workspace', 'select', 'live',
-                '/tmp/my-component-1.2.3/infra',
+                '/tmp/my-component-1.2.3/infra/.',
             ],
-            cwd='/tmp/my-component-1.2.3/',
+            cwd='/tmp/my-component-1.2.3/infra',
         )
 
         pty.spawn.assert_called_once()
@@ -228,3 +253,18 @@ class TestCliShell(unittest.TestCase):
         )
 
         ZipFile.assert_called_once()
+
+        move.assert_any_call(
+            '/foo/my-component-1.2.3/release.json',
+            '/tmp/my-component-1.2.3/infra',
+        )
+
+        move.assert_any_call(
+            '/foo/my-component-1.2.3/platform-config',
+            '/tmp/my-component-1.2.3/infra',
+        )
+
+        move.assert_any_call(
+            '/foo/my-component-1.2.3/.terraform',
+            '/tmp/my-component-1.2.3/infra',
+        )
