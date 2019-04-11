@@ -7,7 +7,7 @@ from time import time
 
 from cdflow_commands.config import env_with_aws_credetials
 from cdflow_commands.constants import (
-    CONFIG_BASE_PATH, GLOBAL_CONFIG_FILE, INFRASTRUCTURE_DEFINITIONS_PATH,
+    CONFIG_BASE_PATH, GLOBAL_CONFIG_FILE_NAME, INFRASTRUCTURE_DEFINITIONS_PATH,
     PLATFORM_CONFIG_BASE_PATH, RELEASE_METADATA_FILE, TERRAFORM_BINARY
 )
 from cdflow_commands.exceptions import UserFacingError
@@ -25,12 +25,18 @@ class Deploy:
 
     def __init__(
         self, environment, release_path, secrets, account_scheme, boto_session,
+        infra_path=INFRASTRUCTURE_DEFINITIONS_PATH,
+        config_base_path=CONFIG_BASE_PATH,
+        interactive=False,
     ):
         self._environment = environment
         self._release_path = release_path
         self._secrets = secrets
         self._account_scheme = account_scheme
         self._boto_session = boto_session
+        self._infra_path = infra_path
+        self._config_base_path = config_base_path
+        self._interactive = interactive
 
     def run(self, plan_only=False):
         plan_exit_code = self._plan()
@@ -101,6 +107,8 @@ class Deploy:
 
     @property
     def plan_path(self):
+        if self._interactive:
+            return 'plan-$(date +%s)'
         if not hasattr(self, '_plan_path'):
             self._plan_path = 'plan-{}'.format(time())
         return self._plan_path
@@ -119,7 +127,9 @@ class Deploy:
         ]
 
     def _build_parameters(self, command, secrets_file_path=None):
-        parameters = [TERRAFORM_BINARY, command, '-input=false']
+        parameters = [TERRAFORM_BINARY, command]
+        if not self._interactive:
+            parameters += ['-input=false']
         if command == 'plan':
             parameters = self._add_plan_parameters(
                 parameters, secrets_file_path
@@ -137,23 +147,27 @@ class Deploy:
         for platform_config_path in self._platform_config_file_paths():
             parameters += ['-var-file', platform_config_path]
 
-        parameters += [
-            '-var-file', secrets_file_path,
-            '-out', self.plan_path,
-        ]
+        if secrets_file_path:
+            parameters += ['-var-file', secrets_file_path]
+
+        parameters += ['-out', self.plan_path]
+
         parameters = self._add_environment_config_parameters(parameters)
-        parameters += [INFRASTRUCTURE_DEFINITIONS_PATH]
+        parameters += [self._infra_path]
         return parameters
 
     def _add_environment_config_parameters(self, parameters):
         environment_config_path = path.join(
-            CONFIG_BASE_PATH, '{}.json'.format(self._environment)
+            self._config_base_path, f'{self._environment}.json',
+        )
+        global_config_file_path = path.join(
+            self._config_base_path, GLOBAL_CONFIG_FILE_NAME,
         )
 
         if path.exists(environment_config_path):
             parameters += ['-var-file', environment_config_path]
 
-        if path.exists(GLOBAL_CONFIG_FILE):
-            parameters += ['-var-file', GLOBAL_CONFIG_FILE]
+        if path.exists(global_config_file_path):
+            parameters += ['-var-file', global_config_file_path]
 
         return parameters
