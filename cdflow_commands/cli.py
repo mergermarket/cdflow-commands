@@ -8,7 +8,7 @@ Usage:
                    [--release-data=key=value]... <version> [options]
     cdflow deploy <environment> <version> [options]
     cdflow destroy <environment> [options]
-    cdflow shell <environment> [options]
+    cdflow shell <environment> [<version>] [options]
 
 Options:
     -c <component_name>, --component <component_name>
@@ -17,11 +17,13 @@ Options:
 
 """
 import os
+import stat
 import logging
 import sys
-from shutil import rmtree
+from shutil import rmtree, move
 from subprocess import check_output
 import pty
+import atexit
 
 from boto3.session import Session
 
@@ -30,7 +32,8 @@ from cdflow_commands.config import (
     build_account_scheme_file
 )
 from cdflow_commands.constants import (
-    INFRASTRUCTURE_DEFINITIONS_PATH, ACCOUNT_SCHEME_FILE
+    INFRASTRUCTURE_DEFINITIONS_PATH, ACCOUNT_SCHEME_FILE,
+    RELEASE_METADATA_FILE, PLATFORM_CONFIG_BASE_PATH,
 )
 from cdflow_commands.deploy import Deploy
 from cdflow_commands.destroy import Destroy
@@ -186,11 +189,9 @@ def run_release(_, release_account_session, account_scheme, manifest, args):
 def run_shell(
     root_session, release_account_session, account_scheme, manifest, args
 ):
-    os.chdir(INFRASTRUCTURE_DEFINITIONS_PATH)
-    cwd = os.getcwd()
-
     environment = args['<environment>']
     component_name = get_component_name(args['--component'])
+    version = args['<version>']
 
     infrastructure_account_session = assume_infrastructure_account_role(
         account_scheme, environment, root_session
@@ -200,15 +201,116 @@ def run_shell(
     else:
         metadata_account_session = release_account_session
 
+    credentials = infrastructure_account_session.get_credentials()
+
+    os.environ['AWS_ACCESS_KEY_ID'] = credentials.access_key
+    os.environ['AWS_SECRET_ACCESS_KEY'] = credentials.secret_key
+    os.environ['AWS_SESSION_TOKEN'] = credentials.token
+    os.environ['AWS_DEFAULT_REGION'] = infrastructure_account_session\
+        .region_name
+
+    working_directory = os.path.join(
+        os.getcwd(), INFRASTRUCTURE_DEFINITIONS_PATH,
+    )
+
+    if version:
+        logger.info(f'Fetching release version {version}')
+        with fetch_release(
+            release_account_session, account_scheme, manifest.team,
+            component_name, version,
+        ) as path_to_release:
+            logger.debug('Unpacked release: {}'.format(path_to_release))
+            path_to_release = os.path.join(
+                path_to_release, '{}-{}'.format(component_name, version)
+            )
+
+            move_path_to_working_dir(
+                working_directory,
+                os.path.join(path_to_release, RELEASE_METADATA_FILE),
+            )
+            move_path_to_working_dir(
+                working_directory,
+                os.path.join(path_to_release, PLATFORM_CONFIG_BASE_PATH),
+            )
+            move_path_to_working_dir(
+                working_directory,
+                os.path.join(path_to_release, '.terraform'),
+            )
+
+    os.chdir(working_directory)
+
     state = terraform_state(
-        cwd, '.',
+        working_directory, '.',
         metadata_account_session, environment, component_name,
         manifest.tfstate_filename, account_scheme, manifest.team,
     )
-    state.init(True)
+    state.init(True if not version else False)
 
+    deploy = Deploy(
+        environment,
+        '/tmp',
+        {},
+        account_scheme,
+        infrastructure_account_session,
+        infra_path='.',
+        config_base_path=os.path.abspath('../config'),
+        interactive=True,
+    )
+
+    if version:
+        plan_args = deploy._build_parameters('plan')
+        write_plan_helper_script(plan_args)
+
+    start_shell()
+
+
+def rm(path):
+    try:
+        rmtree(path)
+    except NotADirectoryError:
+        os.remove(path)
+    except FileNotFoundError:
+        pass
+
+
+def move_path_to_working_dir(working_directory, path_to_move):
+    move(path_to_move, working_directory)
+    path_to_remove = os.path.split(path_to_move.rstrip('/'))[1]
+    atexit.register(rm, os.path.join(working_directory, path_to_remove))
+
+
+def write_plan_helper_script(plan_args):
+    shell_template = '''
+#!/bin/bash
+
+{}
+'''
+    with open('plan.sh', 'w+') as f:
+        f.write(shell_template.format(' '.join(plan_args)))
+    os.chmod(
+        'plan.sh',
+        stat.S_IRUSR |
+        stat.S_IWUSR |
+        stat.S_IXUSR |
+        stat.S_IXGRP |
+        stat.S_IXOTH
+    )
+    atexit.register(rm, 'plan.sh')
+
+
+def start_shell():
     with open('/tmp/shrc', 'w+') as f:
-        f.write('export PS1="terraform # "')
+        f.write('''
+echo terraform shell
+echo ===============
+echo
+if [ -f plan.sh ]
+then
+    echo Run ./plan.sh to generate a plan file, which can then be applied.
+fi
+echo
+export PS1="terraform # "
+''')
     pty.spawn(('bash', '--rcfile', '/tmp/shrc',))
 
 
