@@ -33,10 +33,10 @@
         },
         "botocore": {
             "hashes": [
-                "sha256:3b5968fc897b590c2b57fd6105b52ba8bdf5eb2100b7e181d4c17c7c05a2f83a",
-                "sha256:cc270cc2c282b2679f44bd1de011a270c4d8b5364afc2f705152ca187821d4eb"
+                "sha256:5c4d9ea1b0fbb1dc98b6a06ed8780096fca981a1c3599bf8f03f338e6aa389ae",
+                "sha256:c59a74539eb081f4b3a307fc5c3d69d8459e30bfaf4b94aa78e74a9a05583764"
             ],
-            "version": "==1.12.133"
+            "version": "==1.12.134"
         },
         "cffi": {
             "hashes": [
@@ -232,10 +232,10 @@
         },
         "botocore": {
             "hashes": [
-                "sha256:3b5968fc897b590c2b57fd6105b52ba8bdf5eb2100b7e181d4c17c7c05a2f83a",
-                "sha256:cc270cc2c282b2679f44bd1de011a270c4d8b5364afc2f705152ca187821d4eb"
+                "sha256:5c4d9ea1b0fbb1dc98b6a06ed8780096fca981a1c3599bf8f03f338e6aa389ae",
+                "sha256:c59a74539eb081f4b3a307fc5c3d69d8459e30bfaf4b94aa78e74a9a05583764"
             ],
-            "version": "==1.12.133"
+            "version": "==1.12.134"
         },
         "certifi": {
             "hashes": [
@@ -621,11 +621,11 @@
         },
         "pytest-randomly": {
             "hashes": [
-                "sha256:73489a8a650b7b28e6b03c1e8a35cb28f40b826362fc638662d74e35cb311f22",
-                "sha256:a811c854e6b220437d45d1408e8deb0fc1537c8d5db9857364f9bdcde30a348e"
+                "sha256:07b642e177c5921386fa36ee3995a4bda918a1d20b3806a4f397a02788f88331",
+                "sha256:f5ac7c6e30a32c1aa5ae911e00b5ffd6a0df38eb818f6b539e1e7b89995724ed"
             ],
             "index": "pypi",
-            "version": "==2.1.0"
+            "version": "==3.0.0"
         },
         "pytest-xdist": {
             "hashes": [
