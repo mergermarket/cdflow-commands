@@ -58,8 +58,8 @@ def assume_role(root_session, account):
     sts = root_session.client('sts')
     session_name = get_role_session_name(sts)
     logger.debug(
-        "Assuming role arn:aws:iam::{}:role/admin with session {}".format(
-            account.id, session_name
+        "Assuming role arn:aws:iam::{}:role/{} with session {}".format(
+            account.id, account.role, session_name
         )
     )
     response = sts.assume_role(
