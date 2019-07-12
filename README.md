@@ -1,7 +1,7 @@
 # cdflow
 
 [![Build Status](https://travis-ci.org/mergermarket/cdflow-commands.svg?branch=master)](https://travis-ci.org/mergermarket/cdflow-commands)
-[![Docker Pulls](https://img.shields.io/docker/pulls/mergermarket/cdflow-commands.svg)](https://hub.docker.com/r/mergermarket/snyk-access)
+[![Docker Pulls](https://img.shields.io/docker/pulls/mergermarket/cdflow-commands.svg)](https://hub.docker.com/r/mergermarket/cdflow-commands)
 
 This repository contains the source code for the cdflow docker image, which contains the implementation of the commands that cdflow provdes - to release, deploy, and (eventually) decommission software services. This is typically used via the wrapper script at [github.com/mergermarket/cdflow/](https://github.com/mergermarket/cdflow/) in order to ensure you get the latest version when you release (with the option to pin should you need to) and that the image used remains consistent through your pipeline.
 
