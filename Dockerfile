@@ -4,8 +4,8 @@ ENV TERRAFORM_VERSION=0.11.14
 
 ENV TERRAFORM_PLUGIN_DIR=/root/.terraform.d/plugins/
 
-ENV K8SVERSION=1.11.5
-ENV K8SVERSIONDATE=2018-12-06
+ENV K8SVERSION=1.13.7
+ENV K8SVERSIONDATE=2019-06-11
 
 RUN echo http://dl-cdn.alpinelinux.org/alpine/latest-stable/main >> /etc/apk/repositories
 RUN apk update
