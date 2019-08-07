@@ -25,18 +25,18 @@
         },
         "boto3": {
             "hashes": [
-                "sha256:0fec671879bbddffb0e088d970051f159effa0b7ad2a04541121372c719efd75",
-                "sha256:53c2b5f00990435f5c2a3f3ce1f9543246d8300c6444b4d7da8ffd69063c4182"
+                "sha256:666f37c5852f71925494fc2103b189deafe6702c1d9ae60bead5b1b6466de857",
+                "sha256:7b77b507221ec15550b02d492804166bcc61ef3a81312968065515a76aa1791b"
             ],
             "index": "pypi",
-            "version": "==1.9.200"
+            "version": "==1.9.202"
         },
         "botocore": {
             "hashes": [
-                "sha256:9448deffdb58e852935eeaae90682b7a0b4ef3c45eb6f17fa4444873f45f9ae6",
-                "sha256:d2ead76e77e7d0cd4c6bf9445e0ff54e279aee3c727eb30255b4ec327f956d22"
+                "sha256:71ca578701e746fe947c098e5dee06128d0f6ba98217ba7e29aff0dab8caf82f",
+                "sha256:e55003c46e71396a551d4b70f39286f8fc4094ac6cf90f5db8d7a68bb4af1f9d"
             ],
-            "version": "==1.12.200"
+            "version": "==1.12.202"
         },
         "cffi": {
             "hashes": [
@@ -207,9 +207,9 @@
         },
         "aws-sam-translator": {
             "hashes": [
-                "sha256:6966b45dc444de3ced673164889e8cf0ac001c947cfac6030527cd38e2e40071"
+                "sha256:9b7b40ba50a2befe255e48549d8a4bb6c63490cf4c0b1f3f2e6a6f25b5723483"
             ],
-            "version": "==1.13.0"
+            "version": "==1.13.1"
         },
         "aws-xray-sdk": {
             "hashes": [
@@ -227,18 +227,18 @@
         },
         "boto3": {
             "hashes": [
-                "sha256:0fec671879bbddffb0e088d970051f159effa0b7ad2a04541121372c719efd75",
-                "sha256:53c2b5f00990435f5c2a3f3ce1f9543246d8300c6444b4d7da8ffd69063c4182"
+                "sha256:666f37c5852f71925494fc2103b189deafe6702c1d9ae60bead5b1b6466de857",
+                "sha256:7b77b507221ec15550b02d492804166bcc61ef3a81312968065515a76aa1791b"
             ],
             "index": "pypi",
-            "version": "==1.9.200"
+            "version": "==1.9.202"
         },
         "botocore": {
             "hashes": [
-                "sha256:9448deffdb58e852935eeaae90682b7a0b4ef3c45eb6f17fa4444873f45f9ae6",
-                "sha256:d2ead76e77e7d0cd4c6bf9445e0ff54e279aee3c727eb30255b4ec327f956d22"
+                "sha256:71ca578701e746fe947c098e5dee06128d0f6ba98217ba7e29aff0dab8caf82f",
+                "sha256:e55003c46e71396a551d4b70f39286f8fc4094ac6cf90f5db8d7a68bb4af1f9d"
             ],
-            "version": "==1.12.200"
+            "version": "==1.12.202"
         },
         "certifi": {
             "hashes": [
