@@ -73,11 +73,11 @@
         },
         "credstash": {
             "hashes": [
-                "sha256:75056c3c735f3df95934322b3493f00233b5d31a9b4fd126060d03ac88d1f31b",
-                "sha256:814560f99ae2409e2c6d906d878f9dadada5d1d0a950aafb6b2c0d535291bdfb"
+                "sha256:6510c9a69c7e56975fb3976109f7875eda525ebe23e357079c1774387edc3c05",
+                "sha256:87504aa6aff676003fc7400876c16dc3e2288887b7569cf7ef86cab15e9f0ad3"
             ],
             "index": "pypi",
-            "version": "==1.15.0"
+            "version": "==1.16.1"
         },
         "cryptography": {
             "hashes": [
