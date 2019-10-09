@@ -33,10 +33,10 @@
         },
         "botocore": {
             "hashes": [
-                "sha256:7b75482156ef93e7a463f80411dc76fc868cd9fb1dedf03250cec98f8459d765",
-                "sha256:e43e7d19f203d572f78c18a6a16cb87bbea10bc0543e0285f7b6a35d0c825bb6"
+                "sha256:16a09307cef306312d4c3ea18ed3902ae1e084c905bda091db2689e9852753ef",
+                "sha256:b21b694a6bccbe12b64d3e452d081016b67172c92d0b1be2904f60cd4dd5598d"
             ],
-            "version": "==1.12.244"
+            "version": "==1.12.245"
         },
         "cffi": {
             "hashes": [
@@ -237,10 +237,10 @@
         },
         "botocore": {
             "hashes": [
-                "sha256:7b75482156ef93e7a463f80411dc76fc868cd9fb1dedf03250cec98f8459d765",
-                "sha256:e43e7d19f203d572f78c18a6a16cb87bbea10bc0543e0285f7b6a35d0c825bb6"
+                "sha256:16a09307cef306312d4c3ea18ed3902ae1e084c905bda091db2689e9852753ef",
+                "sha256:b21b694a6bccbe12b64d3e452d081016b67172c92d0b1be2904f60cd4dd5598d"
             ],
-            "version": "==1.12.244"
+            "version": "==1.12.245"
         },
         "certifi": {
             "hashes": [
@@ -367,7 +367,6 @@
                 "sha256:163c80b064a763ea733870feb96f9dd9b92216cfcacd374837af18e4e8ec3d4d",
                 "sha256:9814e700890991abeceeb2242586024d4758c8fc18445b194a49bd62d85861db"
             ],
-            "index": "pypi",
             "version": "==0.13.3"
         },
         "entrypoints": {
@@ -535,11 +534,11 @@
         },
         "moto": {
             "hashes": [
-                "sha256:329eb4e1e6cb8c7a9d289b9b13faa2f212a1309b93beb9768cc1174c0b1246aa",
-                "sha256:42607317bb4739dde1c94d653cfe7a22abe26e2b7acf3524b8c6d9603c96f4b1"
+                "sha256:0171d8a0d77b8546606995a1fde87fdea5626eba740cc89f19b615d08575c475",
+                "sha256:dd678a70482fd4d72625f4944812b5ce93284dfd3b56b36b2b9e9c121720f1f2"
             ],
             "index": "pypi",
-            "version": "==1.3.14.dev250"
+            "version": "==1.3.14.dev333"
         },
         "packaging": {
             "hashes": [
