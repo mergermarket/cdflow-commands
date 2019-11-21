@@ -127,6 +127,7 @@ class TestCliShell(unittest.TestCase):
         pty.spawn.assert_called_once()
 
         mock_sts_client.assume_role.assert_called_with(
+            DurationSeconds=14400,
             RoleArn='arn:aws:iam::123456789:role/admin',
             RoleSessionName=ANY,
         )
@@ -248,6 +249,7 @@ class TestCliShell(unittest.TestCase):
         pty.spawn.assert_called_once()
 
         mock_sts_client.assume_role.assert_called_with(
+            DurationSeconds=14400,
             RoleArn='arn:aws:iam::123456789:role/admin',
             RoleSessionName=ANY,
         )

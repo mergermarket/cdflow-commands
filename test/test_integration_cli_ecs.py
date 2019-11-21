@@ -130,6 +130,7 @@ class TestReleaseCLI(unittest.TestCase):
         check_output_cli.assert_called_once_with(['git', 'rev-parse', 'HEAD'])
 
         mock_sts.assume_role.assert_called_once_with(
+            DurationSeconds=14400,
             RoleArn='arn:aws:iam::123456789:role/admin',
             RoleSessionName=user_id,
         )
