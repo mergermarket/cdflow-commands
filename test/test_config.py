@@ -165,6 +165,7 @@ class TestAssumeRole(unittest.TestCase):
 
         mock_root_session.client.assert_called_once_with('sts')
         mock_sts.assume_role.assert_called_once_with(
+            DurationSeconds=14400,
             RoleArn='arn:aws:iam::{}:role/{}'.format(account_id, role_name),
             RoleSessionName=user_id,
         )
