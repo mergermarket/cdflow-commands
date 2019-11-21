@@ -65,6 +65,7 @@ def assume_role(root_session, account):
     response = sts.assume_role(
         RoleArn=f'arn:aws:iam::{account.id}:role/{account.role}',
         RoleSessionName=session_name,
+        DurationSeconds=14400,
     )
     return Session(
         response['Credentials']['AccessKeyId'],
