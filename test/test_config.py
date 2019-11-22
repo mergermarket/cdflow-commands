@@ -139,7 +139,10 @@ class TestAssumeRole(unittest.TestCase):
 
         mock_sts = Mock()
         user_id = 'foo'
-        mock_sts.get_caller_identity.return_value = {u'UserId': user_id}
+        mock_sts.get_caller_identity.return_value = {
+            u'UserId': user_id,
+            'Arn': f'role/{user_id}'
+        }
         mock_sts.assume_role.return_value = {
             'Credentials': {
                 'AccessKeyId': 'dummy-access-key-id',
@@ -169,11 +172,57 @@ class TestAssumeRole(unittest.TestCase):
             RoleArn='arn:aws:iam::{}:role/{}'.format(account_id, role_name),
             RoleSessionName=user_id,
         )
+
         MockSession.assert_called_once_with(
             'dummy-access-key-id',
             'dummy-secret-access-key',
             'dummy-session-token',
             region,
+        )
+
+    @patch('cdflow_commands.config.Session')
+    def test_assumed_role_has_correct_session_duration(self, MockSession):
+
+        mock_root_session = Mock()
+        mock_root_session.region_name = 'eu-west-12'
+
+        mock_session = Mock()
+        MockSession.return_value = mock_session
+
+        mock_sts = Mock()
+        user_id = 'foo'
+        mock_sts.get_caller_identity.return_value = {
+            u'UserId': user_id,
+            'Arn': f'arn:aws:sts::123456789:assumed-role/admin/{user_id}'
+        }
+        mock_sts.assume_role.return_value = {
+            'Credentials': {
+                'AccessKeyId': 'dummy-access-key-id',
+                'SecretAccessKey': 'dummy-secret-access-key',
+                'SessionToken': 'dummy-session-token',
+                'Expiration': datetime(2015, 1, 1)
+            },
+            'AssumedRoleUser': {
+                'AssumedRoleId': 'dummy-assumed-role-id',
+                'Arn': 'dummy-arn'
+            },
+            'PackedPolicySize': 123
+        }
+        mock_root_session.client.return_value = mock_sts
+
+        account_id = 123456789
+        role_name = 'test-role-name'
+        region = 'us-east-99'
+        account = Account('account-alias', account_id, role_name, region)
+        session = config.assume_role(mock_root_session, account)
+
+        assert session is mock_session
+
+        mock_root_session.client.assert_called_once_with('sts')
+        mock_sts.assume_role.assert_called_once_with(
+            DurationSeconds=3600,
+            RoleArn='arn:aws:iam::{}:role/{}'.format(account_id, role_name),
+            RoleSessionName=user_id,
         )
 
 

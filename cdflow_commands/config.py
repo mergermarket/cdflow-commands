@@ -62,10 +62,15 @@ def assume_role(root_session, account):
             account.id, account.role, session_name
         )
     )
+    session_duration = get_session_duration(sts)
+    logger.debug(
+        f"Session duration is set to {session_duration}"
+    )
+
     response = sts.assume_role(
         RoleArn=f'arn:aws:iam::{account.id}:role/{account.role}',
         RoleSessionName=session_name,
-        DurationSeconds=14400,
+        DurationSeconds=session_duration,
     )
     return Session(
         response['Credentials']['AccessKeyId'],
@@ -89,6 +94,14 @@ def env_with_aws_credetials(env, boto_session):
             'AWS_SESSION_TOKEN': credentials.token,
         })
     return result
+
+
+def get_session_duration(sts_client):
+    caller_response = sts_client.get_caller_identity()
+    if 'assumed-role' in caller_response.get('Arn'):
+        return 3600
+    else:
+        return 14400
 
 
 def get_role_session_name(sts_client):
