@@ -85,7 +85,7 @@ class TestDeployCLI(unittest.TestCase):
         mock_sts_client.get_caller_identity.return_value = {
             u'UserId': 'foo',
             'Arn': 'dummy_arn'
-        }        
+        }
         mock_sts_client.assume_role.return_value = {
             'Credentials': {
                 'AccessKeyId': 'dummy-access-key',

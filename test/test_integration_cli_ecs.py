@@ -217,7 +217,7 @@ class TestReleaseCLI(unittest.TestCase):
         mock_sts.get_caller_identity.return_value = {
             u'UserId': 'foo',
             'Arn': 'dummy_arn'
-        }        
+        }
         mock_sts.assume_role.return_value = {
             'Credentials': {
                 'AccessKeyId': 'dummy-access-key-id',

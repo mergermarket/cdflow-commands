@@ -142,7 +142,7 @@ class TestAssumeRole(unittest.TestCase):
         mock_sts.get_caller_identity.return_value = {
             u'UserId': user_id,
             'Arn': f'role/{user_id}'
-        }        
+        }
         mock_sts.assume_role.return_value = {
             'Credentials': {
                 'AccessKeyId': 'dummy-access-key-id',
@@ -180,7 +180,6 @@ class TestAssumeRole(unittest.TestCase):
             region,
         )
 
-
     @patch('cdflow_commands.config.Session')
     def test_assumed_role_has_correct_session_duration(self, MockSession):
 
@@ -195,7 +194,7 @@ class TestAssumeRole(unittest.TestCase):
         mock_sts.get_caller_identity.return_value = {
             u'UserId': user_id,
             'Arn': f'arn:aws:sts::123456789:assumed-role/admin/{user_id}'
-        }        
+        }
         mock_sts.assume_role.return_value = {
             'Credentials': {
                 'AccessKeyId': 'dummy-access-key-id',
@@ -235,7 +234,6 @@ class TestGetRoleSessionName(unittest.TestCase):
         sts_client.get_caller_identity.return_value = {
             u'Account': '111111111111',
             u'UserId': user_id,
-            'Arn': 'dummy_arn',
             'ResponseMetadata': {
                 'RetryAttempts': 0,
                 'HTTPStatusCode': 200,
@@ -260,7 +258,6 @@ class TestGetRoleSessionName(unittest.TestCase):
         sts_client.get_caller_identity.return_value = {
             u'Account': '111111111111',
             u'UserId': user_id,
-            'Arn': 'dummy_arn',
             'ResponseMetadata': {
                 'RetryAttempts': 0,
                 'HTTPStatusCode': 200,
