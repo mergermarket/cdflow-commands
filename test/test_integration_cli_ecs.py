@@ -84,7 +84,10 @@ class TestReleaseCLI(unittest.TestCase):
 
         mock_sts = Mock()
         user_id = 'foo'
-        mock_sts.get_caller_identity.return_value = {u'UserId': user_id}
+        mock_sts.get_caller_identity.return_value = {
+            u'UserId': user_id,
+            'Arn': 'dummy_arn'
+        }
         mock_sts.assume_role.return_value = {
             'Credentials': {
                 'AccessKeyId': 'dummy-access-key-id',
@@ -211,7 +214,10 @@ class TestReleaseCLI(unittest.TestCase):
         Session_from_config.return_value = mock_session
 
         mock_sts = Mock()
-        mock_sts.get_caller_identity.return_value = {'UserId': 'foo'}
+        mock_sts.get_caller_identity.return_value = {
+            u'UserId': 'foo',
+            'Arn': 'dummy_arn'
+        }        
         mock_sts.assume_role.return_value = {
             'Credentials': {
                 'AccessKeyId': 'dummy-access-key-id',

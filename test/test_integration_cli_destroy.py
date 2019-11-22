@@ -83,7 +83,10 @@ class TestDestroyCLI(unittest.TestCase):
             else mock_metadata_file_open
 
         mock_sts_client = Mock()
-        mock_sts_client.get_caller_identity.return_value = {'UserId': 'foo'}
+        mock_sts_client.get_caller_identity.return_value = {
+            u'UserId': 'foo',
+            'Arn': 'dummy_arn'
+        }
         mock_sts_client.assume_role.return_value = {
             'Credentials': {
                 'AccessKeyId': 'dummy-access-key',
