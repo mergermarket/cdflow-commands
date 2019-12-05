@@ -1,6 +1,6 @@
 FROM python:3.7.4-alpine3.10 AS base
 
-ENV TERRAFORM_VERSION=0.11.14
+ENV TERRAFORM_VERSION=0.12.17
 
 ENV TERRAFORM_PLUGIN_DIR=/root/.terraform.d/plugins/
 
@@ -25,10 +25,10 @@ RUN cd /tmp && \
     chmod +x ./kubectl && \
     mv ./kubectl /usr/local/bin/kubectl
 
-RUN cd /tmp && \
-    curl -o aws-iam-authenticator https://amazon-eks.s3-us-west-2.amazonaws.com/${K8SVERSION}/${K8SVERSIONDATE}/bin/linux/amd64/aws-iam-authenticator && \
-    chmod +x ./aws-iam-authenticator && \
-    mv ./aws-iam-authenticator /usr/local/bin/aws-iam-authenticator
+# RUN cd /tmp && \
+#     curl -o aws-iam-authenticator https://amazon-eks.s3-us-west-2.amazonaws.com/${K8SVERSION}/${K8SVERSIONDATE}/bin/linux/amd64/aws-iam-authenticator && \
+#     chmod +x ./aws-iam-authenticator && \
+#     mv ./aws-iam-authenticator /usr/local/bin/aws-iam-authenticator
 
 RUN mkdir -p "${TERRAFORM_PLUGIN_DIR}" && cd /tmp && \
     curl -sSLO "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip" && \
