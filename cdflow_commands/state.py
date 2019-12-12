@@ -449,7 +449,13 @@ class S3BucketFactory:
 
     def _bucket_has_tag(self, bucket_name, bucket_tag):
         logger.debug(f'Checking for tag {bucket_tag} on bucket {bucket_name}')
-        tags = self._get_bucket_tags(bucket_name)
+        tags = {}
+        try:
+            tags = self._get_bucket_tags(bucket_name)
+        except ClientError:
+            logger.debug(
+                f"Checking for tag {bucket_tag} "
+                f"failed on bucket {bucket_name}")
         return tags.get(bucket_tag) == TAG_VALUE
 
     def _bucket_in_current_region(self, bucket_name):
