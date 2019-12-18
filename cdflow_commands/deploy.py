@@ -71,7 +71,7 @@ class Deploy:
             sys.stderr.flush()
 
     def _plan(self):
-        with NamedTemporaryFile(mode='w+', encoding='utf-8') \
+        with NamedTemporaryFile(mode='w+', encoding='utf-8', suffix=".json") \
                 as secrets_file:
             logger.debug(f'Writing secrets to file {secrets_file.name}')
             json.dump(self._secrets, secrets_file)
