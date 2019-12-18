@@ -1,6 +1,6 @@
 FROM python:3.7.4-alpine3.10 AS base
 
-ARG TERRAFORM_VERSION
+ARG TERRAFORM_VERSION=0.11.14
 
 ENV TERRAFORM_PLUGIN_DIR=/root/.terraform.d/plugins/
 
