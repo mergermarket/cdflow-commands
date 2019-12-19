@@ -2,5 +2,4 @@ sudo: required
 services:
   - docker
 script:
-  - TERRAFORM_VERSION=0.11.14 ./test.sh
-  - TERRAFORM_VERSION=0.12.18 ./test.sh
+  - ./test.sh

@@ -2,7 +2,7 @@
 
 set -e
 
-docker build -t cdflow-commands.test --build-arg TERRAFORM_VERSION=${TERRAFORM_VERSION} --target test .
+docker build -t cdflow-commands.test --target test .
 
 docker run \
     --name cdflow-commands.test \
