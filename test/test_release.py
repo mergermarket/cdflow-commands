@@ -109,7 +109,7 @@ class TestReleaseArchive(unittest.TestCase):
             temp_dir, 'dummy-component', 'dummy-version'
         ))
         check_call.assert_any_call([
-            'terraform', 'init', '/cwd/infra',
+            'terraform', 'init', './infra',
         ], cwd='{}/{}-{}'.format(temp_dir, 'dummy-component', 'dummy-version'))
 
     @patch('cdflow_commands.release.mkdir')
