@@ -145,9 +145,11 @@ class Release:
         with TemporaryDirectory() as temp_dir:
             base_dir = self._setup_base_dir(temp_dir)
 
+            self._copy_infra_files(base_dir)
+
             self._run_terraform_init(
                 base_dir,
-                '{}/{}'.format(getcwd(), INFRASTRUCTURE_DEFINITIONS_PATH)
+                '{}/{}'.format('.', INFRASTRUCTURE_DEFINITIONS_PATH)
             )
 
             if os.path.exists(CONFIG_BASE_PATH):
@@ -158,7 +160,6 @@ class Release:
                     configuration
                     """.format(CONFIG_BASE_PATH))
             self._copy_platform_configs(base_dir)
-            self._copy_infra_files(base_dir)
 
             extra_data = plugin.create()
 
