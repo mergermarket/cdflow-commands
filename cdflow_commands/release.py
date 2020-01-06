@@ -149,7 +149,7 @@ class Release:
 
             self._run_terraform_init(
                 base_dir,
-                '{}/{}'.format('.', INFRASTRUCTURE_DEFINITIONS_PATH)
+                './{}'.format(INFRASTRUCTURE_DEFINITIONS_PATH)
             )
 
             if os.path.exists(CONFIG_BASE_PATH):
