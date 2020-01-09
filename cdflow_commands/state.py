@@ -236,6 +236,7 @@ class TerraformState:
         )
 
     def init(self, get_terraform_modules=False):
+        logger.debug(f"WORKING_DIR:{self.working_directory}")
         with NamedTemporaryFile(
             prefix='cdflow_backend_', suffix='.tf',
             dir=self.working_directory, delete=False, mode='w+'

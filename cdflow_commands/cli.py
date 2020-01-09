@@ -20,7 +20,8 @@ import os
 import stat
 import logging
 import sys
-from shutil import rmtree, move
+import glob
+from shutil import rmtree, move, copy
 from subprocess import check_output
 import pty
 import atexit
@@ -209,10 +210,6 @@ def run_shell(
     os.environ['AWS_DEFAULT_REGION'] = infrastructure_account_session\
         .region_name
 
-    working_directory = os.path.join(
-        os.getcwd(), INFRASTRUCTURE_DEFINITIONS_PATH,
-    )
-
     if version:
         logger.info(f'Fetching release version {version}')
         with fetch_release(
@@ -224,44 +221,34 @@ def run_shell(
                 path_to_release, '{}-{}'.format(component_name, version)
             )
 
-            move_path_to_working_dir(
-                working_directory,
-                os.path.join(path_to_release, RELEASE_METADATA_FILE),
+            os.chdir(path_to_release)
+
+            state = terraform_state(
+                path_to_release, '.',
+                metadata_account_session, environment, component_name,
+                manifest.tfstate_filename, account_scheme, manifest.team,
             )
-            move_path_to_working_dir(
-                working_directory,
-                os.path.join(path_to_release, PLATFORM_CONFIG_BASE_PATH),
+            state.init(True if not version else False)
+
+            deploy = Deploy(
+                environment,
+                path_to_release,
+                {},
+                account_scheme,
+                infrastructure_account_session,
+                infra_path='infra',
+                config_base_path=os.path.abspath('config'),
+                interactive=True,
             )
-            move_path_to_working_dir(
-                working_directory,
-                os.path.join(path_to_release, '.terraform'),
-            )
 
-    os.chdir(working_directory)
+            if version:
+                plan_args = deploy._build_parameters('plan')
+                write_plan_helper_script(plan_args)
 
-    state = terraform_state(
-        working_directory, '.',
-        metadata_account_session, environment, component_name,
-        manifest.tfstate_filename, account_scheme, manifest.team,
-    )
-    state.init(True if not version else False)
+            for file in glob.glob(r'./cdflow_backend*'):
+                copy(file, os.path.join(os.getcwd(), INFRASTRUCTURE_DEFINITIONS_PATH))
 
-    deploy = Deploy(
-        environment,
-        '/tmp',
-        {},
-        account_scheme,
-        infrastructure_account_session,
-        infra_path='.',
-        config_base_path=os.path.abspath('../config'),
-        interactive=True,
-    )
-
-    if version:
-        plan_args = deploy._build_parameters('plan')
-        write_plan_helper_script(plan_args)
-
-    start_shell()
+            start_shell()
 
 
 def rm(path):
