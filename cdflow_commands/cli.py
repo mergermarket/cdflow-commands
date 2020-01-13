@@ -20,10 +20,13 @@ import os
 import stat
 import logging
 import sys
-from shutil import rmtree, move
+from shutil import rmtree, move, copytree, copy
+import glob
 from subprocess import check_output
 import pty
 import atexit
+from time import time
+from tempfile import TemporaryDirectory
 
 from boto3.session import Session
 
@@ -33,7 +36,7 @@ from cdflow_commands.config import (
 )
 from cdflow_commands.constants import (
     INFRASTRUCTURE_DEFINITIONS_PATH, ACCOUNT_SCHEME_FILE,
-    RELEASE_METADATA_FILE, PLATFORM_CONFIG_BASE_PATH,
+    RELEASE_METADATA_FILE, PLATFORM_CONFIG_BASE_PATH, CONFIG_BASE_PATH
 )
 from cdflow_commands.deploy import Deploy
 from cdflow_commands.destroy import Destroy
@@ -209,59 +212,79 @@ def run_shell(
     os.environ['AWS_DEFAULT_REGION'] = infrastructure_account_session\
         .region_name
 
-    working_directory = os.path.join(
-        os.getcwd(), INFRASTRUCTURE_DEFINITIONS_PATH,
-    )
+    # working_directory = os.path.join(os.getcwd(), INFRASTRUCTURE_DEFINITIONS_PATH)
 
-    if version:
-        logger.info(f'Fetching release version {version}')
-        with fetch_release(
-            release_account_session, account_scheme, manifest.team,
-            component_name, version,
-        ) as path_to_release:
-            logger.debug('Unpacked release: {}'.format(path_to_release))
-            path_to_release = os.path.join(
-                path_to_release, '{}-{}'.format(component_name, version)
+    with TemporaryDirectory(prefix='{}/release-{}'.format('/tmp/', time())) \
+            as working_directory:
+        if version:
+            logger.info(f'Fetching release version {version}')
+            with fetch_release(
+                release_account_session, account_scheme, manifest.team,
+                component_name, version,
+            ) as path_to_release:
+                logger.debug('Unpacked release: {}'.format(path_to_release))
+                path_to_release = os.path.join(
+                    path_to_release, '{}-{}'.format(component_name, version)
+                )
+
+                move_path_to_working_dir(
+                    working_directory,
+                    os.path.join(path_to_release, RELEASE_METADATA_FILE),
+                )
+                move_path_to_working_dir(
+                    working_directory,
+                    os.path.join(path_to_release, PLATFORM_CONFIG_BASE_PATH),
+                )
+                move_path_to_working_dir(
+                    working_directory,
+                    os.path.join(path_to_release, '.terraform'),
+                )
+                copy_path_to_working_dir(
+                    os.path.join(working_directory, CONFIG_BASE_PATH),
+                    os.path.join(os.getcwd(), CONFIG_BASE_PATH),
+                )
+                copy_path_to_working_dir(
+                    os.path.join(working_directory, INFRASTRUCTURE_DEFINITIONS_PATH),
+                    os.path.join(os.getcwd(), INFRASTRUCTURE_DEFINITIONS_PATH),
+                )
+        else:
+            logger.info('Copying infra files to working directory')
+            copy_path_to_working_dir(
+                os.path.join(working_directory, INFRASTRUCTURE_DEFINITIONS_PATH),
+                os.path.join(os.getcwd(), INFRASTRUCTURE_DEFINITIONS_PATH),
             )
+            working_directory = f"{working_directory}/infra"
 
-            move_path_to_working_dir(
-                working_directory,
-                os.path.join(path_to_release, RELEASE_METADATA_FILE),
-            )
-            move_path_to_working_dir(
-                working_directory,
-                os.path.join(path_to_release, PLATFORM_CONFIG_BASE_PATH),
-            )
-            move_path_to_working_dir(
-                working_directory,
-                os.path.join(path_to_release, '.terraform'),
-            )
+        os.chdir(working_directory)
+        logger.debug("1111111111111111")
+        state = terraform_state(
+            working_directory, '.',
+            metadata_account_session, environment, component_name,
+            manifest.tfstate_filename, account_scheme, manifest.team,
+        )
+        logger.debug("2222222222222222")
+        state.init(True if not version else False)
+        logger.debug("3333333333333333")
 
-    os.chdir(working_directory)
+        deploy = Deploy(
+            environment,
+            '/tmp',
+            {},
+            account_scheme,
+            infrastructure_account_session,
+            infra_path='infra',
+            config_base_path=os.path.abspath('./config'),
+            interactive=True,
+        )
 
-    state = terraform_state(
-        working_directory, '.',
-        metadata_account_session, environment, component_name,
-        manifest.tfstate_filename, account_scheme, manifest.team,
-    )
-    state.init(True if not version else False)
+        if version:
+            plan_args = deploy._build_parameters('plan')
+            write_plan_helper_script(plan_args)
 
-    deploy = Deploy(
-        environment,
-        '/tmp',
-        {},
-        account_scheme,
-        infrastructure_account_session,
-        infra_path='.',
-        config_base_path=os.path.abspath('../config'),
-        interactive=True,
-    )
+            for file in glob.glob(r'./cdflow_backend*'):
+                copy(file, os.path.join(working_directory, INFRASTRUCTURE_DEFINITIONS_PATH))
 
-    if version:
-        plan_args = deploy._build_parameters('plan')
-        write_plan_helper_script(plan_args)
-
-    start_shell()
+        start_shell()
 
 
 def rm(path):
@@ -277,6 +300,10 @@ def move_path_to_working_dir(working_directory, path_to_move):
     move(path_to_move, working_directory)
     path_to_remove = os.path.split(path_to_move.rstrip('/'))[1]
     atexit.register(rm, os.path.join(working_directory, path_to_remove))
+
+def copy_path_to_working_dir(working_directory, path_to_copy):
+    copytree(path_to_copy, working_directory)
+    
 
 
 def write_plan_helper_script(plan_args):

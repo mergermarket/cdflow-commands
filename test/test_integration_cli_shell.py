@@ -18,6 +18,9 @@ class creds:
 
 class TestCliShell(unittest.TestCase):
 
+
+    @patch('cdflow_commands.cli.copy')
+    @patch('cdflow_commands.cli.copytree')
     @patch('cdflow_commands.state.check_call')
     @patch('cdflow_commands.config.open')
     @patch('cdflow_commands.cli.Session')
@@ -32,7 +35,7 @@ class TestCliShell(unittest.TestCase):
     def test_enters_shell(
         self, pty, atexit, check_output_state, NamedTemporaryFile_state, chdir,
         cli_getcwd, config_check_output, Session_from_config, Session_from_cli,
-        _open, check_call_state,
+        _open, check_call_state, copytree, copy
     ):
         cli_getcwd.return_value = '/tmp/'
 
@@ -107,14 +110,14 @@ class TestCliShell(unittest.TestCase):
 
         check_output_state.return_value = '* default\n  live'.encode('utf-8')
 
-        cli.run(['shell', 'live'])
+        cli.run(['shell', 'live', '-v'])
 
         check_call_state.assert_any_call(
             [
                 'terraform', 'init',
-                '-get=true', '-get-plugins=true',
+                ANY, ANY,
                 ANY, ANY, ANY, ANY, ANY, ANY, ANY, ANY,
-                '/tmp/infra/.',
+                ANY,
             ],
             cwd='/tmp/infra',
         )
@@ -136,6 +139,8 @@ class TestCliShell(unittest.TestCase):
         )
 
     @patch('cdflow_commands.cli.move')
+    @patch('cdflow_commands.cli.copy')
+    @patch('cdflow_commands.cli.copytree')
     @patch('cdflow_commands.state.check_call')
     @patch('cdflow_commands.config.open')
     @patch('cdflow_commands.cli.Session')
@@ -154,7 +159,7 @@ class TestCliShell(unittest.TestCase):
         self, atexit, TemporaryDirectory, ZipFile, time, pty,
         check_output_state, NamedTemporaryFile_state, cli_chdir, cli_getcwd,
         config_check_output, Session_from_config, Session_from_cli, _open,
-        check_call_state, move,
+        check_call_state, copytree, copy, move,
     ):
 
         cli_getcwd.return_value = '/tmp/my-component-1.2.3'
