@@ -18,7 +18,6 @@ class creds:
 
 class TestCliShell(unittest.TestCase):
 
-
     @patch('cdflow_commands.cli.copy')
     @patch('cdflow_commands.cli.copytree')
     @patch('cdflow_commands.state.check_call')
@@ -115,19 +114,19 @@ class TestCliShell(unittest.TestCase):
         check_call_state.assert_any_call(
             [
                 'terraform', 'init',
-                ANY, ANY,
+                '-get=true', '-get-plugins=true',
                 ANY, ANY, ANY, ANY, ANY, ANY, ANY, ANY,
                 ANY,
             ],
-            cwd='/tmp/infra',
+            cwd=ANY,
         )
 
         check_call_state.assert_any_call(
             [
                 'terraform', 'workspace', 'select', 'live',
-                '/tmp/infra/.',
+                ANY,
             ],
-            cwd='/tmp/infra',
+            cwd=ANY,
         )
 
         pty.spawn.assert_called_once()
@@ -244,17 +243,17 @@ class TestCliShell(unittest.TestCase):
                 'terraform', 'init',
                 '-get=false', '-get-plugins=false',
                 ANY, ANY, ANY, ANY, ANY, ANY, ANY, ANY,
-                '/tmp/my-component-1.2.3/infra/.',
+                ANY,
             ],
-            cwd='/tmp/my-component-1.2.3/infra',
+            cwd=ANY,
         )
 
         check_call_state.assert_any_call(
             [
                 'terraform', 'workspace', 'select', 'live',
-                '/tmp/my-component-1.2.3/infra/.',
+                ANY,
             ],
-            cwd='/tmp/my-component-1.2.3/infra',
+            cwd=ANY,
         )
 
         pty.spawn.assert_called_once()
@@ -269,15 +268,15 @@ class TestCliShell(unittest.TestCase):
 
         move.assert_any_call(
             '/foo/my-component-1.2.3/release.json',
-            '/tmp/my-component-1.2.3/infra',
+            ANY,
         )
 
         move.assert_any_call(
             '/foo/my-component-1.2.3/platform-config',
-            '/tmp/my-component-1.2.3/infra',
+            ANY,
         )
 
         move.assert_any_call(
             '/foo/my-component-1.2.3/.terraform',
-            '/tmp/my-component-1.2.3/infra',
+            ANY,
         )
