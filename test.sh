@@ -16,4 +16,4 @@ docker run \
         --tb=short \
         "$@"
 
-docker run --rm cdflow-commands.test flake8 --max-complexity=4
+docker run --rm cdflow-commands.test flake8 --max-complexity=5

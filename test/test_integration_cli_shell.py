@@ -18,6 +18,8 @@ class creds:
 
 class TestCliShell(unittest.TestCase):
 
+    @patch('cdflow_commands.cli.copy')
+    @patch('cdflow_commands.cli.copytree')
     @patch('cdflow_commands.state.check_call')
     @patch('cdflow_commands.config.open')
     @patch('cdflow_commands.cli.Session')
@@ -32,7 +34,7 @@ class TestCliShell(unittest.TestCase):
     def test_enters_shell(
         self, pty, atexit, check_output_state, NamedTemporaryFile_state, chdir,
         cli_getcwd, config_check_output, Session_from_config, Session_from_cli,
-        _open, check_call_state,
+        _open, check_call_state, copytree, copy
     ):
         cli_getcwd.return_value = '/tmp/'
 
@@ -107,24 +109,24 @@ class TestCliShell(unittest.TestCase):
 
         check_output_state.return_value = '* default\n  live'.encode('utf-8')
 
-        cli.run(['shell', 'live'])
+        cli.run(['shell', 'live', '-v'])
 
         check_call_state.assert_any_call(
             [
                 'terraform', 'init',
                 '-get=true', '-get-plugins=true',
                 ANY, ANY, ANY, ANY, ANY, ANY, ANY, ANY,
-                '/tmp/infra/.',
+                ANY,
             ],
-            cwd='/tmp/infra',
+            cwd=ANY,
         )
 
         check_call_state.assert_any_call(
             [
                 'terraform', 'workspace', 'select', 'live',
-                '/tmp/infra/.',
+                ANY,
             ],
-            cwd='/tmp/infra',
+            cwd=ANY,
         )
 
         pty.spawn.assert_called_once()
@@ -136,6 +138,8 @@ class TestCliShell(unittest.TestCase):
         )
 
     @patch('cdflow_commands.cli.move')
+    @patch('cdflow_commands.cli.copy')
+    @patch('cdflow_commands.cli.copytree')
     @patch('cdflow_commands.state.check_call')
     @patch('cdflow_commands.config.open')
     @patch('cdflow_commands.cli.Session')
@@ -154,7 +158,7 @@ class TestCliShell(unittest.TestCase):
         self, atexit, TemporaryDirectory, ZipFile, time, pty,
         check_output_state, NamedTemporaryFile_state, cli_chdir, cli_getcwd,
         config_check_output, Session_from_config, Session_from_cli, _open,
-        check_call_state, move,
+        check_call_state, copytree, copy, move,
     ):
 
         cli_getcwd.return_value = '/tmp/my-component-1.2.3'
@@ -239,17 +243,17 @@ class TestCliShell(unittest.TestCase):
                 'terraform', 'init',
                 '-get=false', '-get-plugins=false',
                 ANY, ANY, ANY, ANY, ANY, ANY, ANY, ANY,
-                '/tmp/my-component-1.2.3/infra/.',
+                ANY,
             ],
-            cwd='/tmp/my-component-1.2.3/infra',
+            cwd=ANY,
         )
 
         check_call_state.assert_any_call(
             [
                 'terraform', 'workspace', 'select', 'live',
-                '/tmp/my-component-1.2.3/infra/.',
+                ANY,
             ],
-            cwd='/tmp/my-component-1.2.3/infra',
+            cwd=ANY,
         )
 
         pty.spawn.assert_called_once()
@@ -264,15 +268,15 @@ class TestCliShell(unittest.TestCase):
 
         move.assert_any_call(
             '/foo/my-component-1.2.3/release.json',
-            '/tmp/my-component-1.2.3/infra',
+            ANY,
         )
 
         move.assert_any_call(
             '/foo/my-component-1.2.3/platform-config',
-            '/tmp/my-component-1.2.3/infra',
+            ANY,
         )
 
         move.assert_any_call(
             '/foo/my-component-1.2.3/.terraform',
-            '/tmp/my-component-1.2.3/infra',
+            ANY,
         )
