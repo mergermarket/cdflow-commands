@@ -26,10 +26,10 @@
         },
         "botocore": {
             "hashes": [
-                "sha256:11c9da2afc3a7abb09fff3ab73b8f0dac5a9e5396102f88768ad2ad4b3854e61",
-                "sha256:30a9d64eedbf02471b56673394f100cb6d3237d6725e5a35ca24988adf166125"
+                "sha256:d1bf8c2085719221683edf54913c6155c68705f26ab4a72c45e4de5176a8cf7b",
+                "sha256:e7fee600092b51ca8016c541d5c50a8b39179d5c184ec3fd430400d99ba0c55a"
             ],
-            "version": "==1.17.18"
+            "version": "==1.17.20"
         },
         "cffi": {
             "hashes": [
@@ -228,10 +228,10 @@
         },
         "botocore": {
             "hashes": [
-                "sha256:11c9da2afc3a7abb09fff3ab73b8f0dac5a9e5396102f88768ad2ad4b3854e61",
-                "sha256:30a9d64eedbf02471b56673394f100cb6d3237d6725e5a35ca24988adf166125"
+                "sha256:d1bf8c2085719221683edf54913c6155c68705f26ab4a72c45e4de5176a8cf7b",
+                "sha256:e7fee600092b51ca8016c541d5c50a8b39179d5c184ec3fd430400d99ba0c55a"
             ],
-            "version": "==1.17.18"
+            "version": "==1.17.20"
         },
         "certifi": {
             "hashes": [
@@ -654,11 +654,11 @@
         },
         "pytest-xdist": {
             "hashes": [
-                "sha256:5d1b1d4461518a6023d56dab62fb63670d6f7537f23e2708459a557329accf48",
-                "sha256:a8569b027db70112b290911ce2ed732121876632fb3f40b1d39cd2f72f58b147"
+                "sha256:833b902b16473162cc0572d5bd7b63f8b843df63a4ada9c8af1270d31db17607",
+                "sha256:9149b4010240643a5e206fd0ece6f0a1cd5955dae014cf04610d359e22e22453"
             ],
             "index": "pypi",
-            "version": "==1.30.0"
+            "version": "==1.33.0"
         },
         "python-dateutil": {
             "hashes": [
