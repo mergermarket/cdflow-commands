@@ -26,10 +26,10 @@
         },
         "botocore": {
             "hashes": [
-                "sha256:11c9da2afc3a7abb09fff3ab73b8f0dac5a9e5396102f88768ad2ad4b3854e61",
-                "sha256:30a9d64eedbf02471b56673394f100cb6d3237d6725e5a35ca24988adf166125"
+                "sha256:d1bf8c2085719221683edf54913c6155c68705f26ab4a72c45e4de5176a8cf7b",
+                "sha256:e7fee600092b51ca8016c541d5c50a8b39179d5c184ec3fd430400d99ba0c55a"
             ],
-            "version": "==1.17.18"
+            "version": "==1.17.20"
         },
         "cffi": {
             "hashes": [
@@ -228,10 +228,10 @@
         },
         "botocore": {
             "hashes": [
-                "sha256:11c9da2afc3a7abb09fff3ab73b8f0dac5a9e5396102f88768ad2ad4b3854e61",
-                "sha256:30a9d64eedbf02471b56673394f100cb6d3237d6725e5a35ca24988adf166125"
+                "sha256:d1bf8c2085719221683edf54913c6155c68705f26ab4a72c45e4de5176a8cf7b",
+                "sha256:e7fee600092b51ca8016c541d5c50a8b39179d5c184ec3fd430400d99ba0c55a"
             ],
-            "version": "==1.17.18"
+            "version": "==1.17.20"
         },
         "certifi": {
             "hashes": [
@@ -417,11 +417,11 @@
         },
         "hypothesis": {
             "hashes": [
-                "sha256:0639d2442875a09616a0a8b9122ae78d483792d3864d5868bae8e828ba179a46",
-                "sha256:1018716c24978e5a9f570d3b18836645293f3fc459391f84c0abb3f527ddadf7"
+                "sha256:b58b40984915fbea34db942f58faac78f3db66e379b5394cad0d0ef60b7d98be",
+                "sha256:f078ab6d0a151395e9f9df0bd6bd5e8f2f17a81cc0e9cbb53758b5aee1ce6085"
             ],
             "index": "pypi",
-            "version": "==4.43.2"
+            "version": "==5.19.3"
         },
         "idna": {
             "hashes": [
@@ -734,6 +734,13 @@
                 "sha256:8b74bedcbbbaca38ff6d7491d76f2b06b3592611af620f8426e82dddb04a5ced"
             ],
             "version": "==1.15.0"
+        },
+        "sortedcontainers": {
+            "hashes": [
+                "sha256:4e73a757831fc3ca4de2859c422564239a31d8213d09a2a666e375807034d2ba",
+                "sha256:c633ebde8580f241f274c1f8994a665c0e54a17724fecd0cae2f079e09c36d3f"
+            ],
+            "version": "==2.2.2"
         },
         "sshpubkeys": {
             "hashes": [
