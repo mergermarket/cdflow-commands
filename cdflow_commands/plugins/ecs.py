@@ -1,6 +1,8 @@
 import json
 from base64 import b64decode
 from os import path
+from os.path import expanduser
+from os.path import isfile
 from subprocess import CalledProcessError, check_call
 
 from botocore.exceptions import ClientError
@@ -22,6 +24,10 @@ class ReleasePlugin:
         self._account_scheme = account_scheme
 
     def create(self):
+        users_docker_config = expanduser("~") + "/.docker/config.json"
+        if isfile(users_docker_config):
+            self._docker_login_dockerhub()
+
         check_call([
             'docker', 'build',
             '-t', self._image_name, '.'
@@ -33,7 +39,7 @@ class ReleasePlugin:
             if self._account_scheme.classic_metadata_handling:
                 self._ensure_ecr_repo_exists()
                 self._ensure_ecr_policy_set()
-            self._docker_login()
+            self._docker_login_ecr()
             self._docker_push(self._image_name)
             self._docker_tag_latest()
             self._docker_push(self._latest_image_name)
@@ -141,7 +147,10 @@ class ReleasePlugin:
             lifecyclePolicyText=lifecycle_policy
         )
 
-    def _docker_login(self):
+    def _docker_login_dockerhub(self):
+        check_call(['docker', 'login'])
+
+    def _docker_login_ecr(self):
         response = self._boto_ecr_client.get_authorization_token()
 
         username, password = b64decode(
