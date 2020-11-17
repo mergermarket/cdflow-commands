@@ -25,7 +25,13 @@ class ReleasePlugin:
 
     def create(self):
         users_docker_config = expanduser("~") + "/.docker/config.json"
+        logger.info(
+            'Looking for a docker config at \'{}\''.format(
+                users_docker_config
+            )
+        )
         if isfile(users_docker_config):
+            logger.info('docker config found, attempting docker login')
             self._docker_login_dockerhub()
 
         check_call([
@@ -148,6 +154,7 @@ class ReleasePlugin:
         )
 
     def _docker_login_dockerhub(self):
+        logger.info('running docker login')
         check_call(['docker', 'login'])
 
     def _docker_login_ecr(self):
