@@ -53,4 +53,6 @@ FROM base
 
 COPY ./cdflow_commands /opt/cdflow-commands/cdflow_commands/
 
+LABEL type="platform"
+
 ENTRYPOINT ["python", "-m", "cdflow_commands"]
