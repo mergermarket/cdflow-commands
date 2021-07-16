@@ -72,18 +72,20 @@ class ReleasePlugin:
 
     @property
     def _image_name(self):
-        return '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
+        return '{}.dkr.ecr.{}.amazonaws.com/{}-{}:{}'.format(
             self._account_scheme.release_account.id,
             self._account_scheme.release_account.region,
+            self._release.team,
             self._release.component_name,
             self._release.version or 'dev'
         )
 
     @property
     def _latest_image_name(self):
-        return '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
+        return '{}.dkr.ecr.{}.amazonaws.com/{}-{}:{}'.format(
             self._account_scheme.release_account.id,
             self._account_scheme.release_account.region,
+            self._release.team,
             self._release.component_name,
             'latest'
         )
