@@ -35,20 +35,24 @@ class ReleasePlugin:
             self._docker_login_dockerhub()
 
         check_call([
-            'docker', 'build',
-            '-t', self._image_name, '.'
-        ])
-
-        self._on_docker_build()
-
+            'docker', 'buildx', 'create', '--use'
+        ]) 
+        
         if self._release.version:
             if self._account_scheme.classic_metadata_handling:
                 self._ensure_ecr_repo_exists()
                 self._ensure_ecr_policy_set()
             self._docker_login_ecr()
-            self._docker_push(self._image_name)
-            self._docker_tag_latest()
-            self._docker_push(self._latest_image_name)
+            check_call([
+                'docker', 'buildx', 'build', '--push', 
+                '--platform', 'linux/arm64/v8,linux/amd64',
+                '-t', self._image_name, '.'
+            ])
+            check_call([
+                'docker', 'buildx', 'build', '--push', 
+                '--platform', 'linux/arm64/v8,linux/amd64',
+                '-t', self._latest_image_name, '.'
+            ])              
 
         return {'image_id': self._image_name}
 

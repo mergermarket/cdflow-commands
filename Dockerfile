@@ -8,14 +8,21 @@ RUN echo http://dl-cdn.alpinelinux.org/alpine/latest-stable/main >> /etc/apk/rep
     apk update && \
     apk --no-cache add curl git zip unzip wget bash
 
-ENV DOCKER_CLI_VERSION="18.06.3-ce"
+ENV DOCKER_CLI_VERSION="20.10.5"
 ENV DOWNLOAD_URL="https://download.docker.com/linux/static/stable/x86_64/docker-$DOCKER_CLI_VERSION.tgz"
+ENV BUILDX_URL="https://github.com/docker/buildx/releases/download/v0.5.1/buildx-v0.5.1.linux-amd64"
 
 # install docker client
 RUN mkdir -p /tmp/download && \
     curl -L $DOWNLOAD_URL | tar -xz -C /tmp/download && \
     mv /tmp/download/docker/docker /usr/local/bin/ && \
     rm -rf /tmp/download
+
+# install buildx plugin
+RUN mkdir -p ~/.docker/cli-plugins && \
+    curl -sSLO  $BUILDX_URL && \
+    mv  buildx-v0.5.1.linux-amd64 ~/.docker/cli-plugins/docker-buildx && \
+    chmod 755 ~/.docker/cli-plugins/docker-buildx
 
 RUN mkdir -p "${TERRAFORM_PLUGIN_DIR}" && cd /tmp && \
     curl -sSLO "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip" && \
