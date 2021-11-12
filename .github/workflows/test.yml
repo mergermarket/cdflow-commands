@@ -1,0 +1,16 @@
+---
+name: Test
+on:
+  workflow_dispatch:
+  push:
+    branches-ignore:
+      - 'dependabot/**'
+
+jobs:
+  publish:
+    name: Test
+    runs-on: ubuntu-latest
+    if: ${{ github.ref == 'refs/heads/master' }}
+    steps:
+      - uses: actions/checkout@v2
+      - run: ./test.sh
