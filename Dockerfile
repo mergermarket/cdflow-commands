@@ -4,8 +4,8 @@ ARG TERRAFORM_VERSION=0.11.15
 
 ENV TERRAFORM_PLUGIN_DIR=/root/.terraform.d/plugins/
 
-RUN echo http://dl-cdn.alpinelinux.org/alpine/latest-stable/main >> /etc/apk/repositories && \
-    apk update && \
+# RUN echo http://dl-cdn.alpinelinux.org/alpine/latest-stable/main >> /etc/apk/repositories && \
+RUN    apk update && \
     apk --no-cache add curl git zip unzip wget bash
 
 ENV DOCKER_CLI_VERSION="18.06.3-ce"
