@@ -46,6 +46,7 @@ class TestRelease(unittest.TestCase):
 
         self._component_name = 'dummy-component'
         self._release.component_name = self._component_name
+        self._release.team = 'a-team'
 
         self._version = '1.2.3'
         self._release.version = self._version
@@ -107,8 +108,8 @@ class TestRelease(unittest.TestCase):
             'terraform-backend-s3-dynamodb-table': 'tflocks-table',
          }, 'a-team')
 
-        image_name = '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
-            account_id, region, component_name, 'dev'
+        image_name = '{}.dkr.ecr.{}.amazonaws.com/{}-{}:{}'.format(
+            account_id, region, self._release.team, component_name, 'dev'
         )
 
         plugin = ReleasePlugin(release, account_scheme)
@@ -137,8 +138,12 @@ class TestRelease(unittest.TestCase):
             self._plugin.create()
 
             # Then
-            image_name = '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
-                self._account_id, self._region, self._component_name, version
+            image_name = '{}.dkr.ecr.{}.amazonaws.com/{}-{}:{}'.format(
+                self._account_id,
+                self._region,
+                self._release.team,
+                self._component_name,
+                version
             )
 
             check_call.assert_any_call([
@@ -185,8 +190,10 @@ class TestRelease(unittest.TestCase):
                 '-u', username, '-p', password, proxy_endpoint
             ])
 
-            image_name = '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
-                self._account_id, self._region, self._component_name,
+            image_name = '{}.dkr.ecr.{}.amazonaws.com/{}-{}:{}'.format(
+                self._account_id, self._region,
+                self._release.team,
+                self._component_name,
                 self._version
             )
 
@@ -231,16 +238,23 @@ class TestRelease(unittest.TestCase):
 
             check_call.assert_any_call([
                 'docker', 'login',
-                '-u', username, '-p', password, proxy_endpoint
+                '-u', username, '-p',
+                password, proxy_endpoint
             ])
 
-            image_name = '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
-                self._account_id, self._region, self._component_name,
+            image_name = '{}.dkr.ecr.{}.amazonaws.com/{}-{}:{}'.format(
+                self._account_id,
+                self._region,
+                self._release.team,
+                self._component_name,
                 self._version
             )
 
-            latest_image_name = '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
-                self._account_id, self._region, self._component_name,
+            latest_image_name = '{}.dkr.ecr.{}.amazonaws.com/{}-{}:{}'.format(
+                self._account_id,
+                self._region,
+                self._release.team,
+                self._component_name,
                 'latest'
             )
 
@@ -468,9 +482,10 @@ class TestRelease(unittest.TestCase):
         # Then
         check_call.assert_any_call([
             '/dummy/path/on-docker-build',
-            '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
+            '{}.dkr.ecr.{}.amazonaws.com/{}-{}:{}'.format(
                 self._account_id,
                 self._region,
+                self._release.team,
                 self._component_name,
                 self._version
             )

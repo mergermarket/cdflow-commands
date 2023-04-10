@@ -15,7 +15,7 @@ class TestLambdaReleasePlugin(unittest.TestCase):
         boto_session.client.return_value = self._ecr_client
         self._release = MagicMock(spec=Release)
         self._release.multi_region = False
-        self._release._team = 'a-team'
+        self._release.team = 'a-team'
 
         self._release.boto_session = boto_session
 
@@ -63,7 +63,7 @@ class TestLambdaReleasePlugin(unittest.TestCase):
         assert plugin_data == {
             's3_bucket': 'dummy-lambda-bucket',
             's3_key': '{}/{}/{}-{}.zip'.format(
-                self._release._team, self._component_name,
+                self._release.team, self._component_name,
                 self._component_name, self._version,
             ),
         }
@@ -88,7 +88,7 @@ class TestLambdaReleasePlugin(unittest.TestCase):
             zip_file().__enter__().filename,
             'dummy-lambda-bucket',
             '{}/{}/{}-{}.zip'.format(
-                self._release._team, self._component_name,
+                self._release.team, self._component_name,
                 self._component_name, self._version,
             )
         )
@@ -117,7 +117,7 @@ class TestLambdaReleasePlugin(unittest.TestCase):
             's3_bucket.test-region2': 'dummy-lambda-bucket2',
             's3_bucket_regions_csv': 'test-region1,test-region2',
             's3_key': '{}/{}/{}-{}.zip'.format(
-                self._release._team, self._component_name,
+                self._release.team, self._component_name,
                 self._component_name, self._version,
             ),
         })
@@ -131,7 +131,7 @@ class TestLambdaReleasePlugin(unittest.TestCase):
             zip_file().__enter__().filename,
             'dummy-lambda-bucket',
             '{}/{}/{}-{}.zip'.format(
-                self._release._team, self._component_name,
+                self._release.team, self._component_name,
                 self._component_name, self._version,
             )
         )
@@ -139,7 +139,7 @@ class TestLambdaReleasePlugin(unittest.TestCase):
             zip_file().__enter__().filename,
             'dummy-lambda-bucket2',
             '{}/{}/{}-{}.zip'.format(
-                self._release._team, self._component_name,
+                self._release.team, self._component_name,
                 self._component_name, self._version,
             )
         )
@@ -165,7 +165,7 @@ class TestLambdaReleasePluginClassicMetadataHandling(unittest.TestCase):
         self._component_name = 'dummy-component'
         self._source_dir = 'src'
         self._release.component_name = self._component_name
-        self._release._team = 'foo-team'
+        self._release.team = 'foo-team'
 
         self._version = '1.2.3'
         self._release.version = self._version

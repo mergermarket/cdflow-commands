@@ -118,9 +118,10 @@ class TestReleaseCLI(unittest.TestCase):
 
         check_output_cli.return_value = 'hash\n'.encode('utf-8')
 
-        image_name = '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
+        image_name = '{}.dkr.ecr.{}.amazonaws.com/{}-{}:{}'.format(
             123456789,
             'us-north-4',
+            'your-team',
             component_name,
             version
         )
@@ -256,9 +257,10 @@ class TestReleaseCLI(unittest.TestCase):
             'release', '--platform-config', 'path/to/config', version,
         ])
 
-        image_name = '{}.dkr.ecr.{}.amazonaws.com/{}:{}'.format(
+        image_name = '{}.dkr.ecr.{}.amazonaws.com/{}-{}:{}'.format(
             123456789,
             'us-north-4',
+            'your-team',
             component_name,
             version
         )

@@ -135,7 +135,7 @@ class Release:
         self._platform_config_paths = platform_config_paths
         self.release_data = release_data
         self._commit = commit
-        self._team = team
+        self.team = team
         self.version = version
         self.component_name = component_name
         self.account_scheme = account_scheme
@@ -185,7 +185,7 @@ class Release:
             'commit': self._commit,
             'version': self.version,
             'component': self.component_name,
-            'team': self._team,
+            'team': self.team,
         }
 
         release_map = dict(item.split('=', 1) for item in release_data)
@@ -211,7 +211,7 @@ class Release:
             )
         else:
             release_key = format_release_key(
-                self._team, self.component_name, self.version,
+                self.team, self.component_name, self.version,
             )
         s3_object = s3_resource.Object(
             self._release_bucket,

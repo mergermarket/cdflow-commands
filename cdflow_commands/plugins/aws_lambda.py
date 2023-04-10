@@ -10,7 +10,7 @@ class ReleasePlugin:
     def __init__(self, release, account_scheme):
         self._boto_session = release.boto_session
         self._component_name = release.component_name
-        self._team = release._team
+        self._team = release.team
         self._version = release.version
         self._account_scheme = account_scheme
         self._multi_region = release.multi_region
